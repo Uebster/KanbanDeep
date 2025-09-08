@@ -243,6 +243,35 @@ body {
     margin-bottom: 0;
 }
 
+/* Estilos para o seletor de ícone (copiado de templates.css e ajustado) */
+.icon-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-display {
+    width: 50px;
+    text-align: center;
+    font-size: 1.5rem;
+    padding: 5px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.icon-picker-btn {
+    font-size: 2.2rem; /* Aumenta o tamanho do ícone no seletor */
+    padding: 12px;
+}
+
+/* Adiciona espaçamento vertical para os botões de adicionar coluna/etiqueta nos diálogos */
+#add-group-board-column-btn,
+#add-group-tag-btn {
+    margin-top: 8px;
+}
+
+
 /* Lista de servidores */
 .servers-list {
     display: flex;

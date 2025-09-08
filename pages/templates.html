@@ -97,6 +97,14 @@
         <label for="board-template-desc">Descrição:</label>
         <textarea id="board-template-desc" rows="2"></textarea>
     </div>
+    <!-- Adicione este bloco -->
+    <div class="form-group">
+        <label for="board-template-icon">Ícone:</label>
+        <div class="icon-input-group">
+            <input type="text" id="board-template-icon" class="icon-display" readonly>
+            <button type="button" id="btn-choose-board-icon" class="btn btn-sm">Escolher</button>
+        </div>
+    </div>
     <h4>Colunas (<span id="board-column-count">0</span>/8)</h4>
     <div id="board-columns-editor">
         <!-- Colunas serão adicionadas aqui pelo JS -->
@@ -122,6 +130,14 @@
         <label for="tag-template-desc">Descrição:</label>
         <textarea id="tag-template-desc" rows="2"></textarea>
     </div>
+    <!-- Adicione este bloco -->
+    <div class="form-group">
+        <label for="tag-template-icon">Ícone:</label>
+        <div class="icon-input-group">
+            <input type="text" id="tag-template-icon" class="icon-display" readonly>
+            <button type="button" id="btn-choose-tag-icon" class="btn btn-sm">Escolher</button>
+        </div>
+    </div>
     <h4>Etiquetas (<span id="tag-count">0</span>/8)</h4>
     <div id="tags-editor">
         <!-- Etiquetas serão adicionadas aqui pelo JS -->
@@ -143,6 +159,17 @@
     <div class="modal-actions">
         <button class="btn btn-secondary" id="confirmation-cancel">Não</button>
         <button class="btn btn-primary" id="confirmation-confirm">Sim</button>
+    </div>
+</dialog>
+
+<!-- Adicione este diálogo no final do body -->
+<dialog id="icon-picker-dialog" class="draggable">
+    <h3 class="drag-handle">Selecione um Ícone</h3>
+    <div id="icon-grid">
+        <!-- Ícones serão inseridos aqui pelo JavaScript -->
+    </div>
+    <div class="modal-actions">
+        <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
     </div>
 </dialog>
     

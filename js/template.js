@@ -16,6 +16,10 @@ let currentUser;
 let untitledColumnCounter = 1;
 let untitledTagCounter = 1;
 
+const ICON_LIBRARY = [
+  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
+];
+
 export function initTemplatesPage() {
     console.log("Iniciando página de templates...");
     applyUserTheme();
@@ -203,6 +207,16 @@ function showBoardTemplateDialog(templateId = null) {
     
     dialog.dataset.editingId = templateId;
     document.getElementById('board-template-dialog-title').textContent = template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
+    
+    // Lógica do Ícone
+    const iconInput = document.getElementById('board-template-icon');
+    iconInput.value = template ? template.icon || '📋' : '📋';
+    document.getElementById('btn-choose-board-icon').onclick = () => {
+        showIconPickerDialog((selectedIcon) => {
+            iconInput.value = selectedIcon;
+        });
+    };
+
     document.getElementById('board-template-name').value = template ? template.name : '';
     document.getElementById('board-template-desc').value = template ? template.description : '';
     
@@ -263,6 +277,7 @@ function updateColumnCount(editor) { // <-- Agora recebe 'editor' como parâmetr
 function saveBoardTemplate() {
     const dialog = document.getElementById('board-template-dialog');
     const templateId = dialog.dataset.editingId;
+    const icon = document.getElementById('board-template-icon').value;
     const name = document.getElementById('board-template-name').value.trim();
     
     if (!name) {
@@ -308,6 +323,7 @@ function saveBoardTemplate() {
                     if (index !== -1) {
                         templatesToSave[index] = { 
                             ...templatesToSave[index], 
+                            icon,
                             name, 
                             description: document.getElementById('board-template-desc').value, 
                             columns 
@@ -317,6 +333,7 @@ function saveBoardTemplate() {
                     const newTemplate = {
                         id: 'user-board-' + Date.now(),
                         name,
+                        icon,
                         description: document.getElementById('board-template-desc').value,
                         columns
                     };
@@ -374,6 +391,15 @@ function showTagTemplateDialog(templateId = null) {
     document.getElementById('tag-template-name').value = template ? template.name : '';
     document.getElementById('tag-template-desc').value = template ? template.description : '';
 
+    // Lógica do Ícone
+    const iconInput = document.getElementById('tag-template-icon');
+    iconInput.value = template ? template.icon || '🏷️' : '🏷️';
+    document.getElementById('btn-choose-tag-icon').onclick = () => {
+        showIconPickerDialog((selectedIcon) => {
+            iconInput.value = selectedIcon;
+        });
+    };
+
     const editor = document.getElementById('tags-editor');
     editor.innerHTML = '';
     const initialTags = template ? template.tags : [{ name: 'Nova Etiqueta', color: '#3498db' }];
@@ -427,6 +453,7 @@ function updateTagCount(editor) { // <-- Agora recebe 'editor' como parâmetro
 function saveTagTemplate() {
     const dialog = document.getElementById('tag-template-dialog');
     const templateId = dialog.dataset.editingId;
+    const icon = document.getElementById('tag-template-icon').value;
     const name = document.getElementById('tag-template-name').value.trim();
 
     if (!name) {
@@ -471,6 +498,7 @@ function saveTagTemplate() {
                     if (index !== -1) {
                         templatesToSave[index] = { 
                             ...templatesToSave[index], 
+                            icon,
                             name, 
                             description: document.getElementById('tag-template-desc').value, 
                             tags 
@@ -480,6 +508,7 @@ function saveTagTemplate() {
                     const newTemplate = {
                         id: 'user-tag-' + Date.now(),
                         name,
+                        icon,
                         description: document.getElementById('tag-template-desc').value,
                         tags
                     };
@@ -802,4 +831,24 @@ function loadAndRenderAllTemplates() {
     // Renderiza os templates do sistema
     renderBoardTemplates(getSystemBoardTemplates(), document.getElementById('system-board-templates-grid'), false);
     renderTagTemplates(getSystemTagTemplates(), document.getElementById('system-tag-templates-grid'), false);
+}
+
+function showIconPickerDialog(callback) {
+    const dialog = document.getElementById('icon-picker-dialog');
+    const iconGrid = document.getElementById('icon-grid');
+    iconGrid.innerHTML = ''; // Limpa ícones anteriores
+
+    ICON_LIBRARY.forEach(icon => {
+        const iconBtn = document.createElement('button');
+        iconBtn.className = 'icon-picker-btn';
+        iconBtn.textContent = icon;
+        iconBtn.onclick = () => {
+            callback(icon);
+            dialog.close();
+        };
+        iconGrid.appendChild(iconBtn);
+    });
+
+    dialog.showModal();
+    dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
 }

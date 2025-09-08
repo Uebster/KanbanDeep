@@ -31,8 +31,9 @@ let allUsers = [];
 let groups = [];
 let servers = [];
 let currentGroup = null;
-
-
+const ICON_LIBRARY = [
+  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
+];
 
 
 // Funções para gerenciar templates de grupo
@@ -589,10 +590,21 @@ function showGroupBoardTemplateDialog(templateId = null) {
     const template = templateId ? groupTemplates.find(t => t.id === templateId) : null;
     
     dialog.dataset.editingId = templateId;
-    document.getElementById('group-board-template-dialog-title').textContent = 
-        template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
+    dialog.querySelector('#group-board-template-dialog-title').textContent = template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
     document.getElementById('group-board-template-name').value = template ? template.name : '';
     document.getElementById('group-board-template-desc').value = template ? template.description : '';
+
+    // Lógica do Ícone
+    const iconInput = document.getElementById('group-board-template-icon');
+    if (iconInput) {
+        iconInput.value = template ? template.icon || '📋' : '📋';
+    }
+    const chooseIconButton = document.getElementById('btn-choose-group-board-icon');
+    if (chooseIconButton) {
+        chooseIconButton.onclick = () => {
+            showIconPickerDialog((selectedIcon) => iconInput.value = selectedIcon);
+        };
+    }
     
     const editor = document.getElementById('group-board-columns-editor');
     editor.innerHTML = '';
@@ -652,6 +664,7 @@ function updateGroupColumnCount(editor) {
 function saveGroupBoardTemplate() {
     const dialog = document.getElementById('group-board-template-dialog');
     const templateId = dialog.dataset.editingId;
+    const icon = document.getElementById('group-board-template-icon')?.value || '📋';
     const name = document.getElementById('group-board-template-name').value.trim();
     const feedbackEl = dialog.querySelector('.feedback');
 
@@ -694,6 +707,7 @@ function saveGroupBoardTemplate() {
                     if (index !== -1) {
                         groupTemplates[index] = { 
                             ...groupTemplates[index], 
+                            icon,
                             name, 
                             description: document.getElementById('group-board-template-desc').value, 
                             columns 
@@ -703,6 +717,7 @@ function saveGroupBoardTemplate() {
                     const newTemplate = {
                         id: 'group-board-' + Date.now(),
                         name,
+                        icon,
                         description: document.getElementById('group-board-template-desc').value,
                         columns
                     };
@@ -754,10 +769,21 @@ function showGroupTagTemplateDialog(templateId = null) {
     const template = templateId ? groupTemplates.find(t => t.id === templateId) : null;
     
     dialog.dataset.editingId = templateId;
-    document.getElementById('group-tag-template-dialog-title').textContent = 
-        template ? 'Editar Conjunto de Etiquetas' : 'Criar Novo Conjunto de Etiquetas';
+    dialog.querySelector('#group-tag-template-dialog-title').textContent = template ? 'Editar Conjunto de Etiquetas' : 'Criar Novo Conjunto de Etiquetas';
     document.getElementById('group-tag-template-name').value = template ? template.name : '';
     document.getElementById('group-tag-template-desc').value = template ? template.description : '';
+
+    // Lógica do Ícone
+    const iconInput = document.getElementById('group-tag-template-icon');
+    if (iconInput) {
+        iconInput.value = template ? template.icon || '🏷️' : '🏷️';
+    }
+    const chooseIconButton = document.getElementById('btn-choose-group-tag-icon');
+    if (chooseIconButton) {
+        chooseIconButton.onclick = () => {
+            showIconPickerDialog((selectedIcon) => iconInput.value = selectedIcon);
+        };
+    }
 
     const editor = document.getElementById('group-tags-editor');
     editor.innerHTML = '';
@@ -815,6 +841,7 @@ function updateGroupTagCount(editor) {
 function saveGroupTagTemplate() {
     const dialog = document.getElementById('group-tag-template-dialog');
     const templateId = dialog.dataset.editingId;
+    const icon = document.getElementById('group-tag-template-icon')?.value || '🏷️';
     const name = document.getElementById('group-tag-template-name').value.trim();
     const feedbackEl = dialog.querySelector('.feedback');
     
@@ -857,6 +884,7 @@ function saveGroupTagTemplate() {
                     if (index !== -1) {
                         groupTemplates[index] = { 
                             ...groupTemplates[index], 
+                            icon,
                             name, 
                             description: document.getElementById('group-tag-template-desc').value, 
                             tags 
@@ -866,6 +894,7 @@ function saveGroupTagTemplate() {
                     const newTemplate = {
                         id: 'group-tag-' + Date.now(),
                         name,
+                        icon,
                         description: document.getElementById('group-tag-template-desc').value,
                         tags
                     };
@@ -935,7 +964,7 @@ function renderGroupBoardTemplates(templates) {
         const templateCard = document.createElement('div');
         templateCard.className = 'template-card';
         templateCard.innerHTML = `
-            <div class="template-icon">📋</div>
+            <div class="template-icon">${template.icon || '📋'}</div>
             <h4>${template.name}</h4>
             <p>${template.description || 'Sem descrição'}</p>
             <div class="template-colors">
@@ -992,7 +1021,7 @@ function renderGroupTagTemplates(templates) {
         const templateCard = document.createElement('div');
         templateCard.className = 'template-card';
         templateCard.innerHTML = `
-            <div class="template-icon">🏷️</div>
+            <div class="template-icon">${template.icon || '🏷️'}</div>
             <h4>${template.name}</h4>
             <p>${template.description || 'Sem descrição'}</p>
             <div class="tag-list">
@@ -1032,6 +1061,30 @@ function renderGroupTagTemplates(templates) {
             deleteGroupTagTemplate(templateId);
         });
     });
+}
+
+function showIconPickerDialog(callback) {
+    const dialog = document.getElementById('icon-picker-dialog');
+    if (!dialog) {
+        console.error('Diálogo do seletor de ícones não encontrado no HTML.');
+        return;
+    }
+    const iconGrid = dialog.querySelector('#icon-grid');
+    iconGrid.innerHTML = ''; // Limpa ícones anteriores
+
+    ICON_LIBRARY.forEach(icon => {
+        const iconBtn = document.createElement('button');
+        iconBtn.className = 'icon-picker-btn';
+        iconBtn.textContent = icon;
+        iconBtn.onclick = () => {
+            callback(icon);
+            dialog.close();
+        };
+        iconGrid.appendChild(iconBtn);
+    });
+
+    dialog.showModal();
+    dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
 }
 
 // js/groups.js - PART 3/4 - REFACTORED VERSION

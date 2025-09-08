@@ -380,6 +380,14 @@
         <label for="group-board-template-desc">Descrição:</label>
         <textarea id="group-board-template-desc" rows="2"></textarea>
     </div>
+    <!-- Adicione este bloco -->
+    <div class="form-group">
+        <label for="group-board-template-icon">Ícone:</label>
+        <div class="icon-input-group">
+            <input type="text" id="group-board-template-icon" class="icon-display" readonly>
+            <button type="button" id="btn-choose-group-board-icon" class="btn btn-sm">Escolher</button>
+        </div>
+    </div>
     <h4>Colunas (<span id="group-board-column-count">0</span>/8)</h4>
     <div id="group-board-columns-editor" class="hidden">
         <!-- Colunas serão adicionadas aqui -->
@@ -402,6 +410,14 @@
     <div class="form-group">
         <label for="group-tag-template-desc">Descrição:</label>
         <textarea id="group-tag-template-desc" rows="2"></textarea>
+    </div>
+    <!-- Adicione este bloco -->
+    <div class="form-group">
+        <label for="group-tag-template-icon">Ícone:</label>
+        <div class="icon-input-group">
+            <input type="text" id="group-tag-template-icon" class="icon-display" readonly>
+            <button type="button" id="btn-choose-group-tag-icon" class="btn btn-sm">Escolher</button>
+        </div>
     </div>
     <h4>Etiquetas (<span id="group-tag-count">0</span>/8)</h4>
     <div id="group-tags-editor" class="hidden">
@@ -464,6 +480,17 @@
     <button class="btn btn-secondary" id="cancel-add-participant">Cancelar</button>
     <button class="btn btn-primary" id="confirm-add-participant">Adicionar</button>
   </div>
+</dialog>
+
+<!-- Adicione este diálogo no final do body -->
+<dialog id="icon-picker-dialog" class="draggable">
+    <h3 class="drag-handle">Selecione um Ícone</h3>
+    <div id="icon-grid">
+        <!-- Ícones serão inseridos aqui pelo JavaScript -->
+    </div>
+    <div class="modal-actions">
+        <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
+    </div>
 </dialog>
   
   <script type="module" src="../js/main.js"></script>
