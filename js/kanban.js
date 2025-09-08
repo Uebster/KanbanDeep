@@ -1564,107 +1564,40 @@ function saveBoardAsTemplate() {
 function showPreferencesDialog() {
     const dialog = document.getElementById('preferences-dialog');
     const user = getCurrentUser();
-        const newDialog = dialog.cloneNode(true);
+    // O cloneNode é uma forma de garantir que os listeners antigos sejam removidos.
+    // É uma abordagem válida, embora a remoção manual de listeners seja mais "limpa".
+    const newDialog = dialog.cloneNode(true);
     dialog.parentNode.replaceChild(newDialog, dialog);
-    
-    // Salvar os valores originais
+
+    // Salvar os valores originais para a função "Cancelar"
     originalKanbanTheme = user.theme || 'auto';
     originalKanbanFont = user.preferences?.fontFamily || 'Segoe UI';
     originalKanbanFontSize = user.preferences?.fontSize || 'medium';
-    
-    // Preencher com os valores atuais
-    document.getElementById('pref-theme').value = originalKanbanTheme;
-    document.getElementById('pref-language').value = user.language || 'pt-BR';
-    document.getElementById('pref-font-family').value = originalKanbanFont;
-    document.getElementById('pref-font-size').value = originalKanbanFontSize;
-    document.getElementById('pref-show-tags').checked = user.preferences?.showTags !== false;
-    document.getElementById('pref-show-date').checked = user.preferences?.showDate !== false;
-    document.getElementById('pref-show-status').checked = user.preferences?.showStatus !== false;
 
-    // Preencher o select de conjuntos de etiquetas
+    // Preencher o diálogo com os valores atuais do usuário
+    newDialog.querySelector('#pref-theme').value = originalKanbanTheme;
+    newDialog.querySelector('#pref-language').value = user.language || 'pt-BR';
+    newDialog.querySelector('#pref-font-family').value = originalKanbanFont;
+    newDialog.querySelector('#pref-font-size').value = originalKanbanFontSize;
+    newDialog.querySelector('#pref-show-tags').checked = user.preferences?.showTags !== false;
+    newDialog.querySelector('#pref-show-date').checked = user.preferences?.showDate !== false;
+    newDialog.querySelector('#pref-show-status').checked = user.preferences?.showStatus !== false;
     populateTagTemplatesSelect(user.preferences?.defaultTagTemplateId);
 
-    // Aplicação instantânea para pré-visualização
-    document.getElementById('pref-theme').addEventListener('change', (e) => {
-        applyThemeFromSelect(e.target.value);
-        kanbanIsSaved = false;
-    });
-    
-    document.getElementById('pref-font-family').addEventListener('change', (e) => {
-        applyFontFamily(e.target.value);
-        kanbanIsSaved = false;
-    });
-    
-    document.getElementById('pref-font-size').addEventListener('change', (e) => {
-        applyFontSize(e.target.value);
-        kanbanIsSaved = false;
-    });
+    kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
 
-        document.getElementById('pref-language')?.addEventListener('change', () => {
-        kanbanIsSaved = false;
-    });
-    
-    document.getElementById('pref-default-tag-template')?.addEventListener('change', () => {
-        kanbanIsSaved = false;
-    });
-    
-    document.getElementById('pref-show-tags')?.addEventListener('change', () => {
-        kanbanIsSaved = false;
-    });
-    
-    document.getElementById('pref-show-date')?.addEventListener('change', () => {
-        kanbanIsSaved = false;
-    });
-    
-    document.getElementById('pref-show-status')?.addEventListener('change', () => {
-        kanbanIsSaved = false;
-    });
-
-        kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
-
-    // Botão Salvar
-newDialog.querySelector('#pref-save-btn').addEventListener('click', () => {
-    showConfirmationDialog(
-        'Deseja salvar as alterações feitas nas preferências?',
-        // onConfirm: O que fazer se o usuário clicar "Sim, Salvar"
-        (confirmDialog) => {
-            if (savePreferences()) {
-                showDialogMessage(confirmDialog, 'Preferências salvas com sucesso!', 'success');
-// Fecha o diálogo de preferências
-                newDialog.close();
-                // Retorna true para que o diálogo de confirmação se feche após a mensagem
-                return true; 
-            } else {
-                // Se savePreferences() falhar por algum motivo
-                showDialogMessage(confirmDialog, 'Erro ao salvar as preferências.', 'error');
-                return false; // Mantém o diálogo de confirmação aberto com o erro
-            }
-        },
-        // onCancel: O que fazer se o usuário clicar "Não"
-        (confirmDialog) => {
-            showDialogMessage(confirmDialog, 'Continue editando...', 'info');
-            // Retorna true para fechar APENAS o diálogo de confirmação,
-            // mantendo o de preferências aberto.
-            return true;
-        },
-        'Sim, Salvar', // Texto do botão de confirmação
-        'Não'          // Texto do botão de cancelamento
-    );
-});
-
-    // Botão Cancelar
-    newDialog.querySelector('#pref-cancel-btn').addEventListener('click', () => {
+    // --- Lógica de Cancelamento Centralizada ---
+    const handleCancel = () => {
         if (!kanbanIsSaved) {
             showConfirmationDialog(
                 'Descartar alterações não salvas?',
-                (confirmDialog) => { // onConfirm
+                (confirmDialog) => { // onConfirm (Descartar)
                     restoreKanbanOriginalSettings();
-                    kanbanIsSaved = true;
                     showDialogMessage(confirmDialog, 'Alterações descartadas.', 'info');
                     newDialog.close();
-                    return true;
+                    return true; // Fecha o diálogo de confirmação
                 },
-                (confirmDialog) => { // onCancel
+                (confirmDialog) => { // onCancel (Continuar editando)
                     showDialogMessage(confirmDialog, 'Continue editando...', 'info');
                     return true; // Fecha apenas a confirmação
                 },
@@ -1672,34 +1605,73 @@ newDialog.querySelector('#pref-save-btn').addEventListener('click', () => {
                 'Não'
             );
         } else {
-            newDialog.close();
+            newDialog.close(); // Fecha sem perguntar se nada mudou
+        }
+    };
+
+    // --- Anexar Eventos ---
+
+    // Botão Salvar
+    newDialog.querySelector('#pref-save-btn').addEventListener('click', () => {
+        showConfirmationDialog(
+            'Deseja salvar as alterações feitas nas preferências?',
+            (confirmDialog) => { // onConfirm (Salvar)
+                if (savePreferences()) {
+                    showDialogMessage(confirmDialog, 'Preferências salvas com sucesso!', 'success');
+                    newDialog.close();
+                    return true;
+                } else {
+                    showDialogMessage(confirmDialog, 'Erro ao salvar as preferências.', 'error');
+                    return false; // Mantém o diálogo de confirmação aberto
+                }
+            },
+            (confirmDialog) => { // onCancel (Não salvar ainda)
+                showDialogMessage(confirmDialog, 'Continue editando...', 'info');
+                return true; // Fecha apenas a confirmação
+            },
+            'Sim, Salvar',
+            'Não'
+        );
+    });
+
+    // Botão Cancelar
+    newDialog.querySelector('#pref-cancel-btn').addEventListener('click', handleCancel);
+
+    // Evento 'cancel' (disparado pela tecla ESC)
+    newDialog.addEventListener('cancel', (e) => {
+        e.preventDefault(); // Impede o fechamento automático do diálogo
+        handleCancel();     // Executa nossa lógica de confirmação
+    });
+
+    // Evento de clique no backdrop (fundo)
+    newDialog.addEventListener('click', (e) => {
+        if (e.target === newDialog) {
+            handleCancel();
         }
     });
 
-    // Adiciona o listener para o clique fora (no backdrop)
-newDialog.addEventListener('click', (e) => {
-    // Verifica se o clique foi no backdrop
-    if (e.target === newDialog) {
-        // --- INÍCIO DA CORREÇÃO ---
-        
-        // 1. Impede que este evento de clique continue a "borbulhar"
-        // para o document, onde o ui-controls.js o pegaria e fecharia o diálogo.
-        e.stopPropagation();
-        e.preventDefault();
+    // Listeners que marcam o estado como "não salvo" e aplicam preview
+    const fieldsToTrack = [
+        { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
+        { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
+        { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) }, // Adicionado isPreview = true
+        { id: 'pref-language', action: null },
+        { id: 'pref-default-tag-template', action: null },
+        { id: 'pref-show-tags', action: null },
+        { id: 'pref-show-date', action: null },
+        { id: 'pref-show-status', action: null }
+    ];
 
-        // 2. Simula um clique no botão "Cancelar" para acionar a lógica de confirmação.
-        newDialog.querySelector('#pref-cancel-btn').click();
-
-        // --- FIM DA CORREÇÃO ---
-    }
-});
-
-    // Listeners que marcam o estado como "não salvo"
-    const fieldsToTrack = ['pref-theme', 'pref-language', 'pref-font-family', 'pref-font-size', 'pref-show-tags', 'pref-show-date', 'pref-show-status', 'pref-default-tag-template'];
-    fieldsToTrack.forEach(id => {
-        newDialog.querySelector(`#${id}`)?.addEventListener('change', () => {
-            kanbanIsSaved = false;
-        });
+    fieldsToTrack.forEach(field => {
+        const element = newDialog.querySelector(`#${field.id}`);
+        if (element) {
+            element.addEventListener('change', (e) => {
+                kanbanIsSaved = false;
+                if (field.action) {
+                    field.action(e);
+                }
+            });
+        }
     });
 
     newDialog.showModal();
@@ -1708,7 +1680,7 @@ newDialog.addEventListener('click', (e) => {
 function restoreKanbanOriginalSettings() {
     applyThemeFromSelect(originalKanbanTheme);
     applyFontFamily(originalKanbanFont);
-    applyFontSize(originalKanbanFontSize);
+    applyFontSize(originalKanbanFontSize, true); // Adicionado isPreview = true
 }
 
 function savePreferences() {
@@ -1835,7 +1807,7 @@ function applyFontFamily(fontFamily) {
     document.head.appendChild(style);
 }
 
-function applyFontSize(size) {
+function applyFontSize(size, isPreview = false) { // Parâmetro isPreview adicionado
     let fontSize;
     switch (size) {
         case 'small': fontSize = '11px'; break;
@@ -1846,15 +1818,17 @@ function applyFontSize(size) {
     // Aplica ao documento inteiro
     document.documentElement.style.fontSize = fontSize;
     
-    // Salva a preferência
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-        updateUser(currentUser.id, { 
-            preferences: {
-                ...(currentUser.preferences || {}),
-                fontSize: size
-            }
-        });
+    // Salva a preferência apenas se não for uma pré-visualização
+    if (!isPreview) {
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+            updateUser(currentUser.id, { 
+                preferences: {
+                    ...(currentUser.preferences || {}),
+                    fontSize: size
+                }
+            });
+        }
     }
 }
 

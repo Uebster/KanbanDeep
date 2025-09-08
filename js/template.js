@@ -13,8 +13,6 @@ import { getCurrentUser, updateUser } from './auth.js';
 import { showFloatingMessage, updateUserAvatar } from './ui-controls.js';
 
 let currentUser;
-let userBoardTemplates = [];
-let userTagTemplates = [];
 let untitledColumnCounter = 1;
 let untitledTagCounter = 1;
 
@@ -27,15 +25,6 @@ export function initTemplatesPage() {
         window.location.href = 'list-users.html';
         return;
     }
-
-     if (currentUser) {
-        updateUserAvatar(currentUser);
-    }
-    
-    // Debug: verifique o que está no perfil do usuário
-    console.log("Usuário atual:", currentUser);
-    console.log("Board templates:", currentUser.boardTemplates);
-    console.log("Tag templates:", currentUser.tagTemplates);
     
     setupPage();
     setupTabs();
@@ -45,6 +34,9 @@ export function initTemplatesPage() {
 
 function setupPage() {
     document.getElementById('page-title').textContent = "Gerenciar Templates";
+    if (currentUser) {
+        updateUserAvatar(currentUser);
+    }
     document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
 }
 
@@ -62,7 +54,8 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
         card.className = 'template-card';
         card.dataset.id = template.id;
         
-        const colorsHtml = template.columns.map(col => 
+        const columns = template.columns || [];
+        const colorsHtml = columns.map(col => 
             `<div class="color-box" style="background-color: ${col.color};"></div>`
         ).join('');
 
@@ -73,8 +66,8 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
 
         card.innerHTML = `
             <h4>${template.icon || '📋'} ${template.name}</h4>
-            <div class="template-colors">${colorsHtml}</div>
             <p>${template.description || 'Sem descrição.'}</p>
+            <div class="template-colors">${colorsHtml}</div>
             <div class="template-actions">${actionsHtml}</div>`;
         gridElement.appendChild(card);
         
@@ -95,7 +88,8 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
 }
 
 function useBoardTemplate(templateId) {
-    const allTemplates = [...getSystemBoardTemplates(), ...userBoardTemplates];
+    const userTemplates = getUserBoardTemplates(currentUser.id);
+    const allTemplates = [...getSystemBoardTemplates(), ...userTemplates];
     const template = allTemplates.find(t => t.id === templateId);
 
     if (!template) {
@@ -175,7 +169,8 @@ function renderTagTemplates(templates, gridElement, isEditable) {
 }
 
 function useTagTemplate(templateId) {
-    const allTemplates = [...getSystemTagTemplates(), ...userTagTemplates];
+    const userTemplates = getUserTagTemplates(currentUser.id);
+    const allTemplates = [...getSystemTagTemplates(), ...userTemplates];
     const template = allTemplates.find(t => t.id === templateId);
 
     if (!template) {
@@ -201,23 +196,10 @@ function useTagTemplate(templateId) {
     }
 }
 
-function isBoardTemplateNameUnique(name, editingId = null) {
-    return !userBoardTemplates.some(template => 
-        template.name.toLowerCase() === name.toLowerCase() && 
-        template.id !== editingId
-    );
-}
-
-function isTagTemplateNameUnique(name, editingId = null) {
-    return !userTagTemplates.some(template => 
-        template.name.toLowerCase() === name.toLowerCase() && 
-        template.id !== editingId
-    );
-}
-
 function showBoardTemplateDialog(templateId = null) {
     const dialog = document.getElementById('board-template-dialog');
-    const template = templateId ? userBoardTemplates.find(t => t.id === templateId) : null;
+    const userTemplates = getUserBoardTemplates(currentUser.id);
+    const template = templateId ? userTemplates.find(t => t.id === templateId) : null;
     
     dialog.dataset.editingId = templateId;
     document.getElementById('board-template-dialog-title').textContent = template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
@@ -282,13 +264,17 @@ function saveBoardTemplate() {
     const dialog = document.getElementById('board-template-dialog');
     const templateId = dialog.dataset.editingId;
     const name = document.getElementById('board-template-name').value.trim();
-
+    
     if (!name) {
         showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
         return;
     }
 
-    if (!isBoardTemplateNameUnique(name, templateId)) {
+    // Pega uma cópia nova dos templates para a validação
+    const currentTemplates = getUserBoardTemplates(currentUser.id);
+    const isNameUnique = !currentTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
+
+    if (!isNameUnique) {
         showDialogMessage(dialog, 'Já existe um template com este nome. Por favor, escolha outro nome.', 'error');
         return;
     }
@@ -314,17 +300,14 @@ function saveBoardTemplate() {
     showConfirmationDialog(
         'Deseja salvar este template?',
         async (confirmationDialog) => {
-            try {
-                // DEBUG: Mostra o estado antes do salvamento
-                console.log("=== ANTES DO SALVAMENTO (BOARD) ===");
-                debugUserProfile();
-                
+            try {                
                 // Atualiza ou cria o template
+                let templatesToSave = getUserBoardTemplates(currentUser.id);
                 if (templateId) {
-                    const index = userBoardTemplates.findIndex(t => t.id === templateId);
+                    const index = templatesToSave.findIndex(t => t.id === templateId);
                     if (index !== -1) {
-                        userBoardTemplates[index] = { 
-                            ...userBoardTemplates[index], 
+                        templatesToSave[index] = { 
+                            ...templatesToSave[index], 
                             name, 
                             description: document.getElementById('board-template-desc').value, 
                             columns 
@@ -337,20 +320,13 @@ function saveBoardTemplate() {
                         description: document.getElementById('board-template-desc').value,
                         columns
                     };
-                    userBoardTemplates.push(newTemplate);
+                    templatesToSave.push(newTemplate);
                 }
 
                 // Salva no perfil do usuário
-                const success = saveUserBoardTemplates(currentUser.id, userBoardTemplates);
+                const success = saveUserBoardTemplates(currentUser.id, templatesToSave);
                 
                 if (success) {
-                    // Atualiza a referência local com os dados mais recentes
-                    userBoardTemplates = getUserBoardTemplates(currentUser.id);
-                    
-                    // DEBUG: Mostra o estado após o salvamento
-                    console.log("=== APÓS O SALVAMENTO (BOARD) ===");
-                    debugUserProfile();
-                    
                     // Recarrega a interface
                     loadAndRenderAllTemplates();
                     
@@ -377,8 +353,9 @@ function deleteBoardTemplate(templateId) {
     showConfirmationDialog(
         'Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.',
         async (dialog) => {
-            userBoardTemplates = userBoardTemplates.filter(t => t.id !== templateId);
-            saveUserBoardTemplates(currentUser.id, userBoardTemplates);
+            let templates = getUserBoardTemplates(currentUser.id);
+            templates = templates.filter(t => t.id !== templateId);
+            saveUserBoardTemplates(currentUser.id, templates);
             loadAndRenderAllTemplates();
             showDialogMessage(dialog, 'Template excluído.', 'info');
             setTimeout(() => dialog.close(), 1500);
@@ -389,7 +366,8 @@ function deleteBoardTemplate(templateId) {
 
 function showTagTemplateDialog(templateId = null) {
     const dialog = document.getElementById('tag-template-dialog');
-    const template = templateId ? userTagTemplates.find(t => t.id === templateId) : null;
+    const userTemplates = getUserTagTemplates(currentUser.id);
+    const template = templateId ? userTemplates.find(t => t.id === templateId) : null;
 
     dialog.dataset.editingId = templateId;
     document.getElementById('tag-template-dialog-title').textContent = template ? 'Editar Conjunto de Etiquetas' : 'Criar Novo Conjunto de Etiquetas';
@@ -450,13 +428,16 @@ function saveTagTemplate() {
     const dialog = document.getElementById('tag-template-dialog');
     const templateId = dialog.dataset.editingId;
     const name = document.getElementById('tag-template-name').value.trim();
-    
+
     if (!name) {
         showDialogMessage(dialog, 'O nome do conjunto é obrigatório.', 'error');
         return;
     }
 
-    if (!isTagTemplateNameUnique(name, templateId)) {
+    const currentTemplates = getUserTagTemplates(currentUser.id);
+    const isNameUnique = !currentTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
+
+    if (!isNameUnique) {
         showDialogMessage(dialog, 'Já existe um conjunto com este nome. Por favor, escolha outro nome.', 'error');
         return;
     }
@@ -482,17 +463,14 @@ function saveTagTemplate() {
     showConfirmationDialog(
         'Deseja salvar este conjunto de etiquetas?',
         async (confirmationDialog) => {
-            try {
-                // DEBUG: Mostra o estado antes do salvamento
-                console.log("=== ANTES DO SALVAMENTO (TAG) ===");
-                debugUserProfile();
-                
+            try {                
                 // Atualiza ou cria o template
+                let templatesToSave = getUserTagTemplates(currentUser.id);
                 if (templateId) {
-                    const index = userTagTemplates.findIndex(t => t.id === templateId);
+                    const index = templatesToSave.findIndex(t => t.id === templateId);
                     if (index !== -1) {
-                        userTagTemplates[index] = { 
-                            ...userTagTemplates[index], 
+                        templatesToSave[index] = { 
+                            ...templatesToSave[index], 
                             name, 
                             description: document.getElementById('tag-template-desc').value, 
                             tags 
@@ -505,20 +483,13 @@ function saveTagTemplate() {
                         description: document.getElementById('tag-template-desc').value,
                         tags
                     };
-                    userTagTemplates.push(newTemplate);
+                    templatesToSave.push(newTemplate);
                 }
 
                 // Salva no perfil do usuário
-                const success = saveUserTagTemplates(currentUser.id, userTagTemplates);
+                const success = saveUserTagTemplates(currentUser.id, templatesToSave);
                 
                 if (success) {
-                    // Atualiza a referência local com os dados mais recentes
-                    userTagTemplates = getUserTagTemplates(currentUser.id);
-                    
-                    // DEBUG: Mostra o estado após o salvamento
-                    console.log("=== APÓS DO SALVAMENTO (TAG) ===");
-                    debugUserProfile();
-                    
                     // Recarrega a interface
                     loadAndRenderAllTemplates();
                     
@@ -546,8 +517,9 @@ function deleteTagTemplate(templateId) {
     showConfirmationDialog(
         'Tem certeza que deseja excluir este conjunto de etiquetas? Esta ação não pode ser desfeita.',
         async (dialog) => {
-            userTagTemplates = userTagTemplates.filter(t => t.id !== templateId);
-            saveUserTagTemplates(currentUser.id, userTagTemplates);
+            let templates = getUserTagTemplates(currentUser.id);
+            templates = templates.filter(t => t.id !== templateId);
+            saveUserTagTemplates(currentUser.id, templates);
             loadAndRenderAllTemplates();
             showDialogMessage(dialog, 'Conjunto de etiquetas excluído.', 'info');
             setTimeout(() => dialog.close(), 1500);
@@ -593,7 +565,8 @@ function setupActionButtons() {
 }
 
 function deleteAllBoardTemplates() {
-    if (userBoardTemplates.length === 0) {
+    const userTemplates = getUserBoardTemplates(currentUser.id);
+    if (userTemplates.length === 0) {
         showAlertDialog('Não há templates de quadro para apagar.');
         return;
     }
@@ -601,8 +574,7 @@ function deleteAllBoardTemplates() {
     showConfirmationDialog(
         'Tem certeza que deseja apagar TODOS os seus templates de quadro? Esta ação não pode ser desfeita.',
         async (dialog) => {
-            userBoardTemplates = [];
-            saveUserBoardTemplates(currentUser.id, userBoardTemplates);
+            saveUserBoardTemplates(currentUser.id, []);
             loadAndRenderAllTemplates();
             showDialogMessage(dialog, 'Todos os templates de quadro foram apagados.', 'info');
             setTimeout(() => dialog.close(), 1500);
@@ -612,7 +584,8 @@ function deleteAllBoardTemplates() {
 }
 
 function deleteAllTagTemplates() {
-    if (userTagTemplates.length === 0) {
+    const userTemplates = getUserTagTemplates(currentUser.id);
+    if (userTemplates.length === 0) {
         showAlertDialog('Não há conjuntos de etiquetas para apagar.');
         return;
     }
@@ -620,8 +593,7 @@ function deleteAllTagTemplates() {
     showConfirmationDialog(
         'Tem certeza que deseja apagar TODOS os seus conjuntos de etiquetas? Esta ação não pode ser desfeita.',
         async (dialog) => {
-            userTagTemplates = [];
-            saveUserTagTemplates(currentUser.id, userTagTemplates);
+            saveUserTagTemplates(currentUser.id, []);
             loadAndRenderAllTemplates();
             showDialogMessage(dialog, 'Todos os conjuntos de etiquetas foram apagados.', 'info');
             setTimeout(() => dialog.close(), 1500);
@@ -822,44 +794,12 @@ function applyUserTheme() {
 }
 
 function loadAndRenderAllTemplates() {
-    console.log("Carregando templates do usuário:", currentUser.id);
-    
-    // Busca os templates diretamente do perfil do usuário atualizado
-    userBoardTemplates = getUserBoardTemplates(currentUser.id);
-    userTagTemplates = getUserTagTemplates(currentUser.id);
-    
-    console.log("Templates de quadro:", userBoardTemplates);
-    console.log("Templates de etiqueta:", userTagTemplates);
-    
+    const boardTemplates = getUserBoardTemplates(currentUser.id);
+    const tagTemplates = getUserTagTemplates(currentUser.id);
     // Renderiza os templates do usuário
-    renderBoardTemplates(userBoardTemplates, document.getElementById('user-board-templates-grid'), true);
-    renderTagTemplates(userTagTemplates, document.getElementById('user-tag-templates-grid'), true);
-    
+    renderBoardTemplates(boardTemplates, document.getElementById('user-board-templates-grid'), true);
+    renderTagTemplates(tagTemplates, document.getElementById('user-tag-templates-grid'), true);
     // Renderiza os templates do sistema
     renderBoardTemplates(getSystemBoardTemplates(), document.getElementById('system-board-templates-grid'), false);
     renderTagTemplates(getSystemTagTemplates(), document.getElementById('system-tag-templates-grid'), false);
-}
-
-function debugStorage() {
-    console.log("Debug do Storage:");
-    console.log("Chaves no localStorage:", Object.keys(localStorage));
-    
-    const userBoardKey = `user_${currentUser.id}_board_templates`;
-    const userTagKey = `user_${currentUser.id}_tag_templates`;
-    
-    console.log("Chave dos templates de quadro:", userBoardKey);
-    console.log("Chave dos templates de etiqueta:", userTagKey);
-    
-    const boardTemplates = localStorage.getItem(userBoardKey);
-    const tagTemplates = localStorage.getItem(userTagKey);
-    
-    console.log("Templates de quadro no storage:", boardTemplates);
-    console.log("Templates de etiqueta no storage:", tagTemplates);
-}
-
-function debugUserProfile() {
-    const user = getCurrentUser();
-    console.log("Perfil completo do usuário:", user);
-    console.log("Board templates no perfil:", user.boardTemplates);
-    console.log("Tag templates no perfil:", user.tagTemplates);
 }

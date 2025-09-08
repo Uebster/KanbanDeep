@@ -266,10 +266,13 @@ export function showGlobalMessage(message, type = 'info', duration = 4000) {
 
 /**
  * Exibe um diálogo de confirmação personalizado.
- * @param {string} message - A mensagem de confirmação.
- * @param {Function} onConfirm - Callback executado quando o usuário confirma.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {Function} onConfirm - Callback para o botão "Sim". Recebe o diálogo como argumento. Deve retornar `true` para fechar o diálogo ou `false` para mantê-lo aberto.
+ * @param {Function} [onCancel] - Callback para o botão "Não". Mesma lógica do onConfirm.
+ * @param {string} [confirmText='Sim'] - Texto para o botão de confirmação.
+ * @param {string} [cancelText='Não'] - Texto para o botão de cancelamento.
  */
-export function showConfirmationDialog(message, onConfirm) {
+export function showConfirmationDialog(message, onConfirm, onCancel = null, confirmText = 'Sim', cancelText = 'Não') {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
@@ -277,23 +280,34 @@ export function showConfirmationDialog(message, onConfirm) {
         <p>${message}</p>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary">Não</button>
-            <button class="btn btn-primary">Sim</button>
+            <button class="btn btn-secondary">${cancelText}</button>
+            <button class="btn btn-primary">${confirmText}</button>
         </div>
     `;
     document.body.appendChild(dialog);
+    makeDraggable(dialog); // Garante que o novo diálogo seja arrastável
     dialog.showModal();
 
     const confirmBtn = dialog.querySelector('.btn-primary');
     const cancelBtn = dialog.querySelector('.btn-secondary');
-    const feedbackEl = dialog.querySelector('.feedback');
 
-    const closeDialog = () => { 
-        dialog.close(); 
+    const closeAndCleanup = () => {
+        dialog.close();
         setTimeout(() => dialog.remove(), 300);
     };
     
-    cancelBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', () => {
+        if (onCancel) {
+            const result = onCancel(dialog);
+            // Só fecha se o callback retornar true
+            if (result) {
+                setTimeout(closeAndCleanup, 1500);
+            }
+        } else {
+            // Comportamento padrão: apenas fecha
+            closeAndCleanup();
+        }
+    });
 
     confirmBtn.addEventListener('click', async () => {
         // Desabilita os botões para prevenir múltiplos cliques
@@ -301,11 +315,11 @@ export function showConfirmationDialog(message, onConfirm) {
         cancelBtn.disabled = true;
 
         // Executa a ação de confirmação
-        const success = await onConfirm(dialog);
+        const success = await onConfirm(dialog); // A função que chama decide o que fazer
 
         // Se a ação foi bem-sucedida, o diálogo fecha após a mensagem
         if (success) {
-            setTimeout(closeDialog, 1500);
+            setTimeout(closeAndCleanup, 1500);
         } else {
             // Se houve erro, reabilita os botões para o usuário tentar novamente
             confirmBtn.disabled = false;
@@ -390,4 +404,3 @@ export function initUserAvatar(currentUser = null) {
         updateUserAvatar(currentUser);
     }
 }
-

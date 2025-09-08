@@ -67,6 +67,9 @@ export function initGroupsPage() {
         return;
     }
     
+    // Carrega os grupos ANTES de qualquer outra lógica para que a variável 'groups' esteja disponível.
+    loadGroups();
+
     // Verificar se há um grupo selecionado para mostrar estatísticas
     const selectedGroupId = localStorage.getItem('selectedGroupId');
     const openStatistics = localStorage.getItem('openStatistics');
@@ -107,7 +110,6 @@ export function initGroupsPage() {
 
     setupEventListeners();
     setupTabs();
-    loadGroups();
     loadServers();
     initDraggableElements();
 }

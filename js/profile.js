@@ -5,7 +5,7 @@ import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTem
       getNotifications,   // <-- Adicione esta
   saveNotifications   // <-- Adicione esta
  } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 
 // Variável para armazenar dados originais do usuário
 let originalUserData = null;
@@ -149,11 +149,10 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
         // Preferências de visualização
         if (userData.preferences) {
             document.getElementById('font-family').value = userData.preferences.fontFamily || 'Segoe UI';
-            document.getElementById('font-size').value = userData.preferences.fontSizeValue || 'medium';
+            document.getElementById('font-size').value = userData.preferences.fontSize || 'medium'; // <-- CORREÇÃO: fontSizeValue -> fontSize
             document.getElementById('pref-show-tags').checked = userData.preferences.showTags !== false;
             document.getElementById('pref-show-date').checked = userData.preferences.showDate !== false;
             document.getElementById('pref-show-status').checked = userData.preferences.showStatus !== false;
-            defaultTagTemplateId: document.getElementById('default-tag-template').value
         }
         
         // Avatar
@@ -184,55 +183,21 @@ function updateAvatarPreview(userData) {
 }
 
 function setupEventListeners() {
-    document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
     // Upload de avatar
     document.getElementById('btn-upload-avatar')?.addEventListener('click', () => {
         document.getElementById('avatar-upload')?.click();
     });
     document.getElementById('avatar-upload')?.addEventListener('change', handleAvatarUpload);
     
-    // Botão salvar - PREVINE O COMPORTAMENTO PADRÃO DO FORMULÁRIO
     document.getElementById('btn-save')?.addEventListener('click', (e) => {
         e.preventDefault();
         handleSaveClick();
     });
 
-    document.getElementById('manage-board-templates-btn')?.addEventListener('click', () => {
-    showConfirmationDialog(
-        'Tem certeza que deseja sair da página? Todas as alterações não salvas serão perdidas.',
-        (dialog) => {
-            try {
-                // 1. Mostra a mensagem de sucesso
-                showDialogMessage(dialog, 'Redirecionando para templates...', 'success');
-                
-                // 2. Tenta redirecionar após um atraso
-                setTimeout(() => {
-                    window.location.href = 'templates.html';
-                }, 1500);
-
-                // 3. Informa ao diálogo de confirmação que a operação foi bem-sucedida
-                return true;
-
-            } catch (error) {
-                // 4. Se qualquer coisa no bloco 'try' falhar, mostra uma mensagem de erro
-                console.error("Falha ao tentar redirecionar:", error);
-                showDialogMessage(dialog, 'Não foi possível ir para templates.', 'error');
-                
-                // 5. Informa ao diálogo de confirmação que a operação falhou
-                return false;
-            }
-        }
-    );
-});
-    
-    // Botão cancelar
     document.getElementById('btn-cancel')?.addEventListener('click', handleCancelClick);
-    
-    // Botão de alterar senha
     document.getElementById('change-password-account')?.addEventListener('click', changePassword);
-    
-    // Botão de excluir conta
     document.getElementById('btn-delete-account')?.addEventListener('click', confirmDeleteAccount);
+    document.getElementById('btn-join-group')?.addEventListener('click', showGroupSearchDialog);
     
     // Opções de privacidade
     document.querySelectorAll('.privacy-option').forEach(option => {
@@ -241,135 +206,64 @@ function setupEventListeners() {
             option.classList.add('selected');
         });
     });
+
+    // --- INTERCEPTADOR DE NAVEGAÇÃO GLOBAL (PARA ESTA PÁGINA) ---
+    // Este listener intercepta cliques em botões de navegação ANTES que outros scripts (como main.js) possam agir.
+    document.body.addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+
+        // Mapeia os IDs dos botões de navegação para suas ações.
+        const navActions = {
+            'kanban-btn': { dest: 'kanban.html' },
+            'my-groups-btn': { dest: 'groups.html' },
+            'templates-btn': { dest: 'templates.html' },
+            'manage-board-templates-btn': { dest: 'templates.html' },
+            'notifications-btn': { dest: 'notifications.html' },
+            'switch-user-btn': { dest: 'list-users.html' },
+            'btn-create-group': { dest: 'groups.html', state: { openCreateGroup: 'true' } }
+        };
+
+        const action = navActions[button.id];
+        const isStatsButton = button.classList.contains('view-group-stats');
+
+        // Se o botão clicado não for um dos botões de navegação mapeados, nem o de estatísticas, não faz nada.
+        if (!action && !isStatsButton) return;
+
+        // Impede a execução de outros listeners (como os do main.js) e a navegação padrão.
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation(); // Essencial para parar os listeners do main.js
+
+        if (isStatsButton) {
+            handleNavigation('groups.html', {
+                selectedGroupId: button.dataset.groupId,
+                openStatistics: 'true'
+            });
+        } else if (action) {
+            // Chama a nossa função de navegação segura.
+            handleNavigation(action.dest, action.state);
+        }
+    }, true); // O 'true' no final ativa a fase de captura, que é crucial.
     
 // Aplicação instantânea para pré-visualização
-    document.getElementById('theme')?.addEventListener('change', (e) => {
+    document.getElementById('theme')?.addEventListener('change', (e) => { // <-- BUG CORRIGIDO AQUI
         applyThemeFromSelect(e.target.value);
         isSaved = false;
     });
     
     document.getElementById('font-family')?.addEventListener('change', (e) => {
-        applyFontFamily(e.target.value);
+        applyFontFamily(e.target.value, true);
         isSaved = false;
     });
 
-document.getElementById('font-size')?.addEventListener('change', (e) => {
-    applyFontSize(e.target.value, true);
-    isSaved = false;
-});
-
-    // Interceptar navegação para verificar se há alterações não salvas
-    document.querySelectorAll('a, button[data-navigate]').forEach(element => {
-        element.addEventListener('click', (e) => {
-            if (!isSaved) {
-                e.preventDefault();
-                showConfirmationDialog(
-                    'Há alterações não salvas. Deseja sair sem salvar?',
-                    (dialog) => {
-                        // Restaurar configurações originais
-                        restoreOriginalSettings();
-                        window.location.href = e.target.href || e.target.dataset.href;
-                        return true;
-                    },
-                    (dialog) => {
-                        showDialogMessage(dialog, 'Continue editando...', 'info');
-                        setTimeout(() => dialog.close(), 1500);
-                    }
-                );
-            }
-        });
+    document.getElementById('font-size')?.addEventListener('change', (e) => {
+        applyFontSize(e.target.value, true); // O 'true' indica que é uma pré-visualização
+        isSaved = false;
     });
 
-    // --- Interceptar Navegação para Verificar Alterações ---
-document.body.addEventListener('click', (e) => {
-    const targetLink = e.target.closest('a');
-    // Apenas botões no header que NAVEGAM para outras páginas
-    const headerButton = e.target.closest('#main-header button[id$="-btn"]');
-    const targetElement = targetLink || headerButton;
-
-    if (!targetElement || isSaved) {
-        return;
-    }
-
-    e.preventDefault();
-    const destination = targetLink ? targetLink.href : (headerButton.id.includes('kanban') ? 'kanban.html' : headerButton.id.replace('-btn', '.html'));
-    
-    showConfirmationDialog(
-        'Você tem alterações não salvas. Deseja sair sem salvar?',
-        // onConfirm: Sai sem salvar
-        (dialog) => {
-            isSaved = true; // Permite a navegação
-            window.location.href = destination;
-            // Não retorna nada, pois a página vai mudar
-        },
-        // onCancel: Continua editando
-        (dialog) => {
-            showDialogMessage(dialog, 'Continue editando...', 'info');
-            return true; // Retorna true para fechar apenas o diálogo de confirmação
-        },
-        'Sair sem Salvar',
-        'Continuar Editando'
-    );
-});
-
-// profile.js - Corrija o event listener para o botão de criar grupo
-document.getElementById('btn-create-group')?.addEventListener('click', () => {
-    showConfirmationDialog(
-        'Tem certeza que deseja sair da página? Todas as alterações não salvas serão perdidas.',
-        (dialog) => {
-            showDialogMessage(dialog, 'Redirecionando para criar grupo...', 'success');
-            
-            // Usar localStorage para indicar que deve abrir a aba de criação
-            localStorage.setItem('openCreateGroup', 'true');
-            
-            setTimeout(() => {
-                window.location.href = 'groups.html';
-            }, 1500);
-            
-            return true;
-        }
-    );
-});
-    
-document.querySelectorAll('.view-group-stats').forEach(button => {
-    button.addEventListener('click', function() {
-        const groupId = this.getAttribute('data-group-id');
-        
-        // Usar localStorage para passar o grupo para a página groups.html
-        localStorage.setItem('selectedGroupId', groupId);
-        localStorage.setItem('openStatistics', 'true');
-        
-        // Redirecionar para groups.html
-        window.location.href = 'groups.html';
-    });
-});
-
-    document.getElementById('btn-join-group')?.addEventListener('click', showGroupSearchDialog);
-
-document.addEventListener('click', (e) => {
-    const target = e.target.closest('a') || e.target.closest('button');
-    if (!target || isSaved) return;
-
-    const href = target.href || target.dataset.href;
-    if (!href) return;
-
-    e.preventDefault();
-    
-    showConfirmationDialog(
-        'Você tem alterações não salvas. Deseja sair sem salvar?',
-        (dialog) => {
-            isSaved = true; // Permite a navegação
-            window.location.href = href;
-        },
-        (dialog) => {
-            // Fecha o diálogo apenas
-            dialog.close();
-        },
-        'Sair sem Salvar',
-        'Continuar Editando'
-    );
-});
-const formFields = [
+    // Marca o estado como "não salvo" quando qualquer campo do formulário muda
+    const formFields = [
         'name', 'username', 'bio', 'birthdate', 'gender', 
         'location', 'email', 'whatsapp', 'linkedin', 'language',
         'theme', 'font-family', 'font-size', 'pref-show-tags',
@@ -407,39 +301,35 @@ const formFields = [
     });
 }
 
-function showNavigationConfirmation(message, onConfirm, onCancel) {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">Confirmação</h3>
-        <p>${message}</p>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary">Não</button>
-            <button class="btn btn-primary">Sim</button>
-        </div>
-    `;
-    document.body.appendChild(dialog);
-    dialog.showModal();
-
-    const confirmBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
-
-    // O botão de confirmar APENAS executa a ação de navegação
-    confirmBtn.addEventListener('click', () => {
-        onConfirm(dialog);
-    });
-
-    // O de cancelar executa a ação de cancelamento E fecha o diálogo
-    cancelBtn.addEventListener('click', () => {
-        if (onCancel(dialog)) {
-            setTimeout(() => { dialog.close(); dialog.remove(); }, 1500);
-        }
-    });
+/**
+ * Lida com a navegação para outras páginas, verificando se há alterações não salvas.
+ * @param {string} destination - A URL de destino (ex: 'templates.html').
+ * @param {Object} [state] - Um objeto com chaves e valores para salvar no localStorage antes de navegar.
+ */
+function handleNavigation(destination, state = {}) {
+    if (isSaved) {
+        // Salva o estado e navega diretamente
+        Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
+        window.location.href = destination;
+    } else {
+        // Mostra o diálogo de confirmação
+        showConfirmationDialog(
+            'Você tem alterações não salvas. Deseja sair mesmo assim?',
+            () => { // onConfirm (Sim, sair)
+                isSaved = true; // Libera a trava
+                Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
+                showFloatingMessage('Redirecionando...', 'info');
+                window.location.href = destination;
+            },
+            (dialog) => { showDialogMessage(dialog, 'Continue editando.', 'info'); return true; }, // onCancel
+            'Sim, Sair', 'Não'
+        );
+    }
 }
 
 function handleAvatarUpload(e) {
     if (this.files && this.files[0]) {
+        isSaved = false; // <-- CORREÇÃO: Marca a página como não salva
         const reader = new FileReader();
         
         reader.onload = function(e) {
@@ -458,7 +348,7 @@ function handleAvatarUpload(e) {
 function restoreOriginalSettings() {
     applyThemeFromSelect(originalTheme, true);
     applyFontFamily(originalFont, true);
-    applyFontSize(originalFontSize, true);
+    applyFontSize(originalFontSize, true); // <-- CORREÇÃO: Adicionado o 'true' para preview
 }
 
 function applyFontSize(size, isPreview = false) {
@@ -471,7 +361,7 @@ function applyFontSize(size, isPreview = false) {
         default: fontSizeValue = '14px';
     }
 
-    document.documentElement.style.setProperty('--app-font-size', fontSizeValue);
+    document.documentElement.style.fontSize = fontSizeValue; // <-- CORREÇÃO: Aplicar diretamente ao font-size
     
     if (!isPreview) {
         const currentUser = getCurrentUser();
@@ -498,12 +388,18 @@ function handleSaveClick() {
     
     showConfirmationDialog(
         'Deseja salvar as alterações feitas no seu perfil?',
+        // onConfirm
         async (dialog) => {
             const result = await processProfileUpdate();
             
             if (result.success) {
                 isSaved = true;
                 showDialogMessage(dialog, 'Perfil salvo com sucesso!', 'success');
+                // Atualiza os dados originais para refletir o que foi salvo
+                originalUserData = {...result.userData};
+                originalTheme = result.userData.theme || 'auto';
+                originalFont = result.userData.preferences?.fontFamily || 'Segoe UI';
+                originalFontSize = result.userData.preferences?.fontSize || 'medium';
                 return true;
             } else {
                 showDialogMessage(dialog, result.message, 'error');
@@ -516,6 +412,7 @@ function handleSaveClick() {
 function handleCancelClick() {
     showConfirmationDialog(
         'Tem certeza que deseja descartar todas as alterações?',
+        // onConfirm (Sim, descartar)
         (dialog) => {
             // Restaurar os valores originais
             restoreOriginalSettings();
@@ -523,6 +420,11 @@ function handleCancelClick() {
             
             isSaved = true;
             showDialogMessage(dialog, 'Alterações descartadas.', 'info');
+            return true;
+        },
+        // onCancel (Não, continuar editando)
+        (dialog) => {
+            showDialogMessage(dialog, 'Continue editando...', 'info');
             return true;
         }
     );
@@ -559,6 +461,7 @@ function restoreOriginalData() {
         document.getElementById('pref-show-tags').checked = originalUserData.preferences.showTags !== false;
         document.getElementById('pref-show-date').checked = originalUserData.preferences.showDate !== false;
         document.getElementById('pref-show-status').checked = originalUserData.preferences.showStatus !== false;
+        document.getElementById('default-tag-template').value = originalUserData.preferences.defaultTagTemplateId || '';
     }
     
     // Avatar
@@ -567,7 +470,7 @@ function restoreOriginalData() {
     // Restaura tema e fonte
     applyThemeFromSelect(originalUserData.theme || 'auto');
     applyFontFamily(originalUserData.preferences?.fontFamily || 'Segoe UI');
-    applyFontSize(currentUser.preferences.fontSize || 'medium');
+    applyFontSize(originalUserData.preferences.fontSize || 'medium'); // <-- CORREÇÃO: Usar dados originais
 }
 
 function setupPrivacyOptions() {
@@ -621,7 +524,8 @@ async function processProfileUpdate() {
             fontSize: document.getElementById('font-size').value,
             showTags: document.getElementById('pref-show-tags').checked,
             showDate: document.getElementById('pref-show-date').checked,
-            showStatus: document.getElementById('pref-show-status').checked
+            showStatus: document.getElementById('pref-show-status').checked,
+            defaultTagTemplateId: document.getElementById('default-tag-template').value
         }
     };
     
@@ -853,189 +757,68 @@ function applyThemeFromSelect(themeValue) {
     }
 }
 
+// Aplica a família de fontes universalmente
+function applyFontFamily(fontFamily, isPreview = false) {
+    // Aplica a fonte a todos os elementos
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+        allElements[i].style.fontFamily = fontFamily;
+    }
+    
+    // Remove estilos anteriores de placeholder se existirem
+    const existingStyle = document.getElementById('universal-font-style');
+    if (existingStyle) {
+        existingStyle.remove();
+    }
+    
+    // Aplica a fonte também aos placeholders
+    const style = document.createElement('style');
+    style.id = 'universal-font-style';
+    style.textContent = `
+        ::placeholder {
+            font-family: ${fontFamily} !important;
+        }
+        :-ms-input-placeholder {
+            font-family: ${fontFamily} !important;
+        }
+        ::-ms-input-placeholder {
+            font-family: ${fontFamily} !important;
+        }
+        
+        /* Força a fonte em elementos específicos que podem resistir */
+        input, textarea, select, button {
+            font-family: ${fontFamily} !important;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Salva a preferência no perfil do usuário se NÃO for uma pré-visualização
+    if (!isPreview) {
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+            updateUser(currentUser.id, {
+                preferences: {
+                    ...(currentUser.preferences || {}),
+                    fontFamily: fontFamily
+                }
+            });
+        }
+    }
+}
+
+// Adicione esta função para aplicar as configurações de fonte do usuário
 function applyUserFont() {
     const currentUser = getCurrentUser();
     if (!currentUser || !currentUser.preferences) return;
     
-    const fontFamily = currentUser.preferences.fontFamily || 'Segoe UI, sans-serif';
-    
-    // Aplica a fonte a todos os elementos
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    
-    // Remove estilos anteriores de placeholder se existirem
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) {
-        existingStyle.remove();
-    }
-    
-    // Aplica a fonte também aos placeholders
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        :-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        ::-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        
-        /* Força a fonte em elementos específicos que podem resistir */
-        input, textarea, select, button {
-            font-family: ${fontFamily} !important;
-        }
-    `;
-    document.head.appendChild(style);
+    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
     applyFontSize(currentUser.preferences.fontSize || 'medium');
-}
-
-// Aplica a família de fontes universalmente
-function applyFontFamily(fontFamily) {
-    // Aplica a fonte a todos os elementos
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    
-    // Remove estilos anteriores de placeholder se existirem
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) {
-        existingStyle.remove();
-    }
-    
-    // Aplica a fonte também aos placeholders
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        :-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        ::-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        
-        /* Força a fonte em elementos específicos que podem resistir */
-        input, textarea, select, button {
-            font-family: ${fontFamily} !important;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Salvar a preferência no perfil do usuário se estiver logado
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-        updateUser(currentUser.id, { 
-            preferences: {
-                ...(currentUser.preferences || {}),
-                fontFamily: fontFamily
-            }
-        });
-    }
-}
-
-// Executa imediatamente ao carregar a página
-document.addEventListener('DOMContentLoaded', function() {
-    applyUserFont();
-});
-
-// Aplica também quando a página estiver totalmente carregada
-window.addEventListener('load', function() {
-    applyUserFont();
-});
-
-// Observa mudanças no DOM para aplicar a fonte a elementos dinâmicos
-if (typeof MutationObserver !== 'undefined') {
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.addedNodes.length > 0) {
-                // Pequeno delay para garantir que os elementos estejam renderizados
-                setTimeout(applyUserFont, 10);
-            }
-        });
-    });
-    
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
 }
 
 // Exportar função para ser usada em outras páginas
 export function getAppliedFontFamily() {
     const currentUser = getCurrentUser();
     return currentUser?.preferences?.fontFamily || 'Segoe UI, sans-serif';
-}
-
-// FUNÇÕES DE DIÁLOGO COPIADAS DO CREATE-USER.JS
-function showConfirmationDialog(message, onConfirm, onCancel = null, confirmText = "Sim", cancelText = "Não") {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">Confirmação</h3>
-        <p>${message}</p>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" id="dialog-cancel-btn">${cancelText}</button>
-            <button class="btn btn-primary" id="dialog-confirm-btn">${confirmText}</button>
-        </div>
-    `;
-    
-    document.body.appendChild(dialog);
-    dialog.showModal();
-
-    const confirmBtn = dialog.querySelector('#dialog-confirm-btn');
-    const cancelBtn = dialog.querySelector('#dialog-cancel-btn');
-    const feedbackEl = dialog.querySelector('.feedback');
-
-    const closeDialog = () => {
-        dialog.close();
-        setTimeout(() => dialog.remove(), 300);
-    };
-
-    confirmBtn.addEventListener('click', async () => {
-        confirmBtn.disabled = true;
-        cancelBtn.disabled = true;
-        
-        const result = await onConfirm(dialog);
-        if (result !== false) {
-            closeDialog();
-        } else {
-            confirmBtn.disabled = false;
-            cancelBtn.disabled = false;
-        }
-    });
-
-    cancelBtn.addEventListener('click', () => {
-        if (onCancel) {
-            onCancel(dialog);
-        }
-        closeDialog();
-    });
-
-    return dialog;
-}
-
-function showDialogMessage(dialog, message, type) {
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (!feedbackEl) return;
-    
-    feedbackEl.textContent = message;
-    feedbackEl.className = `feedback ${type} show`;
-    
-    // Não esconde a mensagem de erro, apenas as outras
-    if (type !== 'error') {
-        setTimeout(() => {
-            feedbackEl.classList.remove('show');
-        }, 3000);
-    }
 }
 
 // profile.js - Adicione estas funções
@@ -1088,20 +871,6 @@ function loadUserGroups() {
         
         groupsContainer.appendChild(groupCard);
     });
-    
-    // Adicionar event listeners aos botões de estatísticas
-    document.querySelectorAll('.view-group-stats').forEach(button => {
-        button.addEventListener('click', function() {
-            const groupId = this.getAttribute('data-group-id');
-            
-            // Usar localStorage para passar o grupo para a página groups.html
-            localStorage.setItem('selectedGroupId', groupId);
-            localStorage.setItem('openStatistics', 'true');
-            
-            // Redirecionar para groups.html
-            window.location.href = 'groups.html';
-        });
-    });
 }
 
 // Função para mostrar diálogo de busca de grupos
@@ -1126,11 +895,11 @@ function showGroupSearchDialog() {
     document.body.appendChild(dialog);
     dialog.showModal();
     
-    // Referência ao elemento de feedback
-    const feedbackEl = dialog.querySelector('#group-search-feedback');
+    const searchInput = dialog.querySelector('#group-search-input');
+    const resultsContainer = dialog.querySelector('#group-search-results');
     
     // Função para mostrar feedback
-    function showFeedback(message, type = 'info') {
+    function showFeedback(feedbackEl, message, type = 'info') {
         feedbackEl.textContent = message;
         feedbackEl.className = `feedback ${type} show`;
         
@@ -1148,58 +917,57 @@ function showGroupSearchDialog() {
     });
     
     // Implementar busca de grupos
-    const searchInput = dialog.querySelector('#group-search-input');
     searchInput.addEventListener('input', debounce(function() {
         const query = this.value.trim();
-        
-        if (query.length === 0) {
-            dialog.querySelector('#group-search-results').innerHTML = '';
-            return;
-        }
-        
         searchGroups(query);
     }, 300));
     
     // Função para buscar grupos
-    function searchGroups(query) {
+    /**
+     * Busca todos os grupos públicos disponíveis, filtra-os com base na consulta
+     * e chama a função para renderizar os resultados.
+     * @param {string} [query=''] - O termo de busca para filtrar os grupos.
+     */
+    function searchAndDisplayGroups(query = '') {
         const allGroups = getAllGroups();
         const currentUser = getCurrentUser();
-        
+
         // Filtrar grupos públicos que o usuário não é membro
         const availableGroups = allGroups.filter(group => 
             group.access === 'public' && 
-            (!group.memberIds || !group.memberIds.includes(currentUser.id)) &&
-            group.name.toLowerCase().includes(query.toLowerCase())
+            (!group.memberIds || !group.memberIds.includes(currentUser.id))
         );
 
-            if (availableGroups.length === 0) {
-        resultsContainer.innerHTML = `
-            <div class="group-result-empty">
-                <div class="group-result-empty-icon">👥</div>
-                <p class="group-result-empty-text">Não há grupos públicos disponíveis</p>
-            </div>
-        `;
-        return;
-    }
-        
-        displayGroupSearchResults(availableGroups);
+        const filteredGroups = query
+            ? availableGroups.filter(group => group.name.toLowerCase().includes(query))
+            : availableGroups;
+
+        displayGroupSearchResults(filteredGroups, availableGroups.length === 0, query);
     }
     
     // Função para exibir resultados da busca
-    function displayGroupSearchResults(groups) {
-        const resultsContainer = dialog.querySelector('#group-search-results');
-        
-        if (!groups || groups.length === 0) {
+    /**
+     * Renderiza os resultados da busca de grupos no diálogo.
+     * @param {Array} groups - A lista de grupos a ser exibida.
+     * @param {boolean} noPublicGroupsExist - True se não houver nenhum grupo público no sistema.
+     * @param {string} query - O termo de busca atual.
+     */
+    function displayGroupSearchResults(groups, noPublicGroupsExist, query) {
+        resultsContainer.innerHTML = ''; // Limpa sempre
+
+        if (noPublicGroupsExist) {
+            resultsContainer.innerHTML = `<p style="text-align: center; padding: 20px; color: var(--text-muted);">Digite para buscar grupos públicos.</p>`;
+            return;
+        }
+        if (groups.length === 0 && query) {
             resultsContainer.innerHTML = `
                 <div style="text-align: center; padding: 30px; color: var(--text-muted);">
-                    <div style="font-size: 2rem; margin-bottom: 15px;">👥</div>
-                    <p style="font-style: italic; margin: 0;">Não há grupos públicos disponíveis</p>
+                    <div style="font-size: 2rem; margin-bottom: 15px;">🔍</div>
+                    <p style="font-style: italic; margin: 0;">Nenhum grupo encontrado com este nome.</p>
                 </div>
             `;
             return;
         }
-        
-        resultsContainer.innerHTML = '';
         
         groups.forEach(group => {
             const groupEl = document.createElement('div');
@@ -1247,7 +1015,7 @@ function showGroupSearchDialog() {
         const group = getGroup(groupId);
         
         if (!group) {
-            showFeedback('Grupo não encontrado.', 'error');
+            showFeedback(dialog.querySelector('#group-search-feedback'), 'Grupo não encontrado.', 'error');
             joinButton.disabled = false;
             joinButton.textContent = 'Entrar';
             return;
@@ -1262,7 +1030,7 @@ function showGroupSearchDialog() {
             group.adminId
         );
         
-        showFeedback(`Solicitação para entrar no grupo "${groupName}" enviada!`, 'success');
+        showFeedback(dialog.querySelector('#group-search-feedback'), `Solicitação para entrar no grupo "${groupName}" enviada!`, 'success');
         joinButton.textContent = 'Solicitado';
         
         // Fechar o diálogo após um tempo
@@ -1272,6 +1040,9 @@ function showGroupSearchDialog() {
         }, 2000);
     }
     
+    // Chamar a busca inicial ao abrir o diálogo
+    searchAndDisplayGroups();
+
     // Focar no input ao abrir o diálogo
     setTimeout(() => {
         dialog.querySelector('#group-search-input').focus();
@@ -1282,9 +1053,10 @@ function showGroupSearchDialog() {
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
+        const context = this;
         const later = () => {
             clearTimeout(timeout);
-            func(...args);
+            func.apply(context, args);
         };
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
