@@ -1,0 +1,317 @@
+    /* ===== ESTILOS GLOBAIS ===== */
+    :root {
+      /* cores */
+      --bg-page: #2b2b2b;
+      --bg-card: #444;
+      --text: #e0e0e0;
+      --text2: #3d3d3d;
+      --text-muted: #bbb;
+      --border: #444;
+      --border-light: #555;
+      --transition-fast: 0.2s;
+      --success: #2ecc71;
+      --error: #e74c3c;
+      --warning: #f39c12;
+      --info: #3498db;
+      --primary: #3498db;
+
+      /* tipografia */
+      --app-font-family: "Segoe UI", "Inter", sans-serif;
+      --app-font-size: 14px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: var(--app-font-size);
+    }
+
+    body {
+      font-family: var(--app-font-family);
+      background-color: var(--bg-page);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center; /* Centraliza horizontalmente */
+      align-items: center;    /* Centraliza verticalmente */
+      flex-direction: column;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    body.light-mode {
+      --bg-page: #f5f5f5;
+      --bg-card: #ffffff;
+      --text: #222222;
+      --text2: #333333;
+      --text-muted: #666666;
+      --border: #cccccc;
+      --border-light: #bbbbbb;
+    }
+
+    /* ===== CABEÇALHO ===== */
+    header {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--text);
+    }
+
+.container {
+    width: 100%;
+    max-width: 900px;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    padding: 30px;
+}
+
+/* ===== CABEÇALHO ===== */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+header h1 {
+    font-size: 1.8rem;
+    color: var(--text);
+}
+
+header div {
+    display: flex;
+    gap: 10px;
+}
+
+/* ===== AÇÕES SUPERIORES ===== */
+.actions-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+/* ===== TABELA DE USUÁRIOS (VERSÃO CORRIGIDA) ===== */
+.users-table {
+    width: 100%;
+    border-collapse: collapse; /* Remove espaços entre as células */
+    margin-bottom: 20px;
+}
+
+.users-table th,
+.users-table td {
+    padding: 15px;
+    vertical-align: middle;
+    /* 1. REMOVE a borda de cada célula individual */
+}
+
+/* 2. ADICIONA a borda completa apenas à linha inteira (tr) */
+.users-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.users-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 3. CENTRALIZA o cabeçalho e o conteúdo */
+.users-table th {
+    background-color: var(--bg-page);
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 1rem;
+    text-align: center; /* <<< Centraliza o texto do cabeçalho */
+}
+
+.users-table td {
+    text-align: center; /* <<< Centraliza o conteúdo de TODAS as células */
+}
+
+/* 4. Alinha o conteúdo da célula de Nome e Avatar à esquerda, para melhor leitura */
+.users-table td:nth-child(1), /* Célula do Avatar */
+.users-table td:nth-child(2) { /* Célula do Nome */
+    text-align: left;
+}
+
+.users-table .actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center; /* <<< Centraliza os botões dentro da sua célula */
+}
+
+/* ===== AVATAR NA TABELA ===== */
+.avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    display: inline-flex; /* Alterado para alinhar corretamente com texto à esquerda */
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.4rem;
+    overflow: hidden;
+    margin-right: 15px; /* Adiciona um espaço entre o avatar e o nome */
+}
+
+/* 5. Combina a célula do Avatar e do Nome em uma só visualmente */
+.users-table td:nth-child(1) {
+    display: flex;
+    align-items: center;
+    border-bottom: none; /* Remove a borda inferior da célula do avatar */
+}
+
+.users-table td:nth-child(2) {
+    border-bottom: none; /* Remove a borda inferior da célula do nome */
+    padding-left: 0; /* Remove o espaçamento extra */
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ===== BOTÕES (PADRÃO GERAL) ===== */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease; /* Transição suave para todas as propriedades */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: scale(1.05); /* Efeito de escala sutil no hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn:active {
+    transform: scale(1); /* Remove a escala ao clicar */
+}
+
+/* ===== BOTÕES ESPECÍFICOS ===== */
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-secondary, #toggleTheme {
+    background-color: var(--border-light);
+    color: var(--text);
+}
+
+/* Botões da tabela */
+.btn-login {
+    background-color: var(--primary); /* Azul para ação principal */
+    color: white;
+}
+
+.btn-edit {
+    background-color: var(--border-light); /* Cinza para ação secundária */
+    color: var(--text);
+}
+
+.btn-delete {
+    background-color: var(--error); /* Vermelho para ação de perigo */
+    color: white;
+}
+
+
+/* ===== FEEDBACK E MODAIS ===== */
+.feedback {
+    text-align: center;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 20px;
+    display: none;
+}
+
+.feedback.show {
+    display: block;
+}
+
+.feedback.success {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: var(--success);
+}
+
+.feedback.error {
+    background-color: rgba(231, 76, 60, 0.2);
+    color: var(--error);
+}
+
+dialog {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 25px;
+    color: var(--text);
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+}
+
+dialog h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--primary);
+    cursor: grab;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.form-group {
+    width: 100%;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    background-color: var(--bg-page);
+    color: var(--text);
+    font-size: 1rem;
+}
+

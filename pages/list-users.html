@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Usuários - Ecache</title>
+  <link rel="stylesheet" href="../static/list-users.css">
+</head>
+<body>
+  <div id="message-container"></div>
+  
+  <div class="container">
+    <!-- Cabeçalho -->
+    <header>
+      <h1>Usuários Cadastrados</h1>
+      <div>
+        <button id="toggleTheme" class="btn">Alternar Tema</button>
+        <button id="btn-exit-app" class="btn btn-delete">Sair do App</button>
+      </div>
+      <button id="reset-database-btn" style="background-color: #e74c3c; color: white;">Zerar Banco de Dados</button>
+    </header>
+
+    <!-- Área de ações -->
+    <div class="actions-top">
+      <button id="btn-new-user" class="btn btn-primary">
+        <span>+</span> Criar Novo Usuário
+      </button>
+    </div>
+
+    <!-- Tabela de usuários -->
+    <table id="users-table" class="users-table">
+      <thead>
+        <tr>
+          <th>Avatar</th>
+          <th>Nome</th>
+          <th>Último Acesso</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Linhas serão preenchidas via JavaScript -->
+      </tbody>
+    </table>
+
+    <!-- Área de feedback -->
+    <p id="feedback" class="feedback"></p>
+
+    <!-- Diálogos -->
+    <dialog id="login-dialog" class="draggable">
+      <h3 class="drag-handle">Login</h3>
+      <div class="form-group">
+        <label for="login-password">Senha:</label>
+        <input type="password" id="login-password" required placeholder="Digite a senha para confirmar">
+      </div>
+      <div class="feedback"></div>
+      <div class="modal-actions">
+        <button id="login-submit" class="btn btn-primary">Entrar</button>
+        <button id="login-cancel" class="btn">Cancelar</button>
+      </div>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="draggable">
+      <h3 class="drag-handle" id="confirm-title">Confirmar ação</h3>
+      <p id="confirm-message">Tem certeza que deseja continuar?</p>
+      <div class="feedback"></div>
+      <div class="modal-actions">
+        <button id="confirm-ok" class="btn btn-primary">Confirmar</button>
+        <button id="confirm-cancel" class="btn">Cancelar</button>
+      </div>
+    </dialog>
+  </div>
+<script type="module" src="../js/main.js"></script>
+</body>
+</html>

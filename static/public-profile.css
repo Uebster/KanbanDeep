@@ -1,0 +1,553 @@
+/* static/public-profile.css */
+:root {
+    --bg-page: #1e1e1e;
+    --bg-card: #3c3c3c;
+    --bg-header: #232323;
+    --text: #e0e0e0;
+    --text-muted: #bbb;
+    --border: #555;
+    --primary: #4cd4e6; 
+    --header: #333;
+    --transition-fast: 0.2s ease;
+    --app-font-family: "Segoe UI", "Inter", sans-serif;
+    --success: #2ecc71;
+    --error: #e74c3c;
+    --warning: #f39c12;
+    --info: #3498db;
+    --header-height: 60px;
+}
+
+body.light-mode {
+    --bg-page: #f5f5f5;
+    --bg-card: #ffffff;
+    --bg-header: #eaeaea;
+    --text: #222222;
+    --text-muted: #666666;
+    --border: #cccccc;
+    --header: #d4d4d4;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 14px; }
+body {
+    font-family: var(--app-font-family);
+    background-color: var(--bg-page);
+    color: var(--text);
+    padding: 20px;
+    min-height: 100vh;
+}
+/* ===== LAYOUT PRINCIPAL DA APLICAÇÃO ===== */
+#app { display: flex; flex-direction: column; height: 100vh; width: 100%; }
+
+/* ===== CABEÇALHO PRINCIPAL ===== */
+#main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px;
+    height: var(--header-height);
+    background-color: var(--header); 
+    color: white;
+    flex-shrink: 0;
+    z-index: 1000;
+}
+#main-header .btn {
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+}
+.avatar-btn {
+    background: none; border: none; padding: 0; border-radius: 50%;
+    cursor: pointer; width: 38px; height: 38px;
+}
+.avatar-btn img {
+    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.5);
+}
+
+/* ===== MENUS SUSPENSOS (DROPDOWNS) ===== */
+.menu-container { position: relative; }
+.dropdown {
+    display: none; position: absolute; top: calc(100% + 10px);
+    background-color: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4); animation: fadeIn 0.2s ease-out;
+}
+.dropdown {
+    display: none; position: absolute; top: calc(100% + 10px);
+    background-color: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+.dropdown.show { display: block; }
+.menu-container:first-child .dropdown { left: 0; }
+.menu-container:last-child .dropdown { right: 0; }
+.dropdown button {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    padding: 10px 12px; margin-bottom: 4px; background: transparent; border: none;
+    color: var(--text); font-size: 1rem; cursor: pointer;
+    transition: background-color 0.2s; border-radius: 6px;
+}
+.dropdown button:hover { background-color: var(--primary); color: white; }
+.dropdown hr { margin: 6px 0; border: none; border-top: 1px solid var(--border); }
+#page-title { font-size: 1.5rem; font-weight: 500; }
+.btn {
+    padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.9rem; font-weight: 500; transition: all 0.2s ease;
+}
+.btn:hover { opacity: 0.9; transform: scale(1.05); }
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+/* ===== FEEDBACK E MODAIS ===== */
+dialog {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 25px;
+    color: var(--text);
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    margin: auto; /* <<< ADICIONE ESTA LINHA */
+}
+dialog[open] {
+    animation: fadeIn 0.3s ease;
+}
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+}
+dialog h3 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: var(--primary);
+    font-size: 1.4rem;
+}
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+/* --- Estilo PADRÃO para Feedback DENTRO de Diálogos --- */
+.feedback {
+    text-align: center;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 15px;
+    margin-bottom: -10px; /* Empurra os botões para cima */
+    display: none;
+    font-weight: 500;
+}
+.feedback.show { display: block; }
+.feedback.success { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+.feedback.error { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+/* Em profile.css */
+.feedback.info {
+    background-color: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+/* Estilos para mensagens em diálogos */
+.dialog-message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    display: none;
+}
+
+.dialog-message.error {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+    display: block;
+}
+
+.dialog-message.success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+    display: block;
+}
+
+.drag-handle {
+    cursor: grab; /* <<< O cursor se torna uma "mãozinha aberta" */
+}
+
+.drag-handle:active {
+    cursor: grabbing; /* <<< O cursor se torna uma "mãozinha fechada" ao clicar */
+}
+
+/* Layout Principal */
+.profile-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cabeçalho */
+#main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px;
+    height: var(--header-height);
+    background-color: var(--header);
+    color: white;
+    margin-bottom: 30px;
+    border-radius: 8px;
+}
+
+/* Cartão Principal */
+.card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    padding: 40px;
+    width: 100%;
+}
+
+/* Seções do Perfil */
+.form-section {
+    margin-bottom: 30px;
+    padding: 25px;
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.form-section h3 {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--primary);
+    color: var(--primary);
+    font-size: 1.3rem;
+}
+
+/* Avatar e Informações Básicas */
+.avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.avatar-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #2b6cb0);
+    border: 4px solid var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.avatar-preview:hover {
+    transform: scale(1.05);
+}
+
+.avatar-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-preview-text {
+    font-size: 3.5rem;
+    font-weight: bold;
+    color: white;
+}
+
+/* Informações do Usuário */
+#profile-username {
+    font-size: 1.8rem;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+#profile-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+#profile-bio {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin-bottom: 25px;
+}
+
+/* Estatísticas */
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background-color: var(--bg-page);
+    border-radius: 10px;
+    transition: transform 0.2s ease;
+}
+
+.stat-item:hover {
+    transform: translateY(-3px);
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+    display: block;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* Informações Pessoais e Contatos */
+#personal-info-section p,
+#contacts-section p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+#personal-info-section strong,
+#contacts-section strong {
+    color: var(--primary);
+}
+
+/* Ações de Relacionamento */
+#relationship-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+#relationship-actions .btn {
+    flex: 1;
+    min-width: 140px;
+    justify-content: center;
+}
+
+/* Grupos Públicos */
+.groups-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.group-item {
+    background-color: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.group-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    border-color: var(--primary);
+}
+
+.group-item h4 {
+    color: var(--primary);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.group-item p {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Botões */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: var(--border);
+    color: var(--text);
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+/* Modal de Avatar */
+#avatar-modal {
+    text-align: center;
+}
+
+#avatar-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#modal-avatar {
+    max-width: 300px;
+    max-height: 300px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Ajustes para modo claro */
+body.light-mode .form-section {
+    background-color: rgba(0,0,0,0.05);
+}
+
+body.light-mode .stat-item,
+body.light-mode .group-item {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    animation: fadeIn 0.5s ease;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .card {
+        padding: 25px;
+    }
+    
+    .form-section {
+        padding: 20px;
+    }
+    
+    .profile-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .groups-container {
+        grid-template-columns: 1fr;
+    }
+    
+    #relationship-actions {
+        flex-direction: column;
+    }
+    
+    #relationship-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .avatar-preview {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .avatar-preview-text {
+        font-size: 2.5rem;
+    }
+    
+    #profile-username {
+        font-size: 1.5rem;
+    }
+    
+    #profile-name {
+        font-size: 1.2rem;
+    }
+}
+
+/* Estilos para o textarea no diálogo */
+#friend-request-modal textarea {
+    width: 100%;
+    padding: 12px;
+    margin-top: 12px;
+    border-radius: 6px;
+    background-color: var(--bg-page);
+    color: var(--text);
+    font-family: var(--app-font-family);
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+}
+
+#friend-request-modal textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3);
+}
+
+/* Estilos para feedback no diálogo */
+#friend-request-modal .feedback {
+    margin: 15px 0;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    display: none;
+}
+
+#friend-request-modal .feedback.show {
+    display: block;
+}
+
+#friend-request-modal .feedback.success {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+#friend-request-modal .feedback.info {
+    background-color: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+/* Estilos para o handle de arrastar */
+.drag-handle {
+    cursor: move;
+    user-select: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}

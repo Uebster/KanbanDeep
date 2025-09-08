@@ -1,0 +1,10 @@
+{
+  "name": "meus-kanbans",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "live-server --port=3000 --open=pages/introduction.html"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Templates - KanbanDeep</title>
+    <link rel="stylesheet" href="../static/templates.css">
+</head>
+<body>
+    <div id="app">
+    <!-- Cabeçalho (você já copiou o do Kanban para cá) -->
+    <header id="main-header">
+        <div class="menu-container">
+            <button id="user-avatar-btn" class="avatar-btn">
+                <img id="user-avatar" src="" alt="Avatar do Usuário">
+            </button>
+            <div id="profile-dropdown" class="dropdown">            
+                <button id="switch-user-btn">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn">👤 Meu Perfil</button>
+                <button id="my-groups-btn">👥 Meus Grupos</button>
+                <button id="kanban-btn">📋 Meus Quadros</button>
+                <button id="notifications-btn">🔔 Notificações</button>
+                <hr>
+                <button id="exit-btn">🚪 Sair</button>
+            </div>
+        </div>
+        <h1 id="page-title">Gerenciar Templates</h1>
+        <div class="menu-container">
+            <!-- Menu de Ações pode ser usado para o botão de Restaurar -->
+            <button id="actions-dropdown-btn" class="btn">⚙️ Opções</button>
+            <div id="actions-dropdown" class="dropdown">
+                <!-- Conteúdo preenchido pelo JS -->
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="tabs">
+            <button class="tab active" data-tab="board-templates">Templates de Quadro</button>
+            <button class="tab" data-tab="tag-templates">Conjuntos de Etiquetas</button>
+        </nav>
+
+        <main>
+            <!-- ABA 1: TEMPLATES DE QUADRO -->
+            <div id="board-templates" class="tab-content active">
+<section class="template-section">
+    <div class="section-header">
+        <h3>Meus Templates</h3>
+        <button id="delete-all-board-templates" class="btn btn-danger">Apagar Todos os Templates</button>
+        <button id="create-user-board-template" class="btn btn-primary btn-sm">Novo Template</button>
+    </div>
+    <div id="user-board-templates-grid" class="templates-grid"></div>
+</section>
+<section class="template-section">
+    <div class="section-header">
+        <h3>Templates do Sistema</h3>
+    </div>
+    <div id="system-board-templates-grid" class="templates-grid"></div>
+</section>
+            </div>
+
+            <!-- ABA 2: TEMPLATES DE ETIQUETA -->
+            <div id="tag-templates" class="tab-content">
+
+                <section class="template-section">
+                    <div class="section-header">
+                        <h3>Meus Conjuntos de Etiquetas</h3>
+                        <button id="delete-all-tag-templates" class="btn btn-danger">Apagar Todos os Conjuntos</button>
+                        <button id="create-user-tag-template" class="btn btn-primary btn-sm">Novo Conjunto</button>
+                    </div>
+                    <div id="user-tag-templates-grid" class="templates-grid">
+                        <p class="loading-text">Carregando...</p>
+                    </div>
+                </section>
+                                <section class="template-section">
+                    <div class="section-header">
+                        <h3>Etiquetas do Sistema</h3>
+                    </div>
+                    <div id="system-tag-templates-grid" class="templates-grid">
+                        <p class="loading-text">Carregando...</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+        </div>
+    </div>
+    <!-- Adicione estes diálogos ao final do body em templates.html -->
+
+<!-- Diálogo para Criar/Editar Template de Quadro -->
+<dialog id="board-template-dialog" class="draggable">
+    <h3 class="drag-handle" id="board-template-dialog-title">Criar Novo Template de Quadro</h3>
+    <div class="form-group">
+        <label for="board-template-name">Nome do Template:</label>
+        <input type="text" id="board-template-name" placeholder="Novo Template">
+    </div>
+    <div class="form-group">
+        <label for="board-template-desc">Descrição:</label>
+        <textarea id="board-template-desc" rows="2"></textarea>
+    </div>
+    <h4>Colunas (<span id="board-column-count">0</span>/8)</h4>
+    <div id="board-columns-editor">
+        <!-- Colunas serão adicionadas aqui pelo JS -->
+    </div>
+    <button id="add-board-column-btn" class="btn btn-sm">+ Adicionar Coluna</button>
+
+        <div class="feedback"></div>
+    
+    <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
+        <button id="save-board-template-btn" class="btn btn-primary">Salvar Template</button>
+    </div>
+</dialog>
+
+<!-- Diálogo para Criar/Editar Template de Etiqueta -->
+<dialog id="tag-template-dialog" class="draggable">
+    <h3 class="drag-handle" id="tag-template-dialog-title">Criar Novo Conjunto de Etiquetas</h3>
+    <div class="form-group">
+        <label for="tag-template-name">Nome do Conjunto:</label>
+        <input type="text" id="tag-template-name" placeholder="Novo Conjunto">
+    </div>
+    <div class="form-group">
+        <label for="tag-template-desc">Descrição:</label>
+        <textarea id="tag-template-desc" rows="2"></textarea>
+    </div>
+    <h4>Etiquetas (<span id="tag-count">0</span>/8)</h4>
+    <div id="tags-editor">
+        <!-- Etiquetas serão adicionadas aqui pelo JS -->
+    </div>
+    <button id="add-tag-btn" class="btn btn-sm">+ Adicionar Etiqueta</button>
+
+        <div class="feedback"></div>
+    
+    <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
+        <button id="save-tag-template-btn" class="btn btn-primary">Salvar Conjunto</button>
+    </div>
+</dialog>
+
+<dialog id="confirmation-dialog" class="draggable">
+    <h3 class="drag-handle">Confirmação</h3>
+    <p id="confirmation-message"></p>
+    <div class="feedback"></div>
+    <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirmation-cancel">Não</button>
+        <button class="btn btn-primary" id="confirmation-confirm">Sim</button>
+    </div>
+</dialog>
+    
+    <script type="module" src="../js/main.js"></script>
+</body>
+</html>

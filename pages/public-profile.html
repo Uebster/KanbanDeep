@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil Público - KanbanDeep</title>
+    <link rel="stylesheet" href="../static/public-profile.css">
+</head>
+<body>
+    <div id="message-container"></div>
+    
+        <!-- ===== INÍCIO DO CABEÇALHO GLOBAL ===== -->
+<header id="main-header">
+    <!-- Menu de Perfil (Esquerda) -->
+    <div class="menu-container">
+        <button id="user-avatar-btn" class="avatar-btn">
+            <img id="user-avatar" src="" alt="Avatar do Usuário">
+        </button>
+            <div id="profile-dropdown" class="dropdown">            
+                <button id="switch-user-btn">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn">👤 Meu Perfil</button>
+                <button id="kanban-btn">🎨 Meus Quadros</button>
+                <button id="my-groups-btn">👥 Meus Grupos</button>
+                <button id="templates-btn">🎨 Gerenciar Templates</button>
+                <button id="notifications-btn">🔔 Notificações</button>
+                <hr>
+                <button id="exit-btn">🚪 Sair</button>
+            </div>
+    </div>
+
+    <!-- Menu de Ações (Direita) -->
+    <div class="menu-container">
+        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+        <div id="actions-dropdown" class="dropdown">
+            <button id="undo-btn">↩️ Desfazer</button>
+            <button id="redo-btn">↪️ Refazer</button>
+        </div>
+    </div>
+</header>
+<!-- ===== FIM DO CABEÇALHO GLOBAL ===== -->
+    
+    <main class="card">
+        <div class="profile-layout">
+            <!-- Coluna Esquerda -->
+            <div>
+                <div class="form-section">
+                    <div class="avatar-container">
+                        <div class="avatar-preview" id="avatar-preview">
+                            <img id="avatar-image" src="" alt="Avatar">
+                            <span id="avatar-text" class="avatar-preview-text"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <h2 id="profile-username"></h2>
+                        <p id="profile-name"></p>
+                        <p id="profile-bio"></p>
+                    </div>
+
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span id="stats-boards" class="stat-number">0</span>
+                            <span class="stat-label">Quadros</span>
+                        </div>
+                        <div class="stat-item">
+                            <span id="stats-followers" class="stat-number">0</span>
+                            <span class="stat-label">Seguidores</span>
+                        </div>
+                        <div class="stat-item">
+                            <span id="stats-following" class="stat-number">0</span>
+                            <span class="stat-label">Seguindo</span>
+                        </div>
+                        <div class="stat-item">
+                            <span id="stats-groups" class="stat-number">0</span>
+                            <span class="stat-label">Grupos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações Pessoais (conforme privacidade) -->
+                <div class="form-section" id="personal-info-section">
+                    <h3>Informações Pessoais</h3>
+                    <!-- Conteúdo dinâmico -->
+                </div>
+
+                <!-- Contatos (conforme privacidade) -->
+                <div class="form-section" id="contacts-section">
+                    <h3>Contatos</h3>
+                    <!-- Conteúdo dinâmico -->
+                </div>
+            </div>
+
+            <!-- Coluna Direita -->
+            <div>
+                <!-- Ações de Relacionamento -->
+                <div class="form-section">
+                    <div id="relationship-actions">
+                        <!-- Botões dinâmicos conforme estado do relacionamento -->
+                    </div>
+                    <div id="group-invite-section" style="display: none;">
+                        <button id="group-invite-btn" class="btn btn-secondary">Convidar para Grupo</button>
+                    </div>
+                </div>
+
+                <!-- Grupos Públicos -->
+<section id="public-groups-section" class="form-section">
+    <h3>Grupos Públicos</h3>
+    <div id="public-groups-container" class="groups-container">
+        <!-- Grupos serão carregados dinamicamente aqui -->
+    </div>
+</section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Avatar -->
+    <dialog id="avatar-modal">
+        <div class="modal-content">
+            <img id="modal-avatar" src="" alt="Avatar em tamanho maior">
+            <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Fechar</button>
+        </div>
+    </dialog>
+
+    <!-- Modal para Enviar Mensagem com Solicitação de Amizade -->
+<dialog id="friend-request-modal" class="draggable">
+    <div class="drag-handle" style="cursor: move; padding: 10px; margin: -25px -25px 20px -25px; background: #333; color: white;">
+        <h3 style="margin: 0;">Enviar Solicitação de Amizade</h3>
+    </div>
+    <div style="padding: 0 25px 25px 25px;">
+        <div class="form-group">
+            <label for="friend-request-message">Mensagem (opcional):</label>
+            <textarea 
+                id="friend-request-message" 
+                placeholder="Escreva uma mensagem de apresentação..." 
+                rows="4"
+                style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-page); color: var(--text); font-family: var(--app-font-family); resize: vertical; min-height: 100px;"
+            ></textarea>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancel-friend-request-btn">Cancelar</button>
+            <button class="btn btn-primary" id="send-friend-request-btn">Enviar Solicitação</button>
+        </div>
+    </div>
+</dialog>
+
+    <script type="module" src="../js/public-profile.js"></script>
+</body>
+</html>

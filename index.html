@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Meus Kanbans</title>
+<!-- index.html (redirecionamento) -->
+<script type="module">
+  import { getCurrentUser } from './js/auth.js';
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    const user = getCurrentUser();
+    if (user) {
+      window.location.href = 'pages/kanban.html';
+    } else {
+      window.location.href = 'pages/list-users.html';
+    }
+  });
+</script>
+</head>
+<body>
+    <p>Redirecionando...</p>
+</body>
+</html>

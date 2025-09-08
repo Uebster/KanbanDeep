@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KanbanDeep - Meus Quadros</title>
+    <link rel="stylesheet" href="../static/kanban.css">
+</head>
+<body>
+    <div id="app">
+        <!-- NOVO CABEÇALHO COM MENUS SUSPENSOS -->
+<!-- Em kanban.html -->
+<header id="main-header">
+    <!-- Menu de Perfil (Esquerda) -->
+    <div class="menu-container">
+        <button id="user-avatar-btn" class="avatar-btn">
+            <img id="user-avatar" src="" alt="Avatar do Usuário">
+        </button>
+        <div id="profile-dropdown" class="dropdown">       
+            <button id="switch-user-btn">🔁 Trocar Perfil</button>
+            <button id="user-profile-btn">👤 Meu Perfil</button>
+            <button id="my-groups-btn">👥 Meus Grupos</button>
+            <button id="templates-btn">🎨 Gerenciar Templates</button>
+            <button id="notifications-btn">🔔 Notificações</button>
+            <hr>     
+            <button id="search-card-btn">🔍 Procurar Cartões</button>
+            <button id="preferences-btn">🛠️ Preferências</button>
+            <button id="search-user-btn">🔎 Procurar Usuários</button>      
+            <button id="exit-btn">🚪 Sair</button>
+        </div>
+    </div>
+
+    <!-- Menu de Quadros (Centro) -->
+    <div class="menu-container horizontal-menu">
+        <button id="boards-dropdown-btn" class="btn">📋 Meus Quadros</button>
+        <div id="boards-dropdown" class="dropdown">
+            <select id="board-select">
+                <option value="">Selecione um quadro</option>
+            </select>
+            <button id="add-board-btn">➕ Adicionar Quadro</button>
+            <button id="add-column-btn">📌 Adicionar Coluna</button>
+            <button id="add-card-btn">📝 Adicionar Cartão</button>
+            <button id="edit-items-btn">✏️ Editar/Excluir</button>
+        </div>
+    </div>
+
+    <!-- Menu de Ações (Direita) -->
+    <div class="menu-container">
+        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+        <div id="actions-dropdown" class="dropdown">
+            <button id="undo-btn">↩️ Desfazer</button>
+            <button id="redo-btn">↪️ Refazer</button>
+            <hr>
+            <button id="save-as-template-btn">💾 Salvar como Template</button>
+            <button id="print-btn">🖨️ Imprimir</button>
+            <button id="export-img">🖼️ Exportar Imagem</button>
+        </div>
+    </div>
+</header>
+
+        <!-- Área principal do Kanban -->
+        <main id="main-area">
+            <h1 id="kanban-title">Carregando...</h1>
+            
+            <!-- Filtros (mantidos como antes) -->
+            <div id="filters-container">
+                <!-- Grupos de filtros serão inseridos aqui pelo JS ou mantidos estáticos -->
+            </div>
+
+            <!-- Container das colunas do Kanban -->
+            <div id="columns-container">
+                <!-- As colunas serão renderizadas aqui pelo JavaScript -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Diálogos (Modais) - Estrutura mantida -->
+    <dialog id="board-dialog" class="draggable">
+    <h3 class="drag-handle" id="board-dialog-title">Configurar Quadro</h3>
+        <div class="form-group">
+                <div class="form-group">
+        <label for="board-template-select">Usar um Template (Opcional):</label>
+        <select id="board-template-select">
+            <!-- Preenchido pelo JS -->
+        </select>
+    </div>
+            <label for="board-title-input">Título:</label>
+            <input type="text" id="board-title-input">
+        </div>
+        <div class="form-group">
+            <label for="board-visibility">Visibilidade:</label>
+            <select id="board-visibility">
+                <option value="private">Privado</option>
+                <option value="public">Público</option>
+                <option value="group">Grupo</option>
+            </select>
+        </div>
+        <div class="form-group" id="board-group-container" style="display:none;">
+            <label for="board-group-select">Grupo:</label>
+            <select id="board-group-select"></select>
+        </div>
+            <div class="feedback"></div> <!-- <-- Adicione esta linha -->
+    <div class="modal-actions">
+        <div class="modal-actions">
+            <button id="board-cancel-btn" class="btn btn-secondary">Cancelar</button>
+            <button id="board-save-btn" class="btn btn-primary">Salvar</button>
+        </div>
+    </dialog>
+
+    <dialog id="column-dialog" class="draggable">
+        <h3 class="drag-handle">Configurar Coluna</h3>
+        <div class="form-group">
+            <label for="column-title-input">Nome:</label>
+            <input type="text" id="column-title-input">
+        </div>
+        <div class="form-group">
+            <label for="column-description">Descrição/Instrução:</label>
+            <textarea id="column-description" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="column-color-input">Cor da Coluna:</label>
+            <input type="color" id="column-color-input" value="#282828">
+        </div>
+        <div class="form-group">
+            <label for="column-text-color-input">Cor do Texto:</label>
+            <input type="color" id="column-text-color-input" value="#e0e0e0">
+        </div>
+            <div class="feedback"></div> <!-- <-- Adicione esta linha -->
+    <div class="modal-actions">
+        <div class="modal-actions">
+            <button id="column-cancel-btn" class="btn btn-secondary">Cancelar</button>
+            <button id="column-delete-btn" class="btn btn-danger">Excluir</button>
+            <button id="column-save-btn" class="btn btn-primary">Salvar</button>
+        </div>
+    </dialog>
+
+    <dialog id="card-dialog" class="draggable">
+    <h3 class="drag-handle">Configurar Cartão</h3>
+        <div class="form-group" id="card-column-select-group">
+        <label for="card-column-select">Coluna:</label>
+        <select id="card-column-select"></select>
+    </div>
+    <div class="form-group">
+        <label for="card-title-input">Título do Cartão:</label>
+        <input type="text" id="card-title-input">
+    </div>
+    <div class="form-group">
+        <label for="card-description">Descrição:</label>
+        <textarea id="card-description" rows="3"></textarea>
+    </div>
+    
+    <!-- CAMPO DE DATA E HORA SEPARADOS -->
+    <div class="form-row">
+        <div class="form-group">
+            <label for="card-due-date">Data de Vencimento:</label>
+            <input type="date" id="card-due-date">
+        </div>
+        <div class="form-group">
+            <label for="card-due-time">Hora:</label>
+            <input type="time" id="card-due-time">
+        </div>
+    </div>
+    
+    <!-- CAMPO DE ETIQUETAS AGORA É UM SELECT MÚLTIPLO -->
+    <div class="form-group">
+        <label for="card-tags">Etiquetas (segure Ctrl/Cmd para selecionar várias):</label>
+        <select id="card-tags" multiple size="5">
+            <!-- Opções preenchidas pelo JS -->
+        </select>
+    </div>
+    
+    <!-- O resto do formulário continua igual -->
+    <div class="form-group">
+        <label for="card-assigned-to">Atribuir a:</label>
+        <select id="card-assigned-to"></select>
+    </div>
+    
+    <!-- ELEMENTO DE FEEDBACK ADICIONADO -->
+    <div class="feedback"></div>
+
+    <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
+        <button id="card-save-btn" class="btn btn-primary">Salvar Cartão</button>
+    </div>
+</dialog>
+
+    <dialog id="confirm-dialog">
+        <h3 id="confirm-title" class="drag-handle">Confirmar Ação</h3>
+        <p id="confirm-message">Você tem certeza?</p>
+        <div class="modal-actions">
+            <button id="confirm-cancel-btn" class="btn btn-secondary">Cancelar</button>
+            <button id="confirm-ok-btn" class="btn btn-danger">Confirmar</button>
+        </div>
+    </dialog>
+
+    <dialog id="edit-dialog" class="draggable">
+    <h3 class="drag-handle">Editar / Excluir Itens</h3>
+    
+    <div class="form-group">
+        <label for="edit-select-board">Selecione o Quadro:</label>
+        <select id="edit-select-board"></select>
+    </div>
+    
+    <div class="form-group" id="edit-column-group" style="display: none;">
+        <label for="edit-select-column">Selecione a Coluna (Opcional):</label>
+        <select id="edit-select-column"></select>
+    </div>
+    
+    <div class="form-group" id="edit-card-group" style="display: none;">
+        <label for="edit-select-card">Selecione o Cartão (Opcional):</label>
+        <select id="edit-select-card"></select>
+    </div>
+    
+    <p class="edit-info">Selecione um item para habilitar as ações.</p>
+    
+    <div class="modal-actions">
+        <button id="edit-dialog-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="edit-dialog-delete-btn" class="btn btn-danger" disabled>Excluir Selecionado</button>
+        <button id="edit-dialog-edit-btn" class="btn btn-primary" disabled>Editar Selecionado</button>
+    </div>
+</dialog>
+
+<dialog id="search-dialog" class="draggable">
+    <h3 class="drag-handle">Procurar e Filtrar Cartões</h3>
+    
+    <div class="form-group">
+        <label for="search-text">Texto no título ou descrição:</label>
+        <input type="text" id="search-text" placeholder="Digite para buscar...">
+    </div>
+
+    <!-- CAMPO ADICIONADO -->
+    <div class="form-group">
+        <label for="search-creator">Por Criador:</label>
+        <select id="search-creator">
+            <!-- Opções preenchidas pelo JS -->
+        </select>
+    </div>
+
+    <!-- CAMPO ADICIONADO -->
+    <div class="form-group">
+        <label for="search-status">Status:</label>
+        <select id="search-status">
+            <option value="">Todos</option>
+            <option value="active">Pendentes</option>
+            <option value="completed">Concluídos</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="search-assignee">Atribuído a:</label>
+        <select id="search-assignee">
+            <!-- Opções preenchidas pelo JS -->
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="search-due-date">Data de Vencimento:</label>
+        <select id="search-due-date">
+            <option value="">Todas</option>
+            <option value="today">Vence Hoje</option>
+            <option value="week">Vence esta Semana</option>
+            <option value="overdue">Atrasado</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="search-tags">Etiqueta:</label>
+        <select id="search-tags">
+            <!-- Opções preenchidas pelo JS -->
+        </select>
+    </div>
+    
+    <div class="modal-actions">
+        <button id="search-cancel-btn" class="btn btn-secondary">Fechar</button>
+        <button id="search-reset-btn" class="btn">Limpar Filtros</button>
+        <button id="search-apply-btn" class="btn btn-primary">Aplicar Filtros</button>
+    </div>
+</dialog>
+
+<dialog id="details-dialog" class="draggable">
+    <h3 class="drag-handle" id="details-title">Detalhes do Item</h3>
+    <div id="details-content">
+        <!-- O conteúdo será preenchido pelo JavaScript -->
+    </div>
+    <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Fechar</button>
+    </div>
+</dialog>
+    <!-- Diálogo de Preferências -->
+<dialog id="preferences-dialog" class="draggable">
+    <h3 class="drag-handle">Preferências</h3>
+    
+    <div class="form-group">
+        <label for="pref-theme">Tema:</label>
+        <select id="pref-theme">
+            <option value="auto">Automático (Sistema)</option>
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="pref-language">Idioma:</label>
+        <select id="pref-language">
+            <option value="pt-BR">Português (Brasil)</option>
+            <option value="en-US">English (EUA)</option>
+            <option value="es-ES">Español (España)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="pref-font-family">Fonte:</label>
+        <select id="pref-font-family">
+                                <option value="Segoe UI">Segoe UI</option>
+                                <option value="Arial">Arial</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Palatino">Palatino</option>
+                                <option value="Garamond">Garamond</option>
+                                <option value="Comic Sans MS">Comic Sans MS</option>
+                                <option value="Impact">Impact</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="Trebuchet MS">Trebuchet MS</option>
+                                <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
+                                <option value="Lucida Console">Lucida Console</option>
+                                <option value="Lucida Sans">Lucida Sans</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Roboto">Roboto</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Lato">Lato</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="pref-font-size">Tamanho da Fonte:</label>
+                            <select id="pref-font-size">
+                                <option value="small">Pequeno</option>
+                                <option value="medium" selected>Médio</option>
+                                <option value="large">Grande</option>
+                                <option value="x-large">Extra Grande</option>
+                            </select>
+    </div>
+
+    <fieldset class="form-group">
+        <legend>Exibir no Cartão:</legend>
+            <div class="checkbox-group">
+                <label class="checkbox-container">
+                    Exibir etiquetas
+                    <input type="checkbox" id="pref-show-tags" checked>
+                    <span class="checkmark"></span>
+                </label>
+                
+                <label class="checkbox-container">
+                    Exibir datas
+                    <input type="checkbox" id="pref-show-date" checked>
+                    <span class="checkmark"></span>
+                </label>
+                
+                <label class="checkbox-container">
+                    Exibir status
+                    <input type="checkbox" id="pref-show-status" checked>
+                    <span class="checkmark"></span>
+                </label>
+            </div>
+    </fieldset>
+
+        <div class="form-group">
+        <label for="pref-default-tag-template">Conjunto de Etiquetas Padrão:</label>
+        <select id="pref-default-tag-template">
+            <!-- Opções preenchidas pelo JS -->
+        </select>
+    </div>
+
+    <div class="feedback"></div>
+
+    <div class="modal-actions">
+        <button id="pref-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="pref-save-btn" class="btn btn-primary">Salvar</button>
+    </div>
+</dialog>
+
+
+    <!-- Container para mensagens flutuantes -->
+    <div id="message-container"></div>
+
+    <!-- Scripts -->
+<script type="module" src="../js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar Novo Usuário</title>
+  <link rel="stylesheet" href="../static/create-user.css">
+  <style> 
+
+  </style>
+</head>
+<body>
+  <div id="message-container"></div>
+  
+  <header>
+    <h1>Criar Novo Usuário</h1>
+  </header>
+  
+  <main class="card">
+    <form id="create-user-form">
+      <div class="form-container">
+        <!-- Informações Básicas -->
+        <div>
+          <div class="form-section">
+            <h3>Informações Básicas</h3>
+            
+            <div class="avatar-container">
+              <div class="avatar-preview" id="avatar-preview">
+                <div class="avatar-preview-text">U</div>
+              </div>
+              <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+              <button type="button" id="btn-upload-avatar" class="btn btn-secondary">
+                <span>📷</span> Escolher Avatar
+              </button>
+            </div>
+            
+            <div class="form-group">
+              <label for="name" class="required">Nome Completo</label>
+              <input type="text" id="name" required placeholder="Digite seu nome completo">
+            </div>
+            
+            <div class="form-group">
+              <label for="username" class="required">Nome de Usuário</label>
+              <input type="text" id="username" required placeholder="Escolha um nome de usuário">
+            </div>
+            
+            <div class="form-group">
+              <label for="bio">Biografia</label>
+              <textarea id="bio" placeholder="Conte um pouco sobre você..."></textarea>
+            </div>
+          </div>
+          
+          <!-- Configurações de Conta -->
+          <div class="form-section">
+            <h3>Configurações de Conta</h3>
+            
+            <div class="form-group">
+              <label for="password" class="required">Senha</label>
+              <input type="password" id="password" required minlength="4" placeholder="Mínimo 4 caracteres">
+              <div class="password-strength">
+                <div class="password-strength-meter" id="password-strength-meter"></div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="confirm-password" class="required">Confirmar Senha</label>
+              <input type="password" id="confirm-password" required minlength="4" placeholder="Digite a senha novamente">
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="language">Idioma</label>
+                <select id="language">
+                  <option value="pt-BR">Português (Brasil)</option>
+                  <option value="en-US">English (EUA)</option>
+                  <option value="es-ES">Español (España)</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="theme">Tema</label>
+                <select id="theme">
+                  <option value="auto">Automático (sistema)</option>
+                  <option value="dark">Escuro</option>
+                  <option value="light">Claro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Informações Adicionais -->
+        <div>
+          <!-- Informações Pessoais -->
+          <div class="form-section">
+            <h3>Informações Pessoais</h3>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="birthdate">Data de Nascimento</label>
+                <input type="date" id="birthdate">
+              </div>
+              
+              <div class="form-group">
+                <label for="gender">Gênero</label>
+                <select id="gender">
+                  <option value="">Selecionar</option>
+                  <option value="male">Masculino</option>
+                  <option value="female">Feminino</option>
+                  <option value="non-binary">Não-binário</option>
+                  <option value="other">Outro</option>
+                  <option value="prefer-not-to-say">Prefiro não informar</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="location">Localização</label>
+              <input type="text" id="location" placeholder="Cidade, Estado">
+            </div>
+          </div>
+          
+          <!-- Contatos -->
+          <div class="form-section">
+            <h3>Contatos</h3>
+            
+            <div class="form-group">
+              <label for="email">E-mail</label>
+              <input type="email" id="email" placeholder="seu.email@exemplo.com">
+            </div>
+            
+            <div class="form-group">
+              <label for="whatsapp">WhatsApp</label>
+              <input type="tel" id="whatsapp" placeholder="(00) 00000-0000">
+            </div>
+            
+            <div class="form-group">
+              <label for="linkedin">LinkedIn</label>
+              <input type="url" id="linkedin" placeholder="https://linkedin.com/in/seu-perfil">
+            </div>
+          </div>
+          
+          <!-- Configurações de Privacidade -->
+          <div class="form-section">
+            <h3>Configurações de Privacidade</h3>
+            <p>Quem pode ver suas informações pessoais?</p>
+            
+            <div style="margin-top: 8px;" class="privacy-options">
+              <div class="privacy-option" data-value="public">
+                <h4>Público</h4>
+                <p>Todos podem ver suas informações</p>
+              </div>
+              
+              <div class="privacy-option" data-value="friends">
+                <h4>Amigos</h4>
+                <p>Apenas seus amigos podem ver</p>
+              </div>
+              
+              <div class="privacy-option selected" data-value="private">
+                <h4>Privado</h4>
+                <p>Apenas você pode ver</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <div class="feedback"></div>
+        <button type="button" id="btn-cancel" class="btn btn-secondary">
+          <span>❌</span> Cancelar
+        </button>
+        <button type="submit" id="btn-save" class="btn btn-primary">
+          <span>💾</span> Salvar Usuário
+        </button>
+      </div>
+    </form>
+  </main>
+<script type="module" src="../js/main.js"></script>
+</body>
+<footer class="rodape">Espaço</footer>
+</html>

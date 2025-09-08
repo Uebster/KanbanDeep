@@ -1,0 +1,393 @@
+// js/ui-controls.js - Controles de UI universais e avançados
+
+// ===== FUNÇÕES DE CONTROLE DE MODAIS E TECLADO =====
+
+/**
+ * Inicializa todos os controles de UI universais: modais, teclado e arrastar elementos.
+ * Deve ser chamada uma única vez no início da aplicação.
+ */
+export function initUIControls() {
+    setupGlobalCloseListeners();
+    setupKeyboardShortcuts();
+    initDraggableElements(); // Inicializa o arrastar de elementos com a classe .draggable
+}
+
+/**
+ * Fecha o elemento de UI que está mais à frente na tela (o último aberto).
+ */
+function closeTopLayer() {
+    // Prioridade 1: Diálogos (<dialog>)
+    const openDialogs = document.querySelectorAll('dialog[open]');
+    if (openDialogs.length > 0) {
+        const topDialog = openDialogs[openDialogs.length - 1];
+        // Para o diálogo de preferências, simula um clique no botão cancelar
+        if (topDialog.id === 'preferences-dialog') {
+            topDialog.querySelector('#pref-cancel-btn')?.click();
+        } else {
+            topDialog.close();
+        }
+        return; // Para a execução aqui
+    }
+
+    // Prioridade 2: Dropdowns (.dropdown.show)
+    const openDropdown = document.querySelector('.dropdown.show');
+    if (openDropdown) {
+        openDropdown.classList.remove('show');
+    }
+}
+
+/**
+ * Configura os listeners globais para fechar elementos.
+ */
+function setupGlobalCloseListeners() {
+    // Fecha com a tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") {
+            e.preventDefault();
+            closeTopLayer();
+        }
+    });
+
+    // Fecha ao clicar fora
+    document.addEventListener('click', (e) => {
+        const isDropdownOpen = document.querySelector('.dropdown.show');
+        const isDialogOpen = document.querySelector('dialog[open]');
+
+        // Só age se o clique for fora de um menu E fora de um diálogo
+        if (!e.target.closest('.menu-container') && !e.target.closest('dialog')) {
+            if (isDropdownOpen) closeTopLayer();
+        }
+        
+        // Lógica específica para fechar diálogos clicando no backdrop
+        if(isDialogOpen && e.target.tagName === 'DIALOG'){
+            closeTopLayer();
+        }
+    });
+}
+
+/**
+ * Configura atalhos de teclado globais:
+ * - Navegação por TAB em modais.
+ * - Submissão de diálogos com ENTER.
+ */
+function setupKeyboardShortcuts() {
+    document.addEventListener("keydown", (e) => {
+        // Navegação por TAB dentro de modais
+        if (e.key === "Tab") {
+            handleTabNavigation(e);
+        }
+
+        // --- LÓGICA DE ENTER APRIMORADA E CENTRALIZADA ---
+        // Se a tecla "Enter" for pressionada em um campo que não seja uma área de texto...
+        if (e.key === "Enter" && !e.shiftKey && e.target.tagName !== "TEXTAREA") {
+            // ...e houver um diálogo (<dialog>) aberto na tela...
+            const openDialog = document.querySelector('dialog[open]');
+            if (openDialog) {
+                // ...procuramos pelo botão de ação principal (nossa convenção é usar a classe .btn-primary).
+                const primaryButton = openDialog.querySelector('.btn-primary');
+                
+                // Se o botão existir e não estiver desabilitado...
+                if (primaryButton && !primaryButton.disabled) {
+                    e.preventDefault(); // Previne o comportamento padrão do Enter (ex: submeter um formulário)
+                    primaryButton.click(); // Simula o clique no botão "Salvar" ou "Confirmar".
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Gerencia a navegação por TAB para manter o foco dentro do modal aberto.
+ * @param {KeyboardEvent} e - O evento de teclado.
+ */
+function handleTabNavigation(e) {
+    const modal = document.querySelector("dialog[open]");
+    if (!modal) return;
+
+    const focusableElements = 'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
+    const focusable = Array.from(modal.querySelectorAll(focusableElements));
+
+    if (focusable.length === 0) return; // Nenhum elemento focável no modal
+
+    const firstElement = focusable[0];
+    const lastElement = focusable[focusable.length - 1];
+
+    if (e.shiftKey) { // Shift + Tab
+        if (document.activeElement === firstElement || !modal.contains(document.activeElement)) {
+            lastElement.focus();
+            e.preventDefault();
+        }
+    } else { // Tab
+        if (document.activeElement === lastElement || !modal.contains(document.activeElement)) {
+            firstElement.focus();
+            e.preventDefault();
+        }
+    }
+}
+
+// ===== FUNÇÕES PARA ARRASTAR ELEMENTOS (MODAIS, JANELAS) =====
+
+/**
+ * Inicializa a funcionalidade de arrastar para todos os elementos com a classe 'draggable'.
+ * O elemento arrastável deve ter um 'drag-handle' (elemento com classe 'drag-handle')
+ * ou o próprio elemento será o handle se nenhum for especificado.
+ */
+export function initDraggableElements() {
+    document.querySelectorAll(".draggable").forEach(element => {
+        makeDraggable(element);
+    });
+}
+
+/**
+ * Torna um elemento HTML arrastável.
+ * @param {HTMLElement} element - O elemento HTML a ser tornado arrastável.
+ */
+export function makeDraggable(element) {
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    const dragHandle = element.querySelector(".drag-handle") || element; // Usa o handle ou o próprio elemento
+
+    if (!dragHandle) return; // Não há handle para arrastar
+
+    dragHandle.onmousedown = dragMouseDown;
+
+    function dragMouseDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // Pega a posição do mouse no início
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // Calcula a nova posição do cursor
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        // Define a nova posição do elemento
+        element.style.top = (element.offsetTop - pos2) + "px";
+        element.style.left = (element.offsetLeft - pos1) + "px";
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+}
+
+// ===== FUNÇÕES DE MENSAGENS FLUTUANTES =====
+
+/**
+ * Exibe uma mensagem flutuante na tela, agora posicionada abaixo do header.
+ * @param {string} message - O texto da mensagem a ser exibida.
+ * @param {string} type - 'success', 'error', 'warning', 'info'.
+ * @param {number} duration - Duração em milissegundos.
+ */
+export function showFloatingMessage(message, type = 'info', duration = 4000) {
+    let container = document.getElementById('message-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'message-container';
+        container.style.position = 'fixed';
+        container.style.top = '49px';      // Distância do topo, abaixo do header
+        container.style.right = '20px';     // Distância da direita
+        container.style.left = 'auto';      // Remove o alinhamento à esquerda
+        container.style.transform = 'none'; // Remove a centralização
+        container.style.zIndex = '3000';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'flex-end'; // Alinha as mensagens à direita dentro do container
+        container.style.gap = '10px';
+        document.body.appendChild(container);
+    }
+
+
+    const messageEl = document.createElement('div');
+    
+    // --- A CORREÇÃO PRINCIPAL ESTÁ AQUI ---
+    // Adiciona a classe .feedback para herdar o estilo que você já padronizou
+    messageEl.className = `feedback ${type}`; 
+    messageEl.textContent = message;
+    
+    // Adiciona alguns estilos inline para garantir a aparência
+    messageEl.style.padding = '14px 25px';
+    messageEl.style.borderRadius = '8px';
+    messageEl.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+    messageEl.style.fontWeight = '500';
+    messageEl.style.minWidth = '300px';
+    messageEl.style.textAlign = 'center';
+
+    container.appendChild(messageEl);
+
+    // Mostra o elemento (para futuras animações)
+    setTimeout(() => {
+        messageEl.style.display = 'block';
+    }, 10);
+
+    // Remove a mensagem após a duração
+    setTimeout(() => {
+        messageEl.remove();
+    }, duration);
+}
+
+/**
+ * Exibe uma mensagem global abaixo do cabeçalho principal.
+ * @param {string} message - O texto da mensagem.
+ * @param {string} type - 'success', 'error' ou 'info'.
+ * @param {number} duration - Duração em milissegundos.
+ */
+export function showGlobalMessage(message, type = 'info', duration = 4000) {
+    // Cria o elemento da mensagem
+    const messageEl = document.createElement('div');
+    messageEl.className = `global-message feedback ${type}`; // Usa a classe .feedback para o estilo
+    messageEl.textContent = message;
+
+    // Adiciona ao corpo do documento
+    document.body.appendChild(messageEl);
+
+    // Força a animação de entrada
+    setTimeout(() => {
+        messageEl.classList.add('show');
+    }, 10); // Pequeno delay para garantir que a transição CSS funcione
+
+    // Remove a mensagem após a duração
+    setTimeout(() => {
+        messageEl.classList.remove('show');
+        // Remove o elemento do HTML após a animação de saída
+        messageEl.addEventListener('transitionend', () => messageEl.remove());
+    }, duration);
+}
+
+// ui-controls.js - Adicione estas funções no final do arquivo
+
+/**
+ * Exibe um diálogo de confirmação personalizado.
+ * @param {string} message - A mensagem de confirmação.
+ * @param {Function} onConfirm - Callback executado quando o usuário confirma.
+ */
+export function showConfirmationDialog(message, onConfirm) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Confirmação</h3>
+        <p>${message}</p>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary">Não</button>
+            <button class="btn btn-primary">Sim</button>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    dialog.showModal();
+
+    const confirmBtn = dialog.querySelector('.btn-primary');
+    const cancelBtn = dialog.querySelector('.btn-secondary');
+    const feedbackEl = dialog.querySelector('.feedback');
+
+    const closeDialog = () => { 
+        dialog.close(); 
+        setTimeout(() => dialog.remove(), 300);
+    };
+    
+    cancelBtn.addEventListener('click', closeDialog);
+
+    confirmBtn.addEventListener('click', async () => {
+        // Desabilita os botões para prevenir múltiplos cliques
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+
+        // Executa a ação de confirmação
+        const success = await onConfirm(dialog);
+
+        // Se a ação foi bem-sucedida, o diálogo fecha após a mensagem
+        if (success) {
+            setTimeout(closeDialog, 1500);
+        } else {
+            // Se houve erro, reabilita os botões para o usuário tentar novamente
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
+        }
+    });
+}
+
+/**
+ * Exibe uma mensagem em um diálogo.
+ * @param {HTMLElement} dialog - O elemento do diálogo.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} type - O tipo de mensagem ('success', 'error', 'info').
+ */
+export function showDialogMessage(dialog, message, type = 'info') {
+    const feedbackEl = dialog.querySelector('.feedback');
+    if (!feedbackEl) return;
+    
+    feedbackEl.textContent = message;
+    feedbackEl.className = `feedback ${type} show`;
+    
+    // Não esconde a mensagem de erro, apenas as outras
+    if (type !== 'error') {
+        setTimeout(() => {
+            feedbackEl.classList.remove('show');
+        }, 3000);
+    }
+}
+
+/**
+ * Atualiza o avatar do usuário na interface (versão independente)
+ * @param {Object} user - Objeto do usuário com informações de avatar e nome
+ */
+export function updateUserAvatar(user) {
+    const avatarImg = document.getElementById('user-avatar');
+    const avatarBtn = document.getElementById('user-avatar-btn');
+    
+    if (!avatarImg || !avatarBtn) {
+        console.warn('Elementos do avatar não encontrados na página.');
+        return;
+    }
+    
+    // Se o usuário tem um avatar definido
+    if (user.avatar) {
+        avatarImg.src = user.avatar;
+        avatarImg.alt = `Avatar de ${user.name}`;
+    } else {
+        // Avatar padrão baseado nas iniciais
+        const initials = user.name.split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase();
+        
+        // Cor de fundo baseada no ID do usuário (para consistência)
+        const hue = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+        const backgroundColor = `hsl(${hue}, 65%, 65%)`;
+        
+        // Criar avatar com iniciais (usando SVG para evitar dependências externas)
+        const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
+            <rect width="38" height="38" fill="${backgroundColor}" rx="19"/>
+            <text x="19" y="24" font-family="Arial" font-size="14" fill="white" text-anchor="middle">${initials}</text>
+        </svg>`;
+        
+        avatarImg.src = 'data:image/svg+xml;base64,' + btoa(svgString);
+        avatarImg.alt = `Avatar de ${user.name} (${initials})`;
+    }
+    
+    // Adicionar tooltip com nome do usuário
+    avatarBtn.title = `Logado como: ${user.name}`;
+}
+
+/**
+ * Inicializa o avatar do usuário em qualquer página
+ * @param {Object} currentUser - Usuário atual (opcional, busca automaticamente se não fornecido)
+ */
+export function initUserAvatar(currentUser = null) {
+    if (!currentUser) {
+        currentUser = getCurrentUser(); // Esta função precisa ser importada de auth.js
+    }
+    
+    if (currentUser) {
+        updateUserAvatar(currentUser);
+    }
+}
+
