@@ -87,6 +87,14 @@
             <label for="board-title-input">Título:</label>
             <input type="text" id="board-title-input">
         </div>
+        <!-- Bloco de Ícone Adicionado -->
+        <div class="form-group">
+            <label for="board-icon-input">Ícone:</label>
+            <div class="icon-input-group">
+                <input type="text" id="board-icon-input" class="icon-display" readonly>
+                <button type="button" id="btn-choose-board-icon" class="btn btn-sm">Escolher</button>
+            </div>
+        </div>
         <div class="form-group">
             <label for="board-visibility">Visibilidade:</label>
             <select id="board-visibility">
@@ -364,6 +372,17 @@
                     <input type="checkbox" id="pref-show-status" checked>
                     <span class="checkmark"></span>
                 </label>
+                <!-- Checkbox Adicionado -->
+                <label class="checkbox-container">
+                    Exibir título do quadro
+                    <input type="checkbox" id="pref-show-title" checked>
+                    <span class="checkmark"></span>
+                </label>
+                <label class="checkbox-container">
+                    Exibir ícone do quadro
+                    <input type="checkbox" id="pref-show-icon" checked>
+                    <span class="checkmark"></span>
+                </label>
             </div>
     </fieldset>
 
@@ -379,6 +398,17 @@
     <div class="modal-actions">
         <button id="pref-cancel-btn" class="btn btn-secondary">Cancelar</button>
         <button id="pref-save-btn" class="btn btn-primary">Salvar</button>
+    </div>
+</dialog>
+
+<!-- Diálogo do Seletor de Ícones (Adicionar no final) -->
+<dialog id="icon-picker-dialog" class="draggable">
+    <h3 class="drag-handle">Selecione um Ícone</h3>
+    <div id="icon-grid">
+        <!-- Ícones serão inseridos aqui pelo JavaScript -->
+    </div>
+    <div class="modal-actions">
+        <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
     </div>
 </dialog>
 

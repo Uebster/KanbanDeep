@@ -112,6 +112,7 @@ function useBoardTemplate(templateId) {
 
     const newBoardData = {
         title: `${template.name} (Cópia)`,
+        icon: template.icon || '📋',
         ownerId: currentUser.id,
         visibility: 'private',
         columnIds: newColumns.map(col => col.id)

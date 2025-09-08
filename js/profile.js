@@ -153,6 +153,8 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
             document.getElementById('pref-show-tags').checked = userData.preferences.showTags !== false;
             document.getElementById('pref-show-date').checked = userData.preferences.showDate !== false;
             document.getElementById('pref-show-status').checked = userData.preferences.showStatus !== false;
+            document.getElementById('pref-show-icon').checked = userData.preferences.showBoardIcon !== false;
+            document.getElementById('pref-show-title').checked = userData.preferences.showBoardTitle !== false;
         }
         
         // Avatar
@@ -266,7 +268,7 @@ function setupEventListeners() {
     const formFields = [
         'name', 'username', 'bio', 'birthdate', 'gender', 
         'location', 'email', 'whatsapp', 'linkedin', 'language',
-        'theme', 'font-family', 'font-size', 'pref-show-tags',
+        'theme', 'font-family', 'font-size',
         'pref-show-date', 'pref-show-status', 'default-tag-template'
     ];
     
@@ -281,7 +283,7 @@ function setupEventListeners() {
 
     // Para checkboxes
     const checkboxes = [
-        'pref-show-tags', 'pref-show-date', 'pref-show-status'
+        'pref-show-tags', 'pref-show-date', 'pref-show-status', 'pref-show-title', 'pref-show-icon'
     ];
     
     checkboxes.forEach(checkbox => {
@@ -461,6 +463,8 @@ function restoreOriginalData() {
         document.getElementById('pref-show-tags').checked = originalUserData.preferences.showTags !== false;
         document.getElementById('pref-show-date').checked = originalUserData.preferences.showDate !== false;
         document.getElementById('pref-show-status').checked = originalUserData.preferences.showStatus !== false;
+        document.getElementById('pref-show-icon').checked = originalUserData.preferences.showBoardIcon !== false;
+        document.getElementById('pref-show-title').checked = originalUserData.preferences.showBoardTitle !== false;
         document.getElementById('default-tag-template').value = originalUserData.preferences.defaultTagTemplateId || '';
     }
     
@@ -525,6 +529,8 @@ async function processProfileUpdate() {
             showTags: document.getElementById('pref-show-tags').checked,
             showDate: document.getElementById('pref-show-date').checked,
             showStatus: document.getElementById('pref-show-status').checked,
+            showBoardIcon: document.getElementById('pref-show-icon').checked,
+            showBoardTitle: document.getElementById('pref-show-title').checked,
             defaultTagTemplateId: document.getElementById('default-tag-template').value
         }
     };

@@ -21,7 +21,12 @@ let tagColorMap = new Map();
 let originalKanbanTheme = null;
 let originalKanbanFont = null;
 let originalKanbanFontSize = null;
+let originalShowTitle = null;
+let originalShowIcon = null;
 let kanbanIsSaved = true;
+const ICON_LIBRARY = [
+  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
+];
 
 // ===== INICIALIZAÇÃO =====
 
@@ -165,7 +170,16 @@ function renderCurrentBoard() {
         return;
     }
 
-    document.getElementById('kanban-title').textContent = currentBoard.title;
+    const titleElement = document.getElementById('kanban-title');
+    const userPrefs = currentUser.preferences || {};
+
+    const iconHtml = userPrefs.showBoardIcon === false ? '' : `<span class="board-icon">${currentBoard.icon || '📋'}</span>`;
+    const titleHtml = userPrefs.showBoardTitle === false ? '' : `<span class="board-title-text">${currentBoard.title}</span>`;
+
+    titleElement.innerHTML = `${iconHtml}${titleHtml}`.trim();
+    // Se ambos estiverem escondidos, o título some. Se não, ele aparece.
+    titleElement.style.display = (userPrefs.showBoardIcon === false && userPrefs.showBoardTitle === false) ? 'none' : 'block';
+
     const columnsContainer = document.getElementById('columns-container');
     columnsContainer.innerHTML = ''; // Limpa o conteúdo anterior
 
@@ -850,10 +864,25 @@ function showBoardDialog(boardId = null) {
     // A linha que causava o erro agora vai funcionar:
     document.getElementById('board-dialog-title').textContent = board ? 'Editar Quadro' : 'Criar Novo Quadro';
     
+    // Lógica do Ícone
+    const iconInput = document.getElementById('board-icon-input');
+    iconInput.value = board ? board.icon || '📋' : '📋';
+    document.getElementById('btn-choose-board-icon').onclick = () => {
+        showIconPickerDialog((selectedIcon) => {
+            iconInput.value = selectedIcon;
+        });
+    };
+
+    // Esconde/mostra o seletor de ícone baseado na seleção de template
+    const templateSelect = document.getElementById('board-template-select');
+    templateSelect.onchange = () => {
+        const iconGroup = document.getElementById('board-icon-input').closest('.form-group');
+        iconGroup.style.display = templateSelect.value ? 'none' : 'flex';
+    };
+
     document.getElementById('board-title-input').value = board ? board.title : '';
     document.getElementById('board-visibility').value = board ? board.visibility : 'private';
 
-    const templateSelect = document.getElementById('board-template-select');
     const userTemplates = getUserBoardTemplates(currentUser.id);
     const systemTemplates = getSystemBoardTemplates();
     
@@ -883,6 +912,7 @@ function handleSaveBoard() {
     const dialog = document.getElementById('board-dialog');
     const boardId = dialog.dataset.editingId;
     let title = document.getElementById('board-title-input').value.trim();
+    const icon = document.getElementById('board-icon-input').value;
     const templateId = document.getElementById('board-template-select').value;
     if (!title && !templateId) { showDialogMessage(dialog, 'O título é obrigatório.', 'error'); return; }
 
@@ -891,6 +921,7 @@ function handleSaveBoard() {
         const boardData = getBoard(boardId);
         if (!boardData) return;
         boardData.title = title;
+        boardData.icon = icon;
         boardData.visibility = document.getElementById('board-visibility').value;
         savedBoard = saveBoard(boardData);
     } else {
@@ -898,7 +929,7 @@ function handleSaveBoard() {
         const selectedTemplate = allTemplates.find(t => t.id === templateId);
         if (selectedTemplate && !title) title = `${selectedTemplate.name} (Cópia)`;
         const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) : [];
-        const newBoardData = { title, ownerId: currentUser.id, visibility: document.getElementById('board-visibility').value, columnIds: newColumns.map(c => c.id) };
+        const newBoardData = { title, icon: selectedTemplate ? selectedTemplate.icon : icon, ownerId: currentUser.id, visibility: document.getElementById('board-visibility').value, columnIds: newColumns.map(c => c.id) };
         savedBoard = saveBoard(newBoardData);
     }
     
@@ -1102,7 +1133,7 @@ function handleSaveCard() {
     const timeValue = document.getElementById('card-due-time').value;
     let combinedDateTime = dateValue ? (timeValue ? `${dateValue}T${timeValue}:00` : `${dateValue}T00:00:00`) : null;
     const cardData = { title, description: document.getElementById('card-description').value.trim(), dueDate: combinedDateTime, tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), assignedTo: document.getElementById('card-assigned-to').value };
-    
+
     if (cardId && cardId !== 'null') {
         const originalCard = getCard(cardId);
         const sourceColumnData = getColumn(currentBoard.columns.find(c => c.cardIds.includes(cardId)).id);
@@ -1116,12 +1147,18 @@ function handleSaveCard() {
             saveColumn(targetColumnData);
         }
     } else {
+        // --- LÓGICA DE CRIAÇÃO DE CARTÃO CORRIGIDA ---
         cardData.creatorId = currentUser.id;
         cardData.isComplete = false;
         const newCard = saveCard(cardData);
-        const targetColumnData = getColumn(newColumnId);
-        targetColumnData.cardIds.push(newCard.id);
-        saveColumn(targetColumnData);
+
+        // Em vez de buscar a coluna no storage, a encontramos no objeto 'currentBoard' em memória,
+        // que é mais seguro e evita problemas de sincronização.
+        const targetColumn = currentBoard.columns.find(c => c.id === newColumnId);
+        if (targetColumn) {
+            targetColumn.cardIds.push(newCard.id);
+            saveColumn(targetColumn); // Salva a coluna atualizada no storage.
+        }
     }
     showSuccessAndRefresh(dialog, currentBoard.id);
 }
@@ -1573,6 +1610,8 @@ function showPreferencesDialog() {
     originalKanbanTheme = user.theme || 'auto';
     originalKanbanFont = user.preferences?.fontFamily || 'Segoe UI';
     originalKanbanFontSize = user.preferences?.fontSize || 'medium';
+    originalShowTitle = user.preferences?.showBoardTitle !== false;
+    originalShowIcon = user.preferences?.showBoardIcon !== false;
 
     // Preencher o diálogo com os valores atuais do usuário
     newDialog.querySelector('#pref-theme').value = originalKanbanTheme;
@@ -1582,6 +1621,8 @@ function showPreferencesDialog() {
     newDialog.querySelector('#pref-show-tags').checked = user.preferences?.showTags !== false;
     newDialog.querySelector('#pref-show-date').checked = user.preferences?.showDate !== false;
     newDialog.querySelector('#pref-show-status').checked = user.preferences?.showStatus !== false;
+    newDialog.querySelector('#pref-show-icon').checked = user.preferences?.showBoardIcon !== false;
+    newDialog.querySelector('#pref-show-title').checked = user.preferences?.showBoardTitle !== false;
     populateTagTemplatesSelect(user.preferences?.defaultTagTemplateId);
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
@@ -1659,7 +1700,9 @@ function showPreferencesDialog() {
         { id: 'pref-default-tag-template', action: null },
         { id: 'pref-show-tags', action: null },
         { id: 'pref-show-date', action: null },
-        { id: 'pref-show-status', action: null }
+        { id: 'pref-show-status', action: null },
+        { id: 'pref-show-title', action: () => applyTitlePreview() },
+        { id: 'pref-show-icon', action: () => applyTitlePreview() }
     ];
 
     fieldsToTrack.forEach(field => {
@@ -1680,7 +1723,17 @@ function showPreferencesDialog() {
 function restoreKanbanOriginalSettings() {
     applyThemeFromSelect(originalKanbanTheme);
     applyFontFamily(originalKanbanFont);
-    applyFontSize(originalKanbanFontSize, true); // Adicionado isPreview = true
+    applyFontSize(originalKanbanFontSize, true);
+
+    // Restaura a visibilidade original do título e do ícone
+    const titleElement = document.getElementById('kanban-title');
+    if (!titleElement || !currentBoard) return;
+
+    const iconHtml = originalShowIcon ? `<span class="board-icon">${currentBoard.icon || '📋'}</span>` : '';
+    const titleHtml = originalShowTitle ? `<span class="board-title-text">${currentBoard.title}</span>` : '';
+
+    titleElement.innerHTML = `${iconHtml}${titleHtml}`.trim();
+    titleElement.style.display = (originalShowTitle || originalShowIcon) ? 'block' : 'none';
 }
 
 function savePreferences() {
@@ -1698,7 +1751,9 @@ function savePreferences() {
             showTags: document.getElementById('pref-show-tags').checked,
             showDate: document.getElementById('pref-show-date').checked,
             showStatus: document.getElementById('pref-show-status').checked,
-            defaultTagTemplateId: document.getElementById('pref-default-tag-template').value
+            defaultTagTemplateId: document.getElementById('pref-default-tag-template').value,
+            showBoardIcon: document.getElementById('pref-show-icon').checked,
+            showBoardTitle: document.getElementById('pref-show-title').checked
         }
     };
 
@@ -1770,6 +1825,13 @@ function applyUserPreferences() {
     // Aplicar opções de exibição (podem ser usadas ao renderizar os cartões)
     // Nota: A renderização dos cartões pode precisar ser atualizada
     renderCurrentBoard();
+
+    // Aplica a preferência de esconder o título
+    const titleElement = document.getElementById('kanban-title');
+    const iconSpan = titleElement.querySelector('.board-icon');
+    const titleSpan = titleElement.querySelector('.board-title-text');
+    if (iconSpan) iconSpan.style.display = user.preferences?.showBoardIcon === false ? 'none' : 'inline';
+    if (titleSpan) titleSpan.style.display = user.preferences?.showBoardTitle === false ? 'none' : 'inline';
 }
 
 function applyFontFamily(fontFamily) {
@@ -1854,6 +1916,45 @@ function applyUserTheme() {
             document.body.classList.add('dark-mode');
         }
     }
+}
+
+function applyTitlePreview() {
+    const titleElement = document.getElementById('kanban-title');
+    if (!titleElement || !currentBoard) return;
+
+    // O diálogo é clonado, então precisamos pegar o que está atualmente no DOM.
+    const dialog = document.querySelector('#preferences-dialog');
+    
+    const showTitle = dialog.querySelector('#pref-show-title').checked;
+    const showIcon = dialog.querySelector('#pref-show-icon').checked;
+
+    const iconHtml = showIcon ? `<span class="board-icon">${currentBoard.icon || '📋'}</span>` : '';
+    const titleHtml = showTitle ? `<span class="board-title-text">${currentBoard.title}</span>` : '';
+
+    titleElement.innerHTML = `${iconHtml}${titleHtml}`.trim();
+    titleElement.style.display = (showTitle || showIcon) ? 'block' : 'none';
+}
+
+function showIconPickerDialog(callback) {
+    const dialog = document.getElementById('icon-picker-dialog');
+    if (!dialog) return;
+
+    const iconGrid = dialog.querySelector('#icon-grid');
+    iconGrid.innerHTML = ''; // Limpa ícones anteriores
+
+    ICON_LIBRARY.forEach(icon => {
+        const iconBtn = document.createElement('button');
+        iconBtn.className = 'icon-picker-btn';
+        iconBtn.textContent = icon;
+        iconBtn.onclick = () => {
+            callback(icon);
+            dialog.close();
+        };
+        iconGrid.appendChild(iconBtn);
+    });
+
+    dialog.showModal();
+    dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
 }
 
 function confirmExit() {
