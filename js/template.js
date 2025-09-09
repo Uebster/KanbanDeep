@@ -280,6 +280,7 @@ function saveBoardTemplate() {
     const templateId = dialog.dataset.editingId;
     const icon = document.getElementById('board-template-icon').value;
     const name = document.getElementById('board-template-name').value.trim();
+    const description = document.getElementById('board-template-desc').value;
     
     if (!name) {
         showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
@@ -317,13 +318,13 @@ function saveBoardTemplate() {
         'Deseja salvar este template?',
         (confirmationDialog) => {
             let templatesToSave = getUserBoardTemplates(currentUser.id);
-            if (templateId) {
+            if (templateId && templateId !== 'null') {
                 const index = templatesToSave.findIndex(t => t.id === templateId);
                 if (index !== -1) {
                     templatesToSave[index] = { 
                         ...templatesToSave[index], 
                         icon, name, 
-                        description: document.getElementById('board-template-desc').value, 
+                        description: description, 
                         columns 
                     };
                 }
@@ -331,7 +332,7 @@ function saveBoardTemplate() {
                 const newTemplate = {
                     id: 'user-board-' + Date.now(),
                     name, icon,
-                    description: document.getElementById('board-template-desc').value,
+                    description: description,
                     columns
                 };
                 templatesToSave.push(newTemplate);
@@ -479,7 +480,7 @@ function saveTagTemplate() {
         'Deseja salvar este conjunto de etiquetas?',
         (confirmationDialog) => {
             let templatesToSave = getUserTagTemplates(currentUser.id);
-            if (templateId) {
+            if (templateId && templateId !== 'null') {
                 const index = templatesToSave.findIndex(t => t.id === templateId);
                 if (index !== -1) {
                     templatesToSave[index] = { 

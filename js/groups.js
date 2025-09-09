@@ -33,31 +33,10 @@ let allUsers = [];
 let groups = [];
 let servers = [];
 let currentGroup = null;
+let isGroupSaved = true; // Flag para rastrear alterações no diálogo de edição
 const ICON_LIBRARY = [
   '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
 ];
-
-
-// Funções para gerenciar templates de grupo
-export function getGroupBoardTemplates(userId) {
-  const key = `user_${userId}_group_board_templates`;
-  return universalLoad(key) || [];
-}
-
-export function saveGroupBoardTemplates(userId, templates) {
-  const key = `user_${userId}_group_board_templates`;
-  return universalSave(key, templates);
-}
-
-export function getGroupTagTemplates(userId) {
-  const key = `user_${userId}_group_tag_templates`;
-  return universalLoad(key) || [];
-}
-
-export function saveGroupTagTemplates(userId, templates) {
-  const key = `user_${userId}_group_tag_templates`;
-  return universalSave(key, templates);
-}
 
 // groups.js - Adicione este código na função initGroupsPage(), após a verificação de estatísticas
 export function initGroupsPage() {
@@ -244,16 +223,19 @@ document.querySelectorAll('.group-tab').forEach(tab => {
 });
     document.getElementById('edit-group-form')?.addEventListener('submit', saveGroupChanges);
 document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
+    const editDialog = document.getElementById('edit-group-dialog');
+    if (isGroupSaved) {
+        editDialog.close();
+        return;
+    }
+
     showConfirmationDialog(
-        'Tem certeza que deseja cancelar as alterações? Todas as mudanças não salvas serão perdidas.',
-        (dialog) => {
-            showDialogMessage(dialog.querySelector('.feedback'), 'Alterações canceladas.', 'info');
-            
+        'Você tem alterações não salvas. Deseja descartá-las?',
+        (confirmationDialog) => {
+            showDialogMessage(confirmationDialog, 'Alterações descartadas.', 'info');
             setTimeout(() => {
-                dialog.close(); // Fecha apenas o diálogo de confirmação
-                document.getElementById('edit-group-dialog').close(); // Fecha o diálogo de edição
+                editDialog.close();
             }, 1500);
-            
             return true;
         }
     );
@@ -271,18 +253,21 @@ document.getElementById('btn-add-participant')?.addEventListener('click', () => 
 
 document.getElementById('confirm-add-participant')?.addEventListener('click', () => {
     const select = document.getElementById('participant-select');
+    const dialog = document.getElementById('add-participant-dialog');
     const memberId = select.value;
-    const feedbackEl = document.querySelector('#add-participant-dialog .feedback');
     
     if (!memberId || select.disabled) {
-        showDialogMessage(feedbackEl, 'Selecione um usuário válido para adicionar.', 'error');
+        showDialogMessage(dialog, 'Selecione um usuário válido para adicionar.', 'error');
         return;
     }
     
     // Enviar solicitação via notificação
     sendGroupInvitation(currentGroup.id, memberId, currentUser);
     
-    showDialogMessage(feedbackEl, 'A solicitação será enviada ao salvar as alterações.', 'success');
+    showDialogMessage(dialog, 'Convite enviado com sucesso!', 'success');
+    
+    // Marcar como não salvo para que o admin salve o grupo
+    isGroupSaved = false;
     
     // Fechar diálogo após breve delay
     setTimeout(() => {
@@ -293,8 +278,8 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
         // Botão para adicionar participante
 
     document.getElementById('cancel-add-participant')?.addEventListener('click', () => {
-    const feedbackEl = document.querySelector('#add-participant-dialog .feedback');
-    showDialogMessage(feedbackEl, 'Operação cancelada.', 'info');
+    const dialog = document.getElementById('add-participant-dialog');
+    showDialogMessage(dialog, 'Operação cancelada.', 'info');
     
     setTimeout(() => {
         document.getElementById('add-participant-dialog').close();
@@ -528,29 +513,35 @@ function addBoardToGroup(name, templateId) {
 function loadTagTemplatesForGroup() {
     const templateSelect = document.getElementById('group-tag-template');
     if (!templateSelect) return;
-    
+
     // Limpar opções existentes
     templateSelect.innerHTML = '';
-    
-    // Carregar templates do grupo primeiro
-    const groupTemplates = getGroupTagTemplates(currentUser.id);
+
+    // Adicionar opção padrão (nenhum) no topo
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Nenhum (começar do zero)';
+    templateSelect.appendChild(defaultOption);
+
+    // --- NOVO: Carregar templates do próprio grupo ---
+    const groupTemplates = group.tagTemplates || [];
     if (groupTemplates.length > 0) {
         const optgroupGroup = document.createElement('optgroup');
-        optgroupGroup.label = 'Conjuntos do Grupo';
+        optgroupGroup.label = 'Templates deste Grupo';
         groupTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
             option.textContent = template.name;
             optgroupGroup.appendChild(option);
         });
-        templateSelect.appendChild(optgroupGroup);
+        tagTemplateSelect.appendChild(optgroupGroup);
     }
-    
+
     // Carregar templates do sistema
     const systemTemplates = getSystemTagTemplates();
     if (systemTemplates.length > 0) {
         const optgroupSystem = document.createElement('optgroup');
-        optgroupSystem.label = 'Sistema';
+        optgroupSystem.label = 'Usar um Template do Sistema';
         systemTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
@@ -559,12 +550,6 @@ function loadTagTemplatesForGroup() {
         });
         templateSelect.appendChild(optgroupSystem);
     }
-    
-    // Adicionar opção padrão (nenhum) no topo
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Nenhum (usar padrão do sistema)';
-    templateSelect.insertBefore(defaultOption, templateSelect.firstChild);
 }
 
 function loadBoardTemplatesForGroup() {
@@ -578,23 +563,6 @@ function loadBoardTemplatesForGroup() {
 
 // js/groups.js - PARTE ADICIONAL - Funções para templates de grupo
 
-// Funções auxiliares para verificar unicidade de nomes
-function isGroupBoardTemplateNameUnique(name, editingId = null) {
-    const groupTemplates = getGroupBoardTemplates(currentUser.id);
-    return !groupTemplates.some(template => 
-        template.name.toLowerCase() === name.toLowerCase() && 
-        template.id !== editingId
-    );
-}
-
-function isGroupTagTemplateNameUnique(name, editingId = null) {
-    const groupTemplates = getGroupTagTemplates(currentUser.id);
-    return !groupTemplates.some(template => 
-        template.name.toLowerCase() === name.toLowerCase() && 
-        template.id !== editingId
-    );
-}
-
 // Contadores para nomes não titulados
 let untitledColumnCounter = 1;
 let untitledTagCounter = 1;
@@ -602,8 +570,45 @@ let untitledTagCounter = 1;
 // Funções para templates de quadro do grupo
 function showGroupBoardTemplateDialog(templateId = null) {
     const dialog = document.getElementById('group-board-template-dialog');
-    const groupTemplates = getGroupBoardTemplates(currentUser.id);
-    const template = templateId ? groupTemplates.find(t => t.id === templateId) : null;
+    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+
+    if (adminGroups.length === 0) {
+        showAlertDialog("Você não administra nenhum grupo. Para criar templates, é necessário criá-los primeiro na aba 'Criar Grupo'.");
+        return;
+    }
+
+    // Injeta o seletor de grupo no diálogo
+    const nameField = dialog.querySelector('#group-board-template-name').parentElement;
+    let selectorGroup = dialog.querySelector('#group-selector-container');
+    if (!selectorGroup) {
+        selectorGroup = document.createElement('div');
+        selectorGroup.className = 'form-group';
+        selectorGroup.id = 'group-selector-container';
+        nameField.insertAdjacentElement('beforebegin', selectorGroup);
+    }
+    selectorGroup.innerHTML = `
+        <label for="group-template-target-group">Salvar no Grupo:</label>
+        <select id="group-template-target-group">
+            <option value="">-- Selecione um grupo --</option>
+            ${adminGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+        </select>
+    `;
+    const groupSelector = dialog.querySelector('#group-template-target-group');
+
+    let template = null;
+    if (templateId) {
+        for (const group of adminGroups) {
+            const foundTemplate = (group.boardTemplates || []).find(t => t.id === templateId);
+            if (foundTemplate) {
+                template = foundTemplate;
+                groupSelector.value = group.id;
+                groupSelector.disabled = true; // Não permite mover template entre grupos na edição
+                break;
+            }
+        }
+    } else {
+        groupSelector.disabled = false;
+    }
     
     dialog.dataset.editingId = templateId;
     dialog.querySelector('#group-board-template-dialog-title').textContent = template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
@@ -682,13 +687,29 @@ function saveGroupBoardTemplate() {
     const templateId = dialog.dataset.editingId;
     const icon = document.getElementById('group-board-template-icon')?.value || '📋';
     const name = document.getElementById('group-board-template-name').value.trim();
+    const groupId = dialog.querySelector('#group-template-target-group').value;
+    const description = document.getElementById('group-board-template-desc').value;
+
+    if (!groupId) {
+        showDialogMessage(dialog, 'É necessário selecionar um grupo.', 'error');
+        return;
+    }
+
+    const targetGroup = getGroup(groupId);
+    if (!targetGroup) {
+        showDialogMessage(dialog, 'Grupo selecionado não encontrado.', 'error');
+        return;
+    }
 
     if (!name) {
         showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
         return;
     }
 
-    if (!isGroupBoardTemplateNameUnique(name, templateId)) {
+    const boardTemplates = targetGroup.boardTemplates || [];
+    const isNameUnique = !boardTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
+
+    if (!isNameUnique) {
         showDialogMessage(dialog, 'Já existe um template com este nome no grupo. Por favor, escolha outro nome.', 'error');
         return;
     }
@@ -714,65 +735,27 @@ function saveGroupBoardTemplate() {
     showConfirmationDialog(
         'Deseja salvar este template?',
         async (confirmationDialog) => {
-            try {
-                let groupTemplates = getGroupBoardTemplates(currentUser.id);
-                
-                if (templateId) {
-                    const index = groupTemplates.findIndex(t => t.id === templateId);
-                    if (index !== -1) {
-                        groupTemplates[index] = { 
-                            ...groupTemplates[index], 
-                            icon,
-                            name, 
-                            description: document.getElementById('group-board-template-desc').value, 
-                            columns 
-                        };
-                    }
-                } else {
-                    const newTemplate = {
-                        id: 'group-board-' + Date.now(),
-                        name,
-                        icon,
-                        description: document.getElementById('group-board-template-desc').value,
-                        columns
-                    };
-                    groupTemplates.push(newTemplate);
-                }
+            if (!targetGroup.boardTemplates) targetGroup.boardTemplates = [];
 
-                const success = saveGroupBoardTemplates(currentUser.id, groupTemplates);
-                
-                if (success) {
-                    showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
-                    setTimeout(() => {
-                        confirmationDialog.close();
-                        dialog.close();
-                        loadGroupTemplates();
-                    }, 1500);
-                } else {
-                    throw new Error('Falha ao salvar template no grupo');
+            if (templateId && templateId !== 'null') {
+                const index = targetGroup.boardTemplates.findIndex(t => t.id === templateId);
+                if (index !== -1) {
+                    targetGroup.boardTemplates[index] = { ...targetGroup.boardTemplates[index], icon, name, description, columns };
                 }
-                
+            } else {
+                const newTemplate = { id: 'group-board-' + Date.now(), name, icon, description, columns };
+                targetGroup.boardTemplates.push(newTemplate);
+            }
+
+            if (saveGroup(targetGroup)) {
+                showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
+                loadGroupTemplates();
+                setTimeout(() => dialog.close(), 1500);
                 return true;
-            } catch (error) {
-                console.error('Erro ao salvar template:', error);
-                showDialogMessage(confirmationDialog, 'Não foi possível salvar o template.', 'error');
+            } else {
+                showDialogMessage(confirmationDialog, 'Erro ao salvar o template.', 'error');
                 return false;
             }
-        }
-    );
-}
-
-function deleteGroupBoardTemplate(templateId) {
-    showConfirmationDialog(
-        'Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.',
-        async (dialog) => {
-            let groupTemplates = getGroupBoardTemplates(currentUser.id);
-            groupTemplates = groupTemplates.filter(t => t.id !== templateId);
-            saveGroupBoardTemplates(currentUser.id, groupTemplates);
-            loadGroupTemplates();
-            showDialogMessage(dialog, 'Template excluído.', 'info');
-            setTimeout(() => dialog.close(), 1500);
-            return true;
         }
     );
 }
@@ -780,8 +763,45 @@ function deleteGroupBoardTemplate(templateId) {
 // Funções para templates de etiqueta do grupo
 function showGroupTagTemplateDialog(templateId = null) {
     const dialog = document.getElementById('group-tag-template-dialog');
-    const groupTemplates = getGroupTagTemplates(currentUser.id);
-    const template = templateId ? groupTemplates.find(t => t.id === templateId) : null;
+    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+
+    if (adminGroups.length === 0) {
+        // A mensagem já é mostrada pela função de quadro, não precisa repetir.
+        return;
+    }
+
+    // Injeta o seletor de grupo no diálogo
+    const nameField = dialog.querySelector('#group-tag-template-name').parentElement;
+    let selectorGroup = dialog.querySelector('#group-selector-container');
+    if (!selectorGroup) {
+        selectorGroup = document.createElement('div');
+        selectorGroup.className = 'form-group';
+        selectorGroup.id = 'group-selector-container';
+        nameField.insertAdjacentElement('beforebegin', selectorGroup);
+    }
+    selectorGroup.innerHTML = `
+        <label for="group-template-target-group-tag">Salvar no Grupo:</label>
+        <select id="group-template-target-group-tag">
+            <option value="">-- Selecione um grupo --</option>
+            ${adminGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+        </select>
+    `;
+    const groupSelector = dialog.querySelector('#group-template-target-group-tag');
+
+    let template = null;
+    if (templateId) {
+        for (const group of adminGroups) {
+            const foundTemplate = (group.tagTemplates || []).find(t => t.id === templateId);
+            if (foundTemplate) {
+                template = foundTemplate;
+                groupSelector.value = group.id;
+                groupSelector.disabled = true;
+                break;
+            }
+        }
+    } else {
+        groupSelector.disabled = false;
+    }
     
     dialog.dataset.editingId = templateId;
     dialog.querySelector('#group-tag-template-dialog-title').textContent = template ? 'Editar Conjunto de Etiquetas' : 'Criar Novo Conjunto de Etiquetas';
@@ -858,13 +878,29 @@ function saveGroupTagTemplate() {
     const templateId = dialog.dataset.editingId;
     const icon = document.getElementById('group-tag-template-icon')?.value || '🏷️';
     const name = document.getElementById('group-tag-template-name').value.trim();
+    const groupId = dialog.querySelector('#group-template-target-group-tag').value;
+    const description = document.getElementById('group-tag-template-desc').value;
     
+    if (!groupId) {
+        showDialogMessage(dialog, 'É necessário selecionar um grupo.', 'error');
+        return;
+    }
+
+    const targetGroup = getGroup(groupId);
+    if (!targetGroup) {
+        showDialogMessage(dialog, 'Grupo selecionado não encontrado.', 'error');
+        return;
+    }
+
     if (!name) {
         showDialogMessage(dialog, 'O nome do conjunto é obrigatório.', 'error');
         return;
     }
 
-    if (!isGroupTagTemplateNameUnique(name, templateId)) {
+    const tagTemplates = targetGroup.tagTemplates || [];
+    const isNameUnique = !tagTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
+
+    if (!isNameUnique) {
         showDialogMessage(dialog, 'Já existe um conjunto com este nome no grupo. Por favor, escolha outro nome.', 'error');
         return;
     }
@@ -890,76 +926,55 @@ function saveGroupTagTemplate() {
     showConfirmationDialog(
         'Deseja salvar este conjunto de etiquetas?',
         async (confirmationDialog) => {
-            try {
-                let groupTemplates = getGroupTagTemplates(currentUser.id);
-                
-                if (templateId) {
-                    const index = groupTemplates.findIndex(t => t.id === templateId);
-                    if (index !== -1) {
-                        groupTemplates[index] = { 
-                            ...groupTemplates[index], 
-                            icon,
-                            name, 
-                            description: document.getElementById('group-tag-template-desc').value, 
-                            tags 
-                        };
-                    }
-                } else {
-                    const newTemplate = {
-                        id: 'group-tag-' + Date.now(),
-                        name,
-                        icon,
-                        description: document.getElementById('group-tag-template-desc').value,
-                        tags
-                    };
-                    groupTemplates.push(newTemplate);
-                }
+            if (!targetGroup.tagTemplates) targetGroup.tagTemplates = [];
 
-                const success = saveGroupTagTemplates(currentUser.id, groupTemplates);
-                
-                if (success) {
-                    showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
-                    setTimeout(() => {
-                        confirmationDialog.close();
-                        dialog.close();
-                        loadGroupTemplates();
-                    }, 1500);
-                } else {
-                    throw new Error('Falha ao salvar conjunto no grupo');
+            if (templateId && templateId !== 'null') {
+                const index = targetGroup.tagTemplates.findIndex(t => t.id === templateId);
+                if (index !== -1) {
+                    targetGroup.tagTemplates[index] = { ...targetGroup.tagTemplates[index], icon, name, description, tags };
                 }
-                
+            } else {
+                const newTemplate = { id: 'group-tag-' + Date.now(), name, icon, description, tags };
+                targetGroup.tagTemplates.push(newTemplate);
+                // Se o grupo não tinha um template padrão, o novo se torna o padrão.
+                if (!targetGroup.tagTemplate || targetGroup.tagTemplate === '') {
+                    targetGroup.tagTemplate = newTemplate.id;
+                }
+            }
+
+            if (saveGroup(targetGroup)) {
+                showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
+                loadGroups(); // Atualiza a lista de grupos para refletir a mudança no alerta
+                loadGroupTemplates();
+                setTimeout(() => dialog.close(), 1500);
                 return true;
-            } catch (error) {
-                console.error('Erro ao salvar conjunto:', error);
-                showDialogMessage(confirmationDialog, 'Não foi possível salvar o conjunto.', 'error');
+            } else {
+                showDialogMessage(confirmationDialog, 'Erro ao salvar o conjunto.', 'error');
                 return false;
             }
         }
     );
 }
 
-function deleteGroupTagTemplate(templateId) {
-    showConfirmationDialog(
-        'Tem certeza que deseja excluir este conjunto de etiquetas? Esta ação não pode ser desfeita.',
-        async (dialog) => {
-            let groupTemplates = getGroupTagTemplates(currentUser.id);
-            groupTemplates = groupTemplates.filter(t => t.id !== templateId);
-            saveGroupTagTemplates(currentUser.id, groupTemplates);
-            loadGroupTemplates();
-            showDialogMessage(dialog, 'Conjunto de etiquetas excluído.', 'info');
-            setTimeout(() => dialog.close(), 1500);
-            return true;
-        }
-    );
-}
-
 function loadGroupTemplates() {
-    // Carregar templates de quadro de grupo
-    const boardTemplates = getGroupBoardTemplates(currentUser.id);
+    const boardContainer = document.getElementById('group-board-templates-grid');
+    const tagContainer = document.getElementById('group-tag-templates-grid');
+    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+
+    if (adminGroups.length === 0) {
+        boardContainer.innerHTML = '<p class="no-templates">Você não administra nenhum grupo para ter templates.</p>';
+        tagContainer.innerHTML = '<p class="no-templates">Você não administra nenhum grupo para ter conjuntos de etiquetas.</p>';
+        return;
+    }
+
+    const boardTemplates = adminGroups.flatMap(g => 
+        (g.boardTemplates || []).map(t => ({ ...t, groupId: g.id, groupName: g.name }))
+    );
     renderGroupBoardTemplates(boardTemplates);
     
-    // Carregar templates de etiqueta de grupo
-    const tagTemplates = getGroupTagTemplates(currentUser.id);
+    const tagTemplates = adminGroups.flatMap(g => 
+        (g.tagTemplates || []).map(t => ({ ...t, groupId: g.id, groupName: g.name }))
+    );
     renderGroupTagTemplates(tagTemplates);
 }
 
@@ -970,16 +985,19 @@ function renderGroupBoardTemplates(templates) {
     container.innerHTML = '';
     
     if (templates.length === 0) {
-        container.innerHTML = '<p class="no-templates">Nenhum template de quadro criado para este grupo.</p>';
+        container.innerHTML = '<p class="no-templates">Nenhum template de quadro criado para os grupos que você administra.</p>';
         return;
     }
     
     templates.forEach(template => {
         const templateCard = document.createElement('div');
         templateCard.className = 'template-card';
+        templateCard.dataset.templateId = template.id;
+        templateCard.dataset.groupId = template.groupId;
         templateCard.innerHTML = `
             <div class="template-icon">${template.icon || '📋'}</div>
             <h4>${template.name}</h4>
+            <p class="template-group-info">Grupo: ${template.groupName}</p>
             <p>${template.description || 'Sem descrição'}</p>
             <div class="template-colors">
                 ${template.columns.slice(0, 4).map(col => 
@@ -1000,22 +1018,22 @@ function renderGroupBoardTemplates(templates) {
     // Adicionar event listeners
     container.querySelectorAll('.use-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.dataset.templateId;
-            useBoardTemplate(templateId);
+            const card = e.target.closest('.template-card');
+            useBoardTemplate(card.dataset.templateId, card.dataset.groupId);
         });
     });
     
     container.querySelectorAll('.edit-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.dataset.templateId;
+            const templateId = e.target.closest('.template-card').dataset.templateId;
             showGroupBoardTemplateDialog(templateId);
         });
     });
     
     container.querySelectorAll('.delete-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.dataset.templateId;
-            deleteGroupBoardTemplate(templateId);
+            const card = e.target.closest('.template-card');
+            deleteGroupBoardTemplate(card.dataset.templateId, card.dataset.groupId);
         });
     });
 }
@@ -1027,16 +1045,19 @@ function renderGroupTagTemplates(templates) {
     container.innerHTML = '';
     
     if (templates.length === 0) {
-        container.innerHTML = '<p class="no-templates">Nenhum conjunto de etiquetas criado para este grupo.</p>';
+        container.innerHTML = '<p class="no-templates">Nenhum conjunto de etiquetas criado para os grupos que você administra.</p>';
         return;
     }
     
     templates.forEach(template => {
         const templateCard = document.createElement('div');
         templateCard.className = 'template-card';
+        templateCard.dataset.templateId = template.id;
+        templateCard.dataset.groupId = template.groupId;
         templateCard.innerHTML = `
             <div class="template-icon">${template.icon || '🏷️'}</div>
             <h4>${template.name}</h4>
+            <p class="template-group-info">Grupo: ${template.groupName}</p>
             <p>${template.description || 'Sem descrição'}</p>
             <div class="tag-list">
                 ${template.tags.slice(0, 3).map(tag => 
@@ -1057,23 +1078,103 @@ function renderGroupTagTemplates(templates) {
     // Adicionar event listeners
     container.querySelectorAll('.use-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.dataset.templateId;
-            useTagTemplate(templateId);
+            const card = e.target.closest('.template-card');
+            useTagTemplate(card.dataset.templateId, card.dataset.groupId);
         });
     });
     
     container.querySelectorAll('.edit-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.dataset.templateId;
+            const templateId = e.target.closest('.template-card').dataset.templateId;
             showGroupTagTemplateDialog(templateId);
         });
     });
     
     container.querySelectorAll('.delete-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.dataset.templateId;
-            deleteGroupTagTemplate(templateId);
+            const card = e.target.closest('.template-card');
+            deleteGroupTagTemplate(card.dataset.templateId, card.dataset.groupId);
         });
+    });
+}
+
+function useBoardTemplate(templateId, groupId) {
+    const group = getGroup(groupId);
+    if (!group) return;
+
+    const template = (group.boardTemplates || []).find(t => t.id === templateId);
+    if (!template) {
+        showFloatingMessage('Template não encontrado no grupo.', 'error');
+        return;
+    }
+
+    const newColumns = template.columns.map(colTemplate => {
+        return saveColumn({ title: colTemplate.name, color: colTemplate.color, cardIds: [] });
+    });
+
+    const newBoardData = {
+        title: `${template.name} (Cópia do Grupo)`,
+        icon: template.icon || '📋',
+        ownerId: currentUser.id,
+        visibility: 'group', // O quadro criado a partir de um template de grupo, é de grupo
+        groupId: group.id,
+        columnIds: newColumns.map(col => col.id)
+    };
+
+    const savedBoard = saveBoard(newBoardData);
+
+    localStorage.setItem(`currentBoardId_${currentUser.id}`, savedBoard.id);
+    showFloatingMessage(`Quadro '${savedBoard.title}' criado com sucesso! Redirecionando...`, 'success');
+    setTimeout(() => { window.location.href = `kanban.html`; }, 1500);
+}
+
+function useTagTemplate(templateId, groupId) {
+    showFloatingMessage('Funcionalidade "Usar Conjunto de Etiquetas" ainda não implementada.', 'info');
+    // Futuramente, isso poderia aplicar o conjunto de etiquetas a um quadro selecionado.
+}
+
+function deleteGroupBoardTemplate(templateId, groupId) {
+    showConfirmationDialog('Tem certeza que deseja excluir este template?', (dialog) => {
+        const group = getGroup(groupId);
+        if (!group || !group.boardTemplates) return false;
+        group.boardTemplates = group.boardTemplates.filter(t => t.id !== templateId);
+        if (saveGroup(group)) {
+            showDialogMessage(dialog, 'Template excluído.', 'success');
+            loadGroupTemplates();
+            return true;
+        }
+        return false;
+    });
+}
+
+function deleteGroupTagTemplate(templateId, groupId) {
+    showConfirmationDialog('Tem certeza que deseja excluir este conjunto?', (dialog) => {
+        const group = getGroup(groupId);
+        if (!group || !group.tagTemplates) return false;
+
+        const wasDefault = group.tagTemplate === templateId;
+        
+        // Filtra para remover o template
+        group.tagTemplates = group.tagTemplates.filter(t => t.id !== templateId);
+
+        // Se o template excluído era o padrão, define um novo padrão.
+        if (wasDefault) {
+            if (group.tagTemplates.length > 0) {
+                // O novo padrão é o primeiro da lista de templates customizados.
+                group.tagTemplate = group.tagTemplates[0].id;
+            } else {
+                // Se não houver mais templates customizados, volta para "Nenhum".
+                group.tagTemplate = '';
+            }
+        }
+
+        if (saveGroup(group)) {
+            showDialogMessage(dialog, 'Conjunto excluído.', 'success');
+            loadGroupTemplates();
+            loadGroups(); // Recarrega os grupos para atualizar o alerta
+            return true;
+        }
+        return false;
     });
 }
 
@@ -1411,6 +1512,10 @@ function createGroupCard(group) {
         ? '<span class="group-status status-admin">Admin</span>'
         : '<span class="group-status status-member">Membro</span>';
 
+    const noTagTemplateWarning = !group.tagTemplate
+        ? `<div class="group-warning"><span>⚠️</span> Sem conjunto de etiquetas padrão!</div>`
+        : '';
+
     const actionsHtml = isAdmin
         ? `<button class="btn btn-sm btn-secondary" data-action="edit">Editar</button>
            <button class="btn btn-sm btn-danger" data-action="delete">Excluir</button>`
@@ -1426,6 +1531,7 @@ function createGroupCard(group) {
             </div>
         </div>
         <p class="group-description">${group.description || 'Sem descrição.'}</p>
+        ${noTagTemplateWarning}
         <div class="group-stats">
             <div class="group-stat">
                 <div class="stat-number">${getGroupTaskCount(group.id)}</div>
@@ -1633,7 +1739,62 @@ function editGroup(group) {
     document.getElementById('edit-group-name').value = group.name;
     document.getElementById('edit-group-description').value = group.description || '';
     document.getElementById('edit-group-access').value = group.access || 'public';
+
+    // --- LÓGICA PARA O SELECT DE TAG TEMPLATE ---
+    const tagTemplateSelect = document.getElementById('edit-group-tag-template');
+    tagTemplateSelect.innerHTML = ''; // Limpa
+
+    const groupTemplates = group.tagTemplates || [];
+
+    // Só mostra "Nenhum" se não houver templates customizados para o grupo.
+    if (groupTemplates.length === 0) {
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Nenhum (usar padrão do grupo)';
+        tagTemplateSelect.appendChild(defaultOption);
+    }
+
+    // Carrega os templates do próprio grupo
+    if (groupTemplates.length > 0) {
+        const optgroupGroup = document.createElement('optgroup');
+        optgroupGroup.label = 'Templates deste Grupo';
+        groupTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            optgroupGroup.appendChild(option);
+        });
+        tagTemplateSelect.appendChild(optgroupGroup);
+    }
+
+    // Templates do Sistema
+    const systemTemplates = getSystemTagTemplates();
+    if (systemTemplates.length > 0) {
+        const optgroupSystem = document.createElement('optgroup');
+        optgroupSystem.label = 'Usar um Template do Sistema';
+        systemTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            optgroupSystem.appendChild(option);
+        });
+        tagTemplateSelect.appendChild(optgroupSystem);
+    }
+
+    // Seleciona o valor atual do grupo
+    tagTemplateSelect.value = group.tagTemplate || '';
     
+    // Resetar o estado de "salvo" e adicionar listeners para rastrear alterações
+    isGroupSaved = true;
+    const formElements = dialog.querySelectorAll('input, textarea, select');
+    
+    const markAsUnsaved = () => isGroupSaved = false;
+
+    formElements.forEach(el => {
+        el.removeEventListener('change', markAsUnsaved); // Evita duplicatas
+        el.addEventListener('change', markAsUnsaved);
+    });
+
     // Carregar lista de membros (mas a interface mostrará "participantes")
     loadGroupMembers(group);
     
@@ -1676,6 +1837,7 @@ function saveGroupChanges(e) {
             currentGroup.name = name;
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
+            currentGroup.tagTemplate = document.getElementById('edit-group-tag-template').value;
             
             // Enviar notificações para participantes pendentes
             if (window.pendingParticipants && window.pendingParticipants.length > 0) {
@@ -1692,6 +1854,7 @@ function saveGroupChanges(e) {
                 
                 // Atualizar exibição
                 renderGroups();
+                isGroupSaved = true; // Reseta o estado após salvar
                 
                 // Fechar diálogos após breve delay
                 setTimeout(() => {

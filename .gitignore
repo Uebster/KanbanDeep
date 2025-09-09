@@ -9,3 +9,5 @@ yarn-error.log*
 # Arquivos de configuração de editores
 .vscode/
 .idea/
+
+erros.txt

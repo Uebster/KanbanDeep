@@ -3,7 +3,7 @@
 import { getCurrentUser, updateUser } from './auth.js';
 import { 
     getUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
-    getColumn, saveColumn, getCard, saveCard, deleteCard,
+    getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard,
     getAllUsers, getAllGroups, getSystemBoardTemplates, getUserBoardTemplates, 
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
@@ -39,7 +39,7 @@ const ICON_LIBRARY = [
 
 // A lógica de inicialização agora está DENTRO da função exportada.
 // O DOMContentLoaded foi REMOVIDO daqui.
-export function initKanbanPage() {
+export async function initKanbanPage() {
 
     currentUser = getCurrentUser();
     if (!currentUser) {
@@ -53,7 +53,7 @@ export function initKanbanPage() {
     }
 
     // 2. Carregamento de Dados
-    loadData();
+    await loadData(); // <-- AGUARDA o carregamento dos dados
 
     // 3. Configuração da UI e Eventos
     setupEventListeners();
@@ -821,7 +821,7 @@ function handleSaveBoard() {
             const icon = document.getElementById('board-icon-input').value;
             let savedBoard;
 
-            if (boardId) {
+            if (boardId && boardId !== 'null') {
                 const boardData = getBoard(boardId);
                 if (!boardData) return false;
                 boardData.title = title;
@@ -881,7 +881,7 @@ function handleSaveColumn() {
             const columnId = dialog.dataset.editingId;
             const columnData = { title, description: document.getElementById('column-description').value, color: document.getElementById('column-color-input').value };
 
-            if (columnId) {
+            if (columnId && columnId !== 'null') {
                 const existingColumn = getColumn(columnId);
                 if (existingColumn) {
                     Object.assign(existingColumn, columnData);
@@ -1673,8 +1673,6 @@ function showPreferencesDialog() {
     newDialog.querySelector('#pref-font-size').value = originalKanbanFontSize;
     newDialog.querySelector('#pref-show-tags').checked = user.preferences?.showTags !== false;
     newDialog.querySelector('#pref-show-date').checked = user.preferences?.showDate !== false;
-    newDialog.querySelector('#pref-show-status').checked = user.preferences?.showStatus !== false;
-    newDialog.querySelector('#pref-show-assignment').checked = user.preferences?.showAssignment !== false;
     newDialog.querySelector('#pref-show-assignment').checked = user.preferences?.showAssignment !== false;
     newDialog.querySelector('#pref-show-card-details').checked = user.preferences?.showCardDetails !== false;
     newDialog.querySelector('#pref-show-icon').checked = user.preferences?.showBoardIcon !== false;
@@ -1757,7 +1755,6 @@ function showPreferencesDialog() {
         { id: 'pref-show-tags', action: () => applyCardPreview() },
         { id: 'pref-show-date', action: () => applyCardPreview() },
         { id: 'pref-show-status', action: () => applyCardPreview() },
-        { id: 'pref-show-card-details', action: () => applyCardPreview() },
         { id: 'pref-show-card-details', action: () => applyCardPreview() },
         { id: 'pref-show-assignment', action: () => applyCardPreview() },
         { id: 'pref-show-title', action: () => applyTitlePreview() },
@@ -2266,9 +2263,7 @@ function applyCardPreview() {
     currentUser.preferences.showDate = dialog.querySelector('#pref-show-date').checked;
     currentUser.preferences.showStatus = dialog.querySelector('#pref-show-status').checked;
     currentUser.preferences.showAssignment = dialog.querySelector('#pref-show-assignment').checked;
-    currentUser.preferences.showAssignment = dialog.querySelector('#pref-show-assignment').checked;
     currentUser.preferences.showCardDetails = dialog.querySelector('#pref-show-card-details').checked;
-    currentUser.preferences.showAssignment = dialog.querySelector('#pref-show-assignment').checked;
 
     // Simplesmente redesenha o quadro. A função createCardElement já
     // contém a lógica para mostrar/esconder os elementos com base nessas preferências.
