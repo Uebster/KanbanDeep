@@ -50,16 +50,18 @@ function setupGlobalCloseListeners() {
 
     // Fecha ao clicar fora
     document.addEventListener('click', (e) => {
-        const isDropdownOpen = document.querySelector('.dropdown.show');
-        const isDialogOpen = document.querySelector('dialog[open]');
+        const openDropdown = document.querySelector('.dropdown.show');
+        const openDialog = document.querySelector('dialog[open]');
 
         // Só age se o clique for fora de um menu E fora de um diálogo
         if (!e.target.closest('.menu-container') && !e.target.closest('dialog')) {
-            if (isDropdownOpen) closeTopLayer();
+            if (openDropdown) closeTopLayer();
         }
         
         // Lógica específica para fechar diálogos clicando no backdrop
-        if(isDialogOpen && e.target.tagName === 'DIALOG'){
+        // A condição `e.target === openDialog` garante que o clique foi no backdrop
+        // e não em um elemento filho do diálogo.
+        if(openDialog && e.target === openDialog){
             closeTopLayer();
         }
     });

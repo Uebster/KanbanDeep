@@ -153,8 +153,10 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
             document.getElementById('pref-show-tags').checked = userData.preferences.showTags !== false;
             document.getElementById('pref-show-date').checked = userData.preferences.showDate !== false;
             document.getElementById('pref-show-status').checked = userData.preferences.showStatus !== false;
+            document.getElementById('pref-show-assignment').checked = userData.preferences.showAssignment !== false;
             document.getElementById('pref-show-icon').checked = userData.preferences.showBoardIcon !== false;
             document.getElementById('pref-show-title').checked = userData.preferences.showBoardTitle !== false;
+            document.getElementById('pref-show-card-details').checked = userData.preferences.showCardDetails !== false;
         }
         
         // Avatar
@@ -283,7 +285,7 @@ function setupEventListeners() {
 
     // Para checkboxes
     const checkboxes = [
-        'pref-show-tags', 'pref-show-date', 'pref-show-status', 'pref-show-title', 'pref-show-icon'
+        'pref-show-tags', 'pref-show-date', 'pref-show-status', 'pref-show-assignment', 'pref-show-title', 'pref-show-icon', 'pref-show-card-details'
     ];
     
     checkboxes.forEach(checkbox => {
@@ -463,8 +465,10 @@ function restoreOriginalData() {
         document.getElementById('pref-show-tags').checked = originalUserData.preferences.showTags !== false;
         document.getElementById('pref-show-date').checked = originalUserData.preferences.showDate !== false;
         document.getElementById('pref-show-status').checked = originalUserData.preferences.showStatus !== false;
+        document.getElementById('pref-show-assignment').checked = originalUserData.preferences.showAssignment !== false;
         document.getElementById('pref-show-icon').checked = originalUserData.preferences.showBoardIcon !== false;
         document.getElementById('pref-show-title').checked = originalUserData.preferences.showBoardTitle !== false;
+        document.getElementById('pref-show-card-details').checked = originalUserData.preferences.showCardDetails !== false;
         document.getElementById('default-tag-template').value = originalUserData.preferences.defaultTagTemplateId || '';
     }
     
@@ -529,8 +533,10 @@ async function processProfileUpdate() {
             showTags: document.getElementById('pref-show-tags').checked,
             showDate: document.getElementById('pref-show-date').checked,
             showStatus: document.getElementById('pref-show-status').checked,
+            showAssignment: document.getElementById('pref-show-assignment').checked,
             showBoardIcon: document.getElementById('pref-show-icon').checked,
             showBoardTitle: document.getElementById('pref-show-title').checked,
+            showCardDetails: document.getElementById('pref-show-card-details').checked,
             defaultTagTemplateId: document.getElementById('default-tag-template').value
         }
     };

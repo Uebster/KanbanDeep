@@ -228,13 +228,14 @@ body.light-mode {
     cursor: grab;
     color: var(--text);
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    /* Remove padding do elemento .card principal */
+    position: relative; /* Essencial para o posicionamento absoluto dos filhos */
+    padding-bottom: 30px; /* Espaço para o avatar no rodapé */
 }
 
 /* O conteúdo agora tem seu próprio padding e posicionamento */
 .card-content {
     position: relative;
-    padding: 25px 15px 15px 15px; /* Padding: 25px no topo, 15 nos outros lados */
+    padding: 30px 15px 15px 15px; /* Mais padding no topo para data e status */
 }
 
 .card:hover {
@@ -252,20 +253,25 @@ body.light-mode {
 }
 
 /* --- Novos Elementos Visuais --- */
-.card-top-details {
+.card-header-details {
     position: absolute;
     top: 8px; /* Distância do topo */
     left: 15px;
+}
+
+.card-status-container {
+    position: absolute;
+    top: 8px;
     right: 15px;
-    display: flex;
-    justify-content: flex-end; /* Alinha itens à direita */
-    align-items: center;
-    gap: 8px;
+}
+
+.card-footer-details {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
 }
 
 .card-due-date-display {
-    position: absolute;
-    left: 0; /* Fica no canto esquerdo da div .card-top-details */
     font-size: 0.8rem;
     color: var(--text-muted);
 }
@@ -283,6 +289,22 @@ body.light-mode {
     font-weight: bold;
     font-size: 14px; /* Tamanho do 'check' */
     line-height: 1; /* Alinha o 'check' verticalmente */
+}
+
+.card-assignee-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-light);
+    /* Para o avatar de iniciais */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0; /* Impede que o avatar encolha */
 }
 
 .card-tag-line {

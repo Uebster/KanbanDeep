@@ -288,6 +288,7 @@ function getNotificationIcon(type) {
         card_due_today: '📅',
         card_due_week: '📆',
         card_due_month: '🗓️',
+        card_assignment: '📌',
         message_user: '💬',
         message_group: '👥💬',
         meeting: '📅',
@@ -903,6 +904,24 @@ export function addReportNotification(period) {
     addNotification('report', 'Relatório Disponibilizado', `Seu relatório ${periodNames[period]} está disponível`, {
         period: period
     });
+}
+
+export function addCardAssignmentNotification(assignerName, assigneeId, cardTitle, boardName) {
+    const notification = {
+        id: 'card-assign-' + Date.now() + '-' + assigneeId,
+        type: 'card_assignment',
+        title: 'Nova Tarefa Atribuída',
+        message: `${assignerName} atribuiu o cartão "${cardTitle}" a você no quadro "${boardName}".`,
+        sender: assignerName,
+        board: boardName,
+        date: new Date().toISOString(),
+        read: false,
+        status: 'unread',
+        actions: ['view']
+    };
+    
+    addNotificationToUser(assigneeId, notification);
+    return notification;
 }
 
 function handleConfirmation() {
