@@ -417,7 +417,8 @@ function displayUserResults(users) {
         avatarEl.style.display = 'flex';
         avatarEl.style.alignItems = 'center';
         avatarEl.style.justifyContent = 'center';
-        avatarEl.style.backgroundColor = '#007bff';
+        const hue = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+        avatarEl.style.backgroundColor = `hsl(${hue}, 65%, 65%)`;
         avatarEl.style.color = 'white';
         avatarEl.style.fontWeight = 'bold';
         avatarEl.style.flexShrink = '0';
@@ -987,24 +988,47 @@ function showCardDialog(cardId = null, columnId) {
     // um cartão a partir do menu principal (quando cardId é nulo).
     columnSelectGroup.style.display = (currentBoard.columns.length > 1 || !cardId) ? 'flex' : 'none';
 
-    // Popula o select de etiquetas (igual ao do filtro de busca)
+    // Popula o select de etiquetas (COM LÓGICA CORRIGIDA)
     const tagSelect = document.getElementById('card-tags');
-    const userTagTemplates = getUserTagTemplates(currentUser.id);
-    const systemTagTemplates = getSystemTagTemplates();
-    const allTags = new Set();
-    userTagTemplates.forEach(t => t.tags.forEach(tag => allTags.add(tag.name)));
-    systemTagTemplates.forEach(t => t.tags.forEach(tag => allTags.add(tag.name)));
-    
-    tagSelect.innerHTML = '';
-    [...allTags].sort().forEach(tagName => {
-        const option = document.createElement('option');
-        option.value = tagName;
-        option.textContent = tagName;
-        if (card && card.tags?.includes(tagName)) {
-            option.selected = true;
+    tagSelect.innerHTML = ''; // Limpa antes de popular
+
+    const userPrefs = currentUser.preferences || {};
+    const defaultTemplateId = userPrefs.defaultTagTemplateId;
+
+    let activeTagTemplate = null;
+
+    if (defaultTemplateId) {
+        // Procura primeiro nos templates do usuário
+        activeTagTemplate = getUserTagTemplates(currentUser.id).find(t => t.id === defaultTemplateId);
+        // Se não encontrar, procura nos do sistema
+        if (!activeTagTemplate) {
+            activeTagTemplate = getSystemTagTemplates().find(t => t.id === defaultTemplateId);
         }
-        tagSelect.appendChild(option);
-    });
+    }
+
+    // Se ainda não encontrou (ou não havia ID), usa o primeiro template do sistema como fallback
+    if (!activeTagTemplate) {
+        const systemTemplates = getSystemTagTemplates();
+        if (systemTemplates.length > 0) {
+            activeTagTemplate = systemTemplates[0];
+        }
+    }
+
+        // Popula o select com as etiquetas do template ativo
+    if (activeTagTemplate && activeTagTemplate.tags) {
+        activeTagTemplate.tags.forEach(tag => {
+            const option = document.createElement('option');
+           option.value = tag.name;
+            option.textContent = tag.name;
+            if (card && card.tags?.includes(tag.name)) {
+                option.selected = true;
+            }
+            tagSelect.appendChild(option);
+        });
+    } else {
+        // Caso não haja nenhum template, mostra uma mensagem
+        tagSelect.innerHTML = '<option value="">Nenhum conjunto de etiquetas disponível</option>';
+    }
     
     // Popula o select "Atribuir a:" com nomes de usuários
     const assigneeSelect = document.getElementById('card-assigned-to');

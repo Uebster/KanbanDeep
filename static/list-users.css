@@ -8,12 +8,12 @@
       --text-muted: #bbb;
       --border: #444;
       --border-light: #555;
+      --primary: #4cd4e6; /* Cor correta da logo (Verde Água) */
       --transition-fast: 0.2s;
       --success: #2ecc71;
       --error: #e74c3c;
       --warning: #f39c12;
       --info: #3498db;
-      --primary: #3498db;
 
       /* tipografia */
       --app-font-family: "Segoe UI", "Inter", sans-serif;
@@ -85,7 +85,7 @@ header {
     align-items: center;
     margin-bottom: 25px;
     padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 2px solid var(--primary);
 }
 
 header h1 {
@@ -122,7 +122,7 @@ header div {
 
 /* 2. ADICIONA a borda completa apenas à linha inteira (tr) */
 .users-table tbody tr {
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--primary);
 }
 
 .users-table tbody tr:hover {
@@ -264,6 +264,10 @@ header div {
 .feedback.error {
     background-color: rgba(231, 76, 60, 0.2);
     color: var(--error);
+}
+
+.feedback.info { background-color: rgba(52, 152, 219, 0.2); 
+    color: var(--info); 
 }
 
 dialog {

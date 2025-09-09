@@ -868,7 +868,7 @@ function showGroupTagTemplateDialog(templateId = null) {
     dialog.showModal();
 }
 
-function addTagToGroupEditor(name = '', color = '#3498db') {
+function addTagToGroupEditor(name = '', color = '#4cd4e6') {
     const editor = document.getElementById('group-tags-editor');
     editor.classList.remove('hidden');
 
@@ -2528,12 +2528,14 @@ function loadGroupMembers(group) {
         if (!user) return;
         
         const isAdmin = group.adminId === memberId;
+        const hue = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+        const avatarBgColor = `hsl(${hue}, 65%, 65%)`;
         
         const memberItem = document.createElement('div');
         memberItem.className = 'group-member-item';
         memberItem.innerHTML = `
             <div class="group-member-info">
-                <div class="member-avatar">
+                <div class="member-avatar" style="${user.avatar ? '' : `background-color: ${avatarBgColor};`}">
                     ${user.avatar ? `<img src="${user.avatar}" alt="${user.name}">` : user.name.charAt(0).toUpperCase()}
                 </div>
                 <div>

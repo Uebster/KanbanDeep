@@ -123,8 +123,7 @@ export function updateUser(userId, updatedData) {
         ...updatedData,
         // Mantém campos que não devem ser sobrescritos
         id: existingUser.id,
-        createdAt: existingUser.createdAt,
-        lastLogin: existingUser.lastLogin
+        createdAt: existingUser.createdAt
     };
     
     const success = saveUserProfile(updatedUser);

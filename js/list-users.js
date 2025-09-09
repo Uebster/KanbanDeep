@@ -7,20 +7,19 @@ import {
     validateMasterPassword,
     updateUser
 } from './auth.js';
-import { showFloatingMessage, initDraggableElements } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 
 // ===== ESTADO GLOBAL E FUNÇÕES =====
 let users = [];
 let selectedUserIdForAction = null;
+let currentLoginAction = 'login'; // 'login' ou 'edit'
 
 // A lógica de inicialização agora está dentro de uma função exportada
 export function initListUsersPage() {
     applyTheme();
     loadAndRenderUsers();
-    setupEventListeners();
-
-        setupEventListeners();
-        initDraggableElements();
+    setupEventListeners(); // Chamada única
+    initDraggableElements();
 }
 
 // O restante do arquivo continua igual, com as funções sendo chamadas pela initListUsersPage
@@ -47,26 +46,19 @@ function setupEventListeners() {
     document.getElementById('login-submit').addEventListener('click', handleLogin);
     document.getElementById('login-cancel').addEventListener('click', () => loginDialog.close());
     loginDialog.addEventListener('close', () => document.getElementById('login-password').value = '');
-
-    const confirmDialog = document.getElementById('confirm-dialog');
-    document.getElementById('confirm-ok').addEventListener('click', handleConfirmAction);
-    document.getElementById('confirm-cancel').addEventListener('click', () => confirmDialog.close());
-
+    
     document.getElementById('btn-exit-app')?.addEventListener('click', () => {
-    if (confirm('Tem certeza que deseja fechar a aplicação?')) {
-        window.close();
-    }
-});
-
-    document.getElementById('reset-database-btn')?.addEventListener('click', () => {
-    if (confirm('TEM CERTEZA? Isso vai apagar TODOS os usuários e quadros. Esta ação não pode ser desfeita.')) {
-        if (confirm('CONFIRMAÇÃO FINAL: Apagar tudo?')) {
-            localStorage.clear();
-            alert('Banco de dados zerado. A página será recarregada.');
-            window.location.reload();
-        }
-    }
-});
+        showConfirmationDialog(
+            'Tem certeza que deseja fechar a aplicação?',
+            (dialog) => { // onConfirm
+                showDialogMessage(dialog, 'Fechando...', 'success');
+                setTimeout(() => window.close(), 1000);
+                return true;
+            },
+            null, // Usa o comportamento padrão para cancelar
+            'Sim, Sair'
+        );
+    });
 }
 
 function renderUsersTable() {
@@ -83,9 +75,11 @@ function renderUsersTable() {
     users.forEach(user => {
         const tr = document.createElement('tr');
         tr.dataset.userId = user.id;
+        const hue = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+        const avatarBgColor = `hsl(${hue}, 65%, 65%)`;
         tr.innerHTML = `
             <td>
-                <div class="avatar">
+                <div class="avatar" style="${user.avatar ? '' : `background-color: ${avatarBgColor};`}">
                     ${user.avatar ? `<img src="${user.avatar}" alt="Avatar de ${user.name}">` : user.name.charAt(0).toUpperCase()}
                 </div>
             </td>
@@ -93,20 +87,27 @@ function renderUsersTable() {
             <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Nunca'}</td>
             <td class="actions">
                 <button class="btn btn-primary btn-login">🔑 Login</button>
-                <button class="btn btn-edit">✏️ Editar</button>
-                <button class="btn btn-delete">🗑️ Excluir</button>
+                <button class="btn btn-secondary btn-edit">✏️ Editar</button>
+                <button class="btn btn-danger btn-delete">🗑️ Excluir</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 
     tbody.querySelectorAll('.btn-login').forEach(btn => btn.addEventListener('click', (e) => openLoginDialog(e.target.closest('tr').dataset.userId)));
-    tbody.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', (e) => editUser(e.target.closest('tr').dataset.userId)));
+    tbody.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', (e) => openEditDialog(e.target.closest('tr').dataset.userId)));
     tbody.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', (e) => openDeleteConfirmDialog(e.target.closest('tr').dataset.userId)));
 }
 
 function openLoginDialog(userId) {
     selectedUserIdForAction = userId;
+    currentLoginAction = 'login';
+    document.getElementById('login-dialog').showModal();
+}
+
+function openEditDialog(userId) {
+    selectedUserIdForAction = userId;
+    currentLoginAction = 'edit';
     document.getElementById('login-dialog').showModal();
 }
 
@@ -139,7 +140,11 @@ function handleLogin() {
             // Reabilita os botões para a próxima vez
             loginDialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
             
-            window.location.href = 'kanban.html'; 
+            if (currentLoginAction === 'edit') {
+                window.location.href = 'profile.html';
+            } else {
+                window.location.href = 'kanban.html';
+            }
         }, 1500); // Espera 1.5s
 
     } else {
@@ -150,101 +155,74 @@ function handleLogin() {
     }
 }
 
-function editUser(userId) {
-    window.location.href = `profile.html?userId=${userId}`;
-}
-
 function openDeleteConfirmDialog(userId) {
-    selectedUserIdForAction = userId;
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
-    const confirmDialog = document.getElementById('confirm-dialog');
-    document.getElementById('confirm-title').textContent = 'Excluir Usuário';
-    document.getElementById('confirm-message').textContent = `Para excluir "${user.name}", por favor, digite a senha do usuário ou a senha mestra.`;
-    
-    // --- INÍCIO DA CORREÇÃO ---
-    let passwordInputContainer = confirmDialog.querySelector('#confirm-password-container');
-    if (!passwordInputContainer) {
-        // 1. Cria a div container com a classe correta
-        passwordInputContainer = document.createElement('div');
-        passwordInputContainer.id = 'confirm-password-container';
-        passwordInputContainer.className = 'form-group'; // A div tem a classe .form-group
-        passwordInputContainer.style.marginTop = '15px';
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Excluir Usuário</h3>
+        <p>Para excluir "${user.name}", por favor, digite a senha do usuário ou a senha mestra.</p>
+        <div class="form-group" style="margin-top: 15px;">
+            <input type="password" id="dynamic-confirm-password" placeholder="Digite a senha para confirmar" style="width: 100%;" autocomplete="current-password">
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary">Cancelar</button>
+            <button class="btn btn-danger">Excluir Permanentemente</button>
+        </div>
+    `;
 
-        // 2. Cria o input de senha (sem classes especiais)
-        const passwordInput = document.createElement('input');
-        passwordInput.type = 'password';
-        passwordInput.id = 'confirm-password-input';
-        passwordInput.placeholder = 'Digite a senha para confirmar';
+    document.body.appendChild(dialog);
+    initDraggableElements(); // Garante que o novo diálogo seja arrastável
 
-        // 3. Coloca o input dentro da div
-        passwordInputContainer.appendChild(passwordInput);
+    const passwordInput = dialog.querySelector('#dynamic-confirm-password');
+    const confirmBtn = dialog.querySelector('.btn-danger');
+    const cancelBtn = dialog.querySelector('.btn-secondary');
 
-        // 4. Adiciona a div completa ao diálogo
-        document.getElementById('confirm-message').after(passwordInputContainer);
-    }
-    
-    // Limpa o valor do input ao abrir o diálogo
-    const passwordInput = passwordInputContainer.querySelector('#confirm-password-input');
-    if(passwordInput) passwordInput.value = '';
-    // --- FIM DA CORREÇÃO ---
-    
-    confirmDialog.showModal();
-}
+    const closeDialog = () => {
+        dialog.close();
+        dialog.remove();
+    };
 
-function handleConfirmAction() {
-    const confirmDialog = document.getElementById('confirm-dialog');
-    const passwordInput = document.getElementById('confirm-password-input');
-    const password = passwordInput.value;
-    const user = users.find(u => u.id === selectedUserIdForAction);
+    cancelBtn.addEventListener('click', () => {
+        showDialogMessage(dialog, 'Operação cancelada.', 'info');
+        setTimeout(closeDialog, 1500);
+    });
 
-    if (!user) {
-        showDialogMessage(confirmDialog, 'Usuário não encontrado.', 'error');
-        setTimeout(() => confirmDialog.close(), 2000);
-        return;
-    }
+    const handleConfirm = () => {
+        const password = passwordInput.value;
+        if (!password) {
+            showDialogMessage(dialog, 'A senha é obrigatória para confirmar.', 'error');
+            return;
+        }
 
-    if (user.password === password || validateMasterPassword(password)) {
-        // --- SUCESSO NA EXCLUSÃO ---
-        deleteUser(user.id);
-        
-        // 1. Mostra a mensagem de sucesso DENTRO do diálogo
-        showDialogMessage(confirmDialog, `Usuário "${user.name}" excluído.`, 'success');
+        if (user.password === password || validateMasterPassword(password)) {
+            deleteUser(user.id);
+            showDialogMessage(dialog, `Usuário "${user.name}" excluído.`, 'success');
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            setTimeout(() => {
+                closeDialog();
+                loadAndRenderUsers();
+            }, 1500);
+        } else {
+            showDialogMessage(dialog, 'Senha incorreta. Tente novamente.', 'error');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    };
 
-        // 2. Desabilita os botões
-        confirmDialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
+    confirmBtn.addEventListener('click', handleConfirm);
+    passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleConfirm();
+        }
+    });
 
-        // 3. Após o atraso, fecha o diálogo e atualiza a tabela
-        setTimeout(() => {
-            loadAndRenderUsers(); // Atualiza a tabela na página
-            confirmDialog.close();
-            // Reabilita os botões
-            confirmDialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
-        }, 1500);
-
-    } else {
-        // --- ERRO DE SENHA ---
-        showDialogMessage(confirmDialog, 'Senha incorreta. Tente novamente.', 'error');
-        passwordInput.value = '';
-        passwordInput.focus();
-    }
-}
-
-/**
- * Exibe uma mensagem dentro de um diálogo específico.
- * @param {HTMLElement} dialog O elemento do diálogo.
- * @param {string} message A mensagem a ser exibida.
- * @param {string} type 'error' ou 'success'.
- */
-function showDialogMessage(dialog, message, type) {
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (!feedbackEl) return;
-    feedbackEl.textContent = message;
-    feedbackEl.className = `feedback ${type} show`;
-    setTimeout(() => {
-        feedbackEl.classList.remove('show');
-    }, 4000);
+    dialog.showModal();
 }
 
 function showFeedback(message, type = 'info') {
