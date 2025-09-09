@@ -777,6 +777,7 @@ function showBoardDialog(boardId = null) {
     };
 
     document.getElementById('board-title-input').value = board ? board.title : '';
+    document.getElementById('board-description-input').value = board ? board.description || '' : '';
     document.getElementById('board-visibility').value = board ? board.visibility : 'private';
 
     const userTemplates = getUserBoardTemplates(currentUser.id);
@@ -818,6 +819,7 @@ function handleSaveBoard() {
         (confirmationDialog) => {
             saveState(); // Salva o estado para o Desfazer
             const boardId = dialog.dataset.editingId;
+            const description = document.getElementById('board-description-input').value.trim();
             const icon = document.getElementById('board-icon-input').value;
             let savedBoard;
 
@@ -825,6 +827,7 @@ function handleSaveBoard() {
                 const boardData = getBoard(boardId);
                 if (!boardData) return false;
                 boardData.title = title;
+                boardData.description = description;
                 boardData.icon = icon;
                 boardData.visibility = document.getElementById('board-visibility').value;
                 savedBoard = saveBoard(boardData);
@@ -833,7 +836,7 @@ function handleSaveBoard() {
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
                 if (selectedTemplate && !title) title = `${selectedTemplate.name} (Cópia)`;
                 const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) : [];
-                const newBoardData = { title, icon: selectedTemplate ? selectedTemplate.icon : icon, ownerId: currentUser.id, visibility: document.getElementById('board-visibility').value, columnIds: newColumns.map(c => c.id) };
+                const newBoardData = { title, description, icon: selectedTemplate ? selectedTemplate.icon : icon, ownerId: currentUser.id, visibility: document.getElementById('board-visibility').value, columnIds: newColumns.map(c => c.id) };
                 savedBoard = saveBoard(newBoardData);
             }
 

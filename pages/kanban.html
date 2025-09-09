@@ -78,16 +78,20 @@
     <!-- Diálogos (Modais) - Estrutura mantida -->
     <dialog id="board-dialog" class="draggable">
     <h3 class="drag-handle" id="board-dialog-title">Configurar Quadro</h3>
-        <div class="form-group">
-                <div class="form-group">
+    <div class="form-group">
         <label for="board-template-select">Usar um Template (Opcional):</label>
         <select id="board-template-select">
             <!-- Preenchido pelo JS -->
         </select>
     </div>
-            <label for="board-title-input">Título:</label>
-            <input type="text" id="board-title-input">
-        </div>
+    <div class="form-group">
+        <label for="board-title-input">Título:</label>
+        <input type="text" id="board-title-input">
+    </div>
+    <div class="form-group">
+        <label for="board-description-input">Descrição (Opcional):</label>
+        <textarea id="board-description-input" rows="2" placeholder="Adicione uma breve descrição para este quadro..."></textarea>
+    </div>
         <!-- Bloco de Ícone Adicionado -->
         <div class="form-group">
             <label for="board-icon-input">Ícone:</label>

@@ -14,7 +14,9 @@ import {
   getUserProfile,      // <-- ADICIONE ESTA
   saveUserProfile,     // <-- ADICIONE ESTA
   getSystemBoardTemplates,
-  getSystemTagTemplates
+  getSystemTagTemplates,
+  getFullBoardData,
+  getCard
 } from './storage.js';
 import { 
   showFloatingMessage, 
@@ -56,25 +58,6 @@ export function initGroupsPage() {
     const selectedGroupId = localStorage.getItem('selectedGroupId');
     const openStatistics = localStorage.getItem('openStatistics');
     
-    if (selectedGroupId && openStatistics === 'true') {
-        // Limpar os valores do localStorage
-        localStorage.removeItem('selectedGroupId');
-        localStorage.removeItem('openStatistics');
-        
-        // Encontrar o grupo e mostrar estatísticas
-        currentGroup = groups.find(g => g.id === selectedGroupId);
-        if (currentGroup) {
-            // Mudar para a aba de estatísticas
-            switchTab('statistics');
-            
-            // Carregar as estatísticas do grupo
-            loadGroupStatistics(currentGroup.id);
-            
-            // Atualizar o nome do grupo nas estatísticas
-            document.getElementById('statistics-group-name').textContent = currentGroup.name;
-        }
-    }
-    
     // VERIFICAÇÃO PARA ABRIR A ABA DE CRIAÇÃO DE GRUPO
     const openCreateGroup = localStorage.getItem('openCreateGroup');
     if (openCreateGroup === 'true') {
@@ -94,6 +77,15 @@ export function initGroupsPage() {
     setupTabs();
     loadServers();
     initDraggableElements();
+
+    // Lógica movida para o final para garantir que os grupos já foram carregados
+    if (selectedGroupId && openStatistics === 'true') {
+        localStorage.removeItem('selectedGroupId');
+        localStorage.removeItem('openStatistics');
+        const groupSelect = document.getElementById('stats-group-select');
+        if(groupSelect) groupSelect.value = selectedGroupId;
+        switchTab('statistics');
+    }
 }
 
 /**
@@ -169,7 +161,7 @@ function setupEventListeners() {
     
     // --- ABA "CRIAR GRUPO" ---
     document.getElementById('create-group-form')?.addEventListener('submit', createGroup);
-    document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardDialog);
+    document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
     document.getElementById('btn-cancel-group')?.addEventListener('click', cancelGroupCreation);
 
     
@@ -364,7 +356,10 @@ function switchTab(tabId) {
     } else if (tabId === 'group-templates') {
         loadGroupTemplates();
     } else if (tabId === 'statistics') {
-        loadStatistics();
+        const groupSelect = document.getElementById('stats-group-select');
+        populateGroupSelectorForStats(groupSelect);
+        const selectedGroupId = groupSelect.value;
+        if (selectedGroupId) loadAndRenderStatistics(selectedGroupId);
     }
 }
 
@@ -482,14 +477,7 @@ function addBoardToGroup(name, templateId) {
     let templateName = "";
     if (templateId) {
         const systemTemplate = getSystemBoardTemplates().find(t => t.id === templateId);
-        if (systemTemplate) {
-            templateName = systemTemplate.name;
-        } else {
-            const groupTemplate = getGroupBoardTemplates(currentUser.id).find(t => t.id === templateId);
-            if (groupTemplate) {
-                templateName = groupTemplate.name;
-            }
-        }
+        if (systemTemplate) templateName = systemTemplate.name;
     }
     
     const boardElement = document.createElement('div');
@@ -510,6 +498,65 @@ function addBoardToGroup(name, templateId) {
     container.appendChild(boardElement);
 }
 
+function showAddBoardToGroupDialog() {
+    const dialog = document.getElementById('add-board-to-group-dialog');
+    const templateSelect = dialog.querySelector('#add-board-template-select');
+    const titleInput = dialog.querySelector('#add-board-title-input');
+    const descriptionInput = dialog.querySelector('#add-board-description-input');
+    const iconInput = dialog.querySelector('#add-board-icon-input');
+
+    // Limpa e popula o select de templates do sistema
+    templateSelect.innerHTML = '<option value="">Começar com um quadro vazio</option>';
+    const systemTemplates = getSystemBoardTemplates();
+    systemTemplates.forEach(t => {
+        templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+    });
+
+    // Reseta os campos
+    titleInput.value = '';
+    descriptionInput.value = '';
+    iconInput.value = '📋';
+
+    // Listener para o seletor de ícone
+    dialog.querySelector('#btn-choose-add-board-icon').onclick = () => {
+        showIconPickerDialog(icon => iconInput.value = icon);
+    };
+
+    // Listener para o botão de cancelar
+    dialog.querySelector('#cancel-add-board-to-group-btn').onclick = () => dialog.close();
+
+    // Listener para o botão de confirmar
+    const confirmBtn = dialog.querySelector('#confirm-add-board-to-group-btn');
+    // Remove listener antigo para evitar duplicação
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', () => {
+        const boardName = titleInput.value.trim();
+        const selectedTemplateId = templateSelect.value;
+        const description = descriptionInput.value.trim();
+        const selectedTemplate = systemTemplates.find(t => t.id === selectedTemplateId);
+
+        // Se um template foi selecionado e o nome está vazio, usa o nome do template
+        const finalBoardName = boardName || (selectedTemplate ? selectedTemplate.name : '');
+
+        if (!finalBoardName) {
+            showDialogMessage(dialog, 'O nome do quadro é obrigatório.', 'error');
+            return;
+        }
+
+        // Adiciona o quadro à lista na interface
+        addBoardToGroup(finalBoardName, selectedTemplateId, description);
+
+        showDialogMessage(dialog, 'Quadro adicionado à lista de criação!', 'success');
+        setTimeout(() => {
+            dialog.close();
+        }, 1500);
+    });
+
+    dialog.showModal();
+}
+
 function loadTagTemplatesForGroup() {
     const templateSelect = document.getElementById('group-tag-template');
     if (!templateSelect) return;
@@ -522,20 +569,6 @@ function loadTagTemplatesForGroup() {
     defaultOption.value = '';
     defaultOption.textContent = 'Nenhum (começar do zero)';
     templateSelect.appendChild(defaultOption);
-
-    // --- NOVO: Carregar templates do próprio grupo ---
-    const groupTemplates = group.tagTemplates || [];
-    if (groupTemplates.length > 0) {
-        const optgroupGroup = document.createElement('optgroup');
-        optgroupGroup.label = 'Templates deste Grupo';
-        groupTemplates.forEach(template => {
-            const option = document.createElement('option');
-            option.value = template.id;
-            option.textContent = template.name;
-            optgroupGroup.appendChild(option);
-        });
-        tagTemplateSelect.appendChild(optgroupGroup);
-    }
 
     // Carregar templates do sistema
     const systemTemplates = getSystemTagTemplates();
@@ -1596,7 +1629,8 @@ function createGroup(e) {
         const boardName = item.querySelector('.board-info strong').textContent;
         const templateElement = item.querySelector('.template-badge');
         const template = templateElement ? templateElement.textContent.replace('Template: ', '') : '';
-        boards.push({ name: boardName, template: template });
+        const description = item.dataset.description || '';
+        boards.push({ name: boardName, template: template, description: description });
     });
     const membersSelect = document.getElementById('group-members');
     const selectedMembers = Array.from(membersSelect.selectedOptions).map(option => option.value);
@@ -2129,150 +2163,170 @@ function leaveGroup() {
 
 // ===== FUNÇÕES DE ESTATÍSTICAS E RELATÓRIOS =====
 
-function loadStatistics() {
-    if (!currentGroup) {
-        // Mostrar mensagem de placeholder se nenhum grupo estiver selecionado
-        document.querySelector('#statistics .placeholder-message').style.display = 'block';
-        document.querySelector('#statistics .stats-sections').style.display = 'none';
+let statusChartInstance = null; // Variável global para a instância do gráfico
+
+function populateGroupSelectorForStats(selectElement) {
+    if (!selectElement) return;
+    selectElement.innerHTML = '';
+
+    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+    if (adminGroups.length === 0) {
+        selectElement.innerHTML = '<option value="">Você não administra grupos</option>';
+        selectElement.disabled = true;
         return;
     }
-    
-    // Esconder mensagem de placeholder e mostrar estatísticas
-    document.querySelector('#statistics .placeholder-message').style.display = 'none';
-    document.querySelector('#statistics .stats-sections').style.display = 'block';
-    
-    // Carregar estatísticas do grupo atual
-    loadGroupStatistics(currentGroup.id);
+
+    selectElement.disabled = false;
+    adminGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.name;
+        selectElement.appendChild(option);
+    });
+
+    // Adiciona listeners para os filtros
+    selectElement.onchange = () => loadAndRenderStatistics(selectElement.value);
+    document.getElementById('time-filter').onchange = () => loadAndRenderStatistics(selectElement.value);
+    document.getElementById('chart-type').onchange = () => loadAndRenderStatistics(selectElement.value);
 }
 
-function loadGroupStatistics(groupId) {
-    // Simular dados de estatísticas
-    const statistics = {
-        daily: generateDailyStats(),
-        weekly: generateWeeklyStats(),
-        monthly: generateMonthlyStats()
-    };
-    
-    renderStatistics(statistics);
-}
-
-function generateDailyStats() {
-    return {
-        date: new Date().toLocaleDateString('pt-BR'),
-        completedCards: Math.floor(Math.random() * 20) + 5,
-        createdCards: Math.floor(Math.random() * 25) + 10,
-        meetings: Math.floor(Math.random() * 3) + 1,
-        participants: generateParticipantStats(5)
-    };
-}
-
-function generateWeeklyStats() {
-    return {
-        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
-        endDate: new Date().toLocaleDateString('pt-BR'),
-        completedCards: Math.floor(Math.random() * 100) + 50,
-        createdCards: Math.floor(Math.random() * 120) + 60,
-        meetings: Math.floor(Math.random() * 10) + 5,
-        participants: generateParticipantStats(8)
-    };
-}
-
-function generateMonthlyStats() {
-    return {
-        month: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-        completedCards: Math.floor(Math.random() * 400) + 200,
-        createdCards: Math.floor(Math.random() * 500) + 250,
-        meetings: Math.floor(Math.random() * 20) + 10,
-        participants: generateParticipantStats(12),
-        progress: generateProgressData()
-    };
-}
-
-function generateParticipantStats(count) {
-    const participants = [];
-    const users = getAllUsers();
-    
-    for (let i = 0; i < count && i < users.length; i++) {
-        participants.push({
-            id: users[i].id,
-            name: users[i].name,
-            completed: Math.floor(Math.random() * 20) + 5,
-            productivity: Math.floor(Math.random() * 100) + 1,
-            role: i === 0 ? 'Administrador' : 'Membro',
-            avatar: users[i].avatar || `https://ui-avatars.com/api/?name=${users[i].name}&background=random&size=32`
-        });
+function loadAndRenderStatistics(groupId) {
+    const group = getGroup(groupId);
+    if (!group) {
+        document.querySelector('.stats-sections').innerHTML = '<p class="no-templates">Grupo não encontrado.</p>';
+        return;
     }
-    
-    return participants;
+
+    const timeFilter = document.getElementById('time-filter').value;
+    const allCards = [];
+
+    (group.boardIds || []).forEach(boardId => {
+        const board = getFullBoardData(boardId);
+        if (board) {
+            board.columns.forEach(column => {
+                allCards.push(...column.cards);
+            });
+        }
+    });
+
+    // Filtrar cartões por data
+    const now = new Date();
+    const filteredCards = allCards.filter(card => {
+        if (timeFilter === 'all') return true;
+        if (!card.createdAt) return false; // Ignora cartões sem data de criação
+
+        const cardDate = new Date(card.createdAt);
+        const diffDays = (now - cardDate) / (1000 * 60 * 60 * 24);
+
+        if (timeFilter === 'today') return diffDays <= 1;
+        if (timeFilter === 'last7') return diffDays <= 7;
+        if (timeFilter === 'last30') return diffDays <= 30;
+        return false;
+    });
+
+    // Calcular estatísticas
+    const totalCards = filteredCards.length;
+    const completedCards = filteredCards.filter(c => c.isComplete).length;
+    const activeCards = totalCards - completedCards;
+
+    const tasksByMember = {};
+    group.memberIds.forEach(id => {
+        tasksByMember[id] = { completed: 0, total: 0 };
+    });
+
+    filteredCards.forEach(card => {
+        if (card.assignedTo && tasksByMember[card.assignedTo]) {
+            tasksByMember[card.assignedTo].total++;
+            if (card.isComplete) {
+                tasksByMember[card.assignedTo].completed++;
+            }
+        }
+    });
+
+    // Renderizar tudo
+    renderSummary(totalCards, completedCards, activeCards);
+    renderParticipantsTable(tasksByMember, group.memberIds);
+    renderStatusChart({ active: activeCards, completed: completedCards });
 }
 
-function generateProgressData() {
-    return {
-        todo: Math.floor(Math.random() * 30) + 10,
-        inProgress: Math.floor(Math.random() * 20) + 5,
-        inReview: Math.floor(Math.random() * 15) + 5,
-        completed: Math.floor(Math.random() * 50) + 20
-    };
-}
-
-function renderStatistics(statistics) {
+function renderSummary(total, completed, active) {
     // Atualizar estatísticas resumidas
-    document.getElementById('total-cards').textContent = 
-        statistics.daily.createdCards + statistics.weekly.createdCards + statistics.monthly.createdCards;
-    document.getElementById('completed-cards').textContent = 
-        statistics.daily.completedCards + statistics.weekly.completedCards + statistics.monthly.completedCards;
-    document.getElementById('active-cards').textContent = 
-        (statistics.daily.createdCards + statistics.weekly.createdCards + statistics.monthly.createdCards) - 
-        (statistics.daily.completedCards + statistics.weekly.completedCards + statistics.monthly.completedCards);
-    
-    // Renderizar tabela de participantes
-    renderParticipantsTable(statistics.monthly.participants);
-    
-    // Renderizar gráfico de status (placeholder)
-    renderStatusChart(statistics.monthly.progress);
+    document.getElementById('total-cards').textContent = total;
+    document.getElementById('completed-cards').textContent = completed;
+    document.getElementById('active-cards').textContent = active;
 }
 
-function renderParticipantsTable(participants) {
+function renderParticipantsTable(tasksByMember, memberIds) {
     const tableBody = document.getElementById('participants-table-body');
     tableBody.innerHTML = '';
     
-    participants.forEach(participant => {
+    memberIds.forEach(memberId => {
+        const user = allUsers.find(u => u.id === memberId);
+        if (!user) return;
+
+        const stats = tasksByMember[memberId];
+        const productivity = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${participant.name}</td>
-            <td>${participant.role}</td>
-            <td>${participant.completed}</td>
-            <td>${participant.productivity}%</td>
+            <td>${user.name}</td>
+            <td>Membro</td>
+            <td>${stats.completed}</td>
+            <td>${productivity}%</td>
         `;
         tableBody.appendChild(row);
     });
 }
 
-function renderStatusChart(progressData) {
-    // Placeholder para gráfico - em uma implementação real, usaria Chart.js ou similar
-    const chartContainer = document.getElementById('status-chart');
-    const legendContainer = document.getElementById('status-legend');
-    
-    chartContainer.innerHTML = '<p>Gráfico de status dos cartões será exibido aqui.</p>';
-    
-    legendContainer.innerHTML = `
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #e74c3c;"></div>
-            <div class="legend-label">A Fazer: ${progressData.todo}%</div>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #f39c12;"></div>
-            <div class="legend-label">Em Progresso: ${progressData.inProgress}%</div>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #3498db;"></div>
-            <div class="legend-label">Em Revisão: ${progressData.inReview}%</div>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #2ecc71;"></div>
-            <div class="legend-label">Concluído: ${progressData.completed}%</div>
-        </div>
-    `;
+function renderStatusChart(data) {
+    const ctx = document.getElementById('status-chart').getContext('2d');
+    const chartType = document.getElementById('chart-type').value;
+
+    if (statusChartInstance) {
+        statusChartInstance.destroy();
+    }
+
+    // Garante que o gráfico seja exibido mesmo se os dados estiverem zerados
+    const hasData = data.active > 0 || data.completed > 0;
+    const chartData = hasData ? [data.active, data.completed] : [1, 1]; // Usa dados placeholder se zerado
+    const chartColors = hasData 
+        ? ['rgba(243, 156, 18, 0.7)', 'rgba(46, 204, 113, 0.7)']
+        : ['rgba(128, 128, 128, 0.2)', 'rgba(128, 128, 128, 0.2)']; // Cinza se zerado
+
+    statusChartInstance = new Chart(ctx, {
+        type: chartType, // pie ou bar
+        data: {
+            labels: ['Ativos', 'Concluídos'],
+            datasets: [{
+                label: 'Status dos Cartões',
+                data: chartData,
+                backgroundColor: chartColors,
+                borderColor: [
+                    'rgba(243, 156, 18, 1)',
+                    'rgba(46, 204, 113, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: hasData ? 'Distribuição de Cartões por Status' : 'Nenhum cartão no período selecionado'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: hasData ? undefined : () => '' // Esconde tooltips se não houver dados
+                    }
+                }
+            }
+        }
+    });
 }
 
 // ===== FUNÇÕES DE UTILIDADE =====
