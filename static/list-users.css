@@ -13,7 +13,8 @@
       --success: #2ecc71;
       --error: #e74c3c;
       --warning: #f39c12;
-      --info: #3498db;
+      --info: #4cd4e6; /* Cor da logo */
+      --app-font-size: 14px;
 
       /* tipografia */
       --app-font-family: "Segoe UI", "Inter", sans-serif;
@@ -26,9 +27,7 @@
       box-sizing: border-box;
     }
 
-    html {
-      font-size: var(--app-font-size);
-    }
+    html { font-size: var(--app-font-size); }
 
     body {
       font-family: var(--app-font-family);
@@ -318,4 +317,3 @@ dialog h3 {
     color: var(--text);
     font-size: 1rem;
 }
-

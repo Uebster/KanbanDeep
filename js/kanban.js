@@ -4,7 +4,7 @@ import { getCurrentUser, updateUser } from './auth.js';
 import { 
     getUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
     getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard,
-    getAllUsers, getAllGroups, getSystemBoardTemplates, getUserBoardTemplates, 
+    getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates, 
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
@@ -16,6 +16,7 @@ let allUsers = [];
 let boards = [];
 let currentBoard = null;
 let draggedElement = null;
+let currentBoardFilter = 'personal'; // 'personal' ou 'group'
 let undoStack = [];
 let redoStack = [];
 let clipboard = null; // Para copiar/colar
@@ -85,7 +86,20 @@ async function loadData() {
     
     const userProfile = getUserProfile(currentUser.id);
     const userBoardIds = userProfile.boardIds || [];
-    boards = userBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
+    const personalBoards = userBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
+
+    // --- NOVA LÓGICA PARA CARREGAR QUADROS DE GRUPO ---
+    const allGroups = getAllGroups();
+    const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+    
+    const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
+    const groupBoards = groupBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
+
+    // Combina quadros pessoais e de grupo, evitando duplicatas
+    const allBoardMap = new Map();
+    personalBoards.forEach(b => allBoardMap.set(b.id, b));
+    groupBoards.forEach(b => allBoardMap.set(b.id, b));
+    boards = Array.from(allBoardMap.values());
 
     tagColorMap.clear();
     const systemTags = getSystemTagTemplates();
@@ -165,6 +179,11 @@ document.getElementById('exit-btn')?.addEventListener('click', confirmExit);
 
 // Adicione esta linha na função setupEventListeners do kanban.js
 document.getElementById('search-user-btn')?.addEventListener('click', showUserSearchDialog);
+
+    // --- NOVA LÓGICA PARA FILTRO DE QUADROS ---
+    document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => handleFilterChange(e.currentTarget.dataset.filter));
+    });
 }
 
 function showSearchDialog() {
@@ -448,6 +467,32 @@ function displayUserResults(users) {
     });
 }
 
+function handleFilterChange(filterType) {
+    if (currentBoardFilter === filterType) return; // Não faz nada se o filtro já está ativo
+
+    currentBoardFilter = filterType;
+
+    // Atualiza a classe 'active' nos botões
+    document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filterType);
+    });
+
+    // Renderiza o seletor com os quadros filtrados
+    renderBoardSelector();
+
+    // Após filtrar, seleciona e renderiza o primeiro quadro da nova lista
+    const selector = document.getElementById('board-select');
+    if (selector.options.length > 0) {
+        const firstBoardId = selector.options[0].value;
+        currentBoard = boards.find(b => b.id === firstBoardId);
+        localStorage.setItem(`currentBoardId_${currentUser.id}`, firstBoardId);
+    } else {
+        currentBoard = null; // Nenhum quadro na seleção
+    }
+    renderCurrentBoard();
+    saveState();
+}
+
 // ===== LÓGICA DE PREFERÊNCIAS - CÓDIGO CORRIGIDO =====
 
 document.getElementById('preferences-btn')?.addEventListener('click', showPreferencesDialog);
@@ -459,10 +504,23 @@ function renderBoardSelector() {
     const boardsDropdown = document.getElementById('boards-dropdown');
     
     if (!selector || !boardsDropdown) return;
-    
+
+    // --- NOVA LÓGICA DE FILTRAGEM ---
+    const filteredBoards = boards.filter(board => {
+        if (currentBoardFilter === 'personal') {
+            // Quadros pessoais são os que não têm groupId
+            return !board.groupId;
+        }
+        if (currentBoardFilter === 'group') {
+            // Quadros de grupo são os que têm groupId
+            return !!board.groupId;
+        }
+        return true; // Fallback
+    });
+
     selector.innerHTML = '';
     
-    if (boards.length === 0) {
+    if (filteredBoards.length === 0) {
         // Esconde o select e mostra mensagem
         selector.style.display = 'none';
         
@@ -475,7 +533,9 @@ function renderBoardSelector() {
         // Cria e adiciona mensagem
         const message = document.createElement('p');
         message.className = 'no-boards-message';
-        message.textContent = 'Nenhum quadro disponível';
+        message.textContent = currentBoardFilter === 'personal' 
+            ? 'Nenhum quadro pessoal.' 
+            : 'Nenhum quadro de grupo.';
         message.style.padding = '10px';
         message.style.color = 'var(--text-muted)';
         message.style.textAlign = 'center';
@@ -496,16 +556,51 @@ function renderBoardSelector() {
             existingMessage.remove();
         }
         
-        // Preenche o select com os quadros
-        boards.forEach(board => {
-            const option = document.createElement('option');
-            option.value = board.id;
-            option.textContent = board.title;
-            if (currentBoard && board.id === currentBoard.id) {
-                option.selected = true;
-            }
-            selector.appendChild(option);
-        });
+        // --- LÓGICA DE AGRUPAMENTO PARA QUADROS DE GRUPO ---
+        if (currentBoardFilter === 'group') {
+            const boardsByGroup = filteredBoards.reduce((acc, board) => {
+                const groupId = board.groupId;
+                if (!acc[groupId]) acc[groupId] = [];
+                acc[groupId].push(board);
+                return acc;
+            }, {});
+
+            const sortedGroupIds = Object.keys(boardsByGroup).sort((a, b) => {
+                const groupA = getGroup(a)?.name || '';
+                const groupB = getGroup(b)?.name || '';
+                return groupA.localeCompare(groupB);
+            });
+
+            sortedGroupIds.forEach(groupId => {
+                const group = getGroup(groupId);
+                if (group) {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = group.name;
+                    selector.appendChild(optgroup);
+
+                    boardsByGroup[groupId].forEach(board => {
+                        const option = document.createElement('option');
+                        option.value = board.id;
+                        option.textContent = board.title;
+                        if (currentBoard && board.id === currentBoard.id) {
+                            option.selected = true;
+                        }
+                        optgroup.appendChild(option);
+                    });
+                }
+            });
+        } else {
+            // Preenche o select com os quadros pessoais
+            filteredBoards.forEach(board => {
+                const option = document.createElement('option');
+                option.value = board.id;
+                option.textContent = board.title;
+                if (currentBoard && board.id === currentBoard.id) {
+                    option.selected = true;
+                }
+                selector.appendChild(option);
+            });
+        }
     }
 }
 
@@ -519,13 +614,22 @@ function renderCurrentBoard() {
     const titleElement = document.getElementById('kanban-title');
     const userPrefs = currentUser.preferences || {};
 
-    const iconHtml = userPrefs.showBoardIcon === false ? '' : `<span class="board-icon">${currentBoard.icon || '📋'}</span>`;
-    const titleHtml = userPrefs.showBoardTitle === false ? '' : `<span class="board-title-text">${currentBoard.title}</span>`;
+    let groupInfo = '';
+    if (currentBoard.groupId) {
+        const group = getGroup(currentBoard.groupId);
+        if (group) {
+            // O span ajudará na estilização
+            groupInfo = ` <span class="board-group-name">(${group.name})</span>`;
+        }
+    }
+
+
+    const iconHtml = userPrefs.showBoardIcon !== false ? `<span class="board-icon">${currentBoard.icon || '📋'}</span>` : '';
+    // Se showBoardTitle for falso, tanto o título quanto o nome do grupo são escondidos.
+    const titleHtml = userPrefs.showBoardTitle !== false ? `<span class="board-title-text">${currentBoard.title}${groupInfo}</span>` : '';
 
     titleElement.innerHTML = `${iconHtml}${titleHtml}`.trim();
-    // Se ambos estiverem escondidos, o título some. Se não, ele aparece.
-    titleElement.style.display = (userPrefs.showBoardIcon === false && userPrefs.showBoardTitle === false) ? 'none' : 'block';
-
+    titleElement.style.display = (userPrefs.showBoardIcon === false && userPrefs.showBoardTitle === false) ? 'none' : 'flex';    
     const columnsContainer = document.getElementById('columns-container');
     columnsContainer.innerHTML = ''; // Limpa o conteúdo anterior
 
@@ -759,6 +863,37 @@ function showBoardDialog(boardId = null) {
     // A linha que causava o erro agora vai funcionar:
     document.getElementById('board-dialog-title').textContent = board ? 'Editar Quadro' : 'Criar Novo Quadro';
     
+    const visibilitySelect = document.getElementById('board-visibility');
+    const groupContainer = document.getElementById('board-group-container');
+    const groupSelect = document.getElementById('board-group-select');
+
+    // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
+    const allGroups = getAllGroups();
+    const creatableInGroups = allGroups.filter(g => {
+        const isAdmin = g.adminId === currentUser.id;
+        const canCreate = g.permissions?.createBoards && g.memberIds.includes(currentUser.id);
+        return isAdmin || canCreate;
+    });
+
+    visibilitySelect.onchange = () => {
+        const selectedVisibility = visibilitySelect.value;
+        if (selectedVisibility === 'group') {
+            if (creatableInGroups.length === 0) {
+                showDialogMessage(dialog, 'Você não tem permissão para criar quadros em nenhum grupo.', 'error');
+                visibilitySelect.value = board ? board.visibility : 'private'; // Reverte
+                groupContainer.style.display = 'none';
+            } else {
+                groupSelect.innerHTML = '';
+                creatableInGroups.forEach(g => {
+                    groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+                });
+                groupContainer.style.display = 'block';
+            }
+        } else {
+            groupContainer.style.display = 'none';
+        }
+    };
+
     // Lógica do Ícone
     const iconInput = document.getElementById('board-icon-input');
     iconInput.value = board ? board.icon || '📋' : '📋';
@@ -779,7 +914,19 @@ function showBoardDialog(boardId = null) {
 
     document.getElementById('board-title-input').value = board ? board.title : '';
     document.getElementById('board-description-input').value = board ? board.description || '' : '';
-    document.getElementById('board-visibility').value = board ? board.visibility : 'private';
+    visibilitySelect.value = board ? board.visibility : 'private';
+
+    // Se estiver editando um quadro de grupo, mostra o seletor
+    if (board && board.visibility === 'group' && board.groupId) {
+        groupContainer.style.display = 'block';
+        groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || 'Grupo desconhecido'}</option>`;
+        groupSelect.disabled = true; // Não pode mudar o grupo de um quadro existente
+        visibilitySelect.disabled = true;
+    } else {
+        groupSelect.disabled = false;
+        visibilitySelect.disabled = false;
+        groupContainer.style.display = 'none'; // Esconde por padrão
+    }
 
     const userTemplates = getUserBoardTemplates(currentUser.id);
     const systemTemplates = getSystemBoardTemplates();
@@ -822,7 +969,8 @@ function handleSaveBoard() {
             const boardId = dialog.dataset.editingId;
             const description = document.getElementById('board-description-input').value.trim();
             const icon = document.getElementById('board-icon-input').value;
-            let savedBoard;
+            const visibility = document.getElementById('board-visibility').value;
+            let savedBoard = null;
 
             if (boardId && boardId !== 'null') {
                 const boardData = getBoard(boardId);
@@ -830,21 +978,59 @@ function handleSaveBoard() {
                 boardData.title = title;
                 boardData.description = description;
                 boardData.icon = icon;
-                boardData.visibility = document.getElementById('board-visibility').value;
+                // A visibilidade e o grupo não podem ser alterados na edição por esta UI.
                 savedBoard = saveBoard(boardData);
             } else { // Criando um novo quadro
                 const allTemplates = [...getUserBoardTemplates(currentUser.id), ...getSystemBoardTemplates()];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
                 if (selectedTemplate && !title) title = `${selectedTemplate.name} (Cópia)`;
                 const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) : [];
-                const newBoardData = { title, description, icon: selectedTemplate ? selectedTemplate.icon : icon, ownerId: currentUser.id, visibility: document.getElementById('board-visibility').value, columnIds: newColumns.map(c => c.id) };
+                const newBoardData = { 
+                    title, 
+                    description, 
+                    icon: selectedTemplate ? selectedTemplate.icon : icon, 
+                    ownerId: currentUser.id, 
+                    visibility: visibility, 
+                    columnIds: newColumns.map(c => c.id) 
+                };
+
+                // --- NOVA LÓGICA PARA GRUPO ---
+                if (visibility === 'group') {
+                    const groupId = document.getElementById('board-group-select').value;
+                    if (!groupId) {
+                        showDialogMessage(confirmationDialog, 'Selecione um grupo para o quadro.', 'error');
+                        return false; // Impede o fechamento do diálogo
+                    }
+                    newBoardData.groupId = groupId;
+                }
+                
                 savedBoard = saveBoard(newBoardData);
+
+                // --- ATUALIZA O GRUPO COM O NOVO QUADRO ---
+                if (savedBoard.groupId) {
+                    const group = getGroup(savedBoard.groupId);
+                    if (group) {
+                        if (!group.boardIds) group.boardIds = [];
+                        group.boardIds.push(savedBoard.id);
+                        saveGroup(group);
+                    }
+                }
             }
 
             if (savedBoard) {
-                showDialogMessage(confirmationDialog, 'Quadro salvo com sucesso!', 'success');
-                showSuccessAndRefresh(dialog, savedBoard.id);
-                return true; // Fecha o diálogo de confirmação
+              showDialogMessage(confirmationDialog, 'Quadro salvo com sucesso!', 'success');
+
+              // --- CORREÇÃO: Se um quadro de grupo foi criado, muda o filtro ---
+              // Verifica se é um quadro novo (boardId é nulo) e se tem um groupId
+              if ((!boardId || boardId === 'null') && savedBoard.groupId) {
+                  currentBoardFilter = 'group';
+                  // Atualiza a classe 'active' nos botões de filtro
+                  document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
+                      btn.classList.toggle('active', btn.dataset.filter === 'group');
+                  });
+              }
+              showSuccessAndRefresh(dialog, savedBoard.id);
+              return true; // Fecha o diálogo de confirmação
             }
             return false; // Mantém o diálogo de confirmação aberto em caso de erro
         }
@@ -914,31 +1100,36 @@ function handleSaveColumn() {
  * @param {string} boardToFocusId O ID do quadro que deve estar em foco após a atualização.
  */
 function showSuccessAndRefresh(dialog, boardToFocusId) {
-    dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
+  dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
 
-    setTimeout(() => {
-        // --- LÓGICA DE ATUALIZAÇÃO SEGURA ---
-        // 1. Recarrega a lista de quadros do zero para garantir que temos os dados mais recentes.
-        // Isso é crucial após criar um novo quadro.
+  setTimeout(() => {
+    // --- LÓGICA DE ATUALIZAÇÃO SEGURA (CORRIGIDA) ---
+    // Recarrega a lista de quadros (pessoais e de grupo) para garantir que temos os dados mais recentes.
+    const userProfile = getUserProfile(currentUser.id);
+    const personalBoards = (userProfile.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+    const allGroups = getAllGroups();
+    const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+    const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
+    const groupBoards = groupBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
+    const allBoardMap = new Map();
+    personalBoards.forEach(b => allBoardMap.set(b.id, b));
+    groupBoards.forEach(b => allBoardMap.set(b.id, b));
+    boards = Array.from(allBoardMap.values());
 
-        // Sincroniza TODOS os dados
-        const userProfile = getUserProfile(currentUser.id);
-        boards = (userProfile.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+    // Define o quadro atual como o que foi salvo/editado
+    currentBoard = boards.find(b => b.id === boardToFocusId) || boards[0];
+    if (currentBoard) {
+      localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard.id);
+    }
 
-        // Define o quadro atual como o que foi salvo/editado
-        currentBoard = boards.find(b => b.id === boardToFocusId) || boards[0];
-        if (currentBoard) {
-            localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard.id);
-        }
+    // Renderiza a tela com os dados frescos
+    renderBoardSelector();
+    renderCurrentBoard();
 
-        // Renderiza a tela com os dados frescos
-        renderBoardSelector();
-        renderCurrentBoard();
-
-        // Fecha o diálogo e reabilita os botões
-        dialog.close();
-        dialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
-    }, 1500);
+    // Fecha o diálogo e reabilita os botões
+    dialog.close();
+    dialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
+  }, 1500);
 }
 
 function showCardDialog(cardId = null, columnId) {
@@ -1964,15 +2155,16 @@ function applyFontFamily(fontFamily) {
 }
 
 function applyFontSize(size, isPreview = false) { // Parâmetro isPreview adicionado
-    let fontSize;
+    let fontSizeValue;
     switch (size) {
-        case 'small': fontSize = '11px'; break;
-        case 'large': fontSize = '19px'; break;
-        case 'x-large': fontSize = '23px'; break;
-        default: fontSize = '15px';
+        case 'small': fontSizeValue = '12px'; break;
+        case 'medium': fontSizeValue = '14px'; break;
+        case 'large': fontSizeValue = '16px'; break;
+        case 'x-large': fontSizeValue = '18px'; break;
+        default: fontSizeValue = '14px'; // Padrão para 'medium'
     }
     // Aplica ao documento inteiro
-    document.documentElement.style.fontSize = fontSize;
+    document.documentElement.style.fontSize = fontSizeValue;
     
     // Salva a preferência apenas se não for uma pré-visualização
     if (!isPreview) {

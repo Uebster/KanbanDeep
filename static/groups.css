@@ -14,6 +14,7 @@
     --warning: #f39c12;
     --info: #4cd4e6;
     --header-height: 60px;
+    --app-font-size: 14px;
 }
 
 body.light-mode {
@@ -24,7 +25,6 @@ body.light-mode {
     --text-muted: #666666;
     --border: #cccccc;
     --header: #d4d4d4;
-    --app-font-size: 14px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

@@ -15,8 +15,9 @@ import {
   saveUserProfile,     // <-- ADICIONE ESTA
   getSystemBoardTemplates,
   getSystemTagTemplates,
-  getFullBoardData,
-  getCard
+  saveBoard,
+  saveColumn,
+  getFullBoardData
 } from './storage.js';
 import { 
   showFloatingMessage, 
@@ -469,20 +470,23 @@ function loadBoardTemplatesForDialog(dialog) {
     }
 }
 
-function addBoardToGroup(name, templateId) {
+function addBoardToGroup(name, templateId, description) {
     const container = document.getElementById('group-boards-container');
     const boardId = 'board-' + Date.now();
     
     // Encontrar o template selecionado
     let templateName = "";
     if (templateId) {
-        const systemTemplate = getSystemBoardTemplates().find(t => t.id === templateId);
-        if (systemTemplate) templateName = systemTemplate.name;
+        const allTemplates = getSystemBoardTemplates();
+        const foundTemplate = allTemplates.find(t => t.id === templateId);
+        if (foundTemplate) templateName = foundTemplate.name;
     }
     
     const boardElement = document.createElement('div');
     boardElement.className = 'group-board-item';
     boardElement.dataset.id = boardId;
+    boardElement.dataset.templateId = templateId || '';
+    boardElement.dataset.description = description || '';
     boardElement.innerHTML = `
         <div class="board-info">
             <strong>${name}</strong>
@@ -1627,10 +1631,9 @@ function createGroup(e) {
     const boards = [];
     document.querySelectorAll('#group-boards-container .group-board-item').forEach(item => {
         const boardName = item.querySelector('.board-info strong').textContent;
-        const templateElement = item.querySelector('.template-badge');
-        const template = templateElement ? templateElement.textContent.replace('Template: ', '') : '';
-        const description = item.dataset.description || '';
-        boards.push({ name: boardName, template: template, description: description });
+        const templateId = item.dataset.templateId;
+        const description = item.dataset.description;
+        boards.push({ name: boardName, templateId, description });
     });
     const membersSelect = document.getElementById('group-members');
     const selectedMembers = Array.from(membersSelect.selectedOptions).map(option => option.value);
@@ -1667,7 +1670,7 @@ function createGroup(e) {
                 access: groupAccess,
                 tagTemplate: groupTagTemplate,
                 permissions: permissions,
-                boards: boards,
+                boardIds: [], // Começa vazio, será preenchido abaixo
                 memberIds: [currentUser.id], // Apenas o criador é adicionado inicialmente
                 adminId: currentUser.id,
                 createdAt: new Date().toISOString(),
@@ -1681,6 +1684,29 @@ function createGroup(e) {
             const savedGroup = saveGroup(newGroup);
 
             if (savedGroup) {
+                // Cria e vincula os quadros ao grupo recém-criado
+                const createdBoardIds = boards.map(boardInfo => {
+                    const selectedTemplate = getSystemBoardTemplates().find(t => t.id === boardInfo.templateId);
+                    const newColumns = selectedTemplate 
+                        ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) 
+                        : [];
+                    
+                    const newBoardData = {
+                        title: boardInfo.name,
+                        description: boardInfo.description,
+                        icon: selectedTemplate ? selectedTemplate.icon : '📋',
+                        ownerId: currentUser.id,
+                        visibility: 'group',
+                        groupId: savedGroup.id, // Vincula ao grupo
+                        columnIds: newColumns.map(c => c.id)
+                    };
+                    const savedBoard = saveBoard(newBoardData);
+                    return savedBoard.id;
+                });
+
+                savedGroup.boardIds = createdBoardIds;
+                saveGroup(savedGroup); // Salva o grupo novamente com os IDs dos quadros
+
                 // Enviar notificações para os membros selecionados
                 selectedMembers.forEach(memberId => {
                     sendGroupInvitation(savedGroup.id, memberId, currentUser);
@@ -2351,6 +2377,47 @@ function applyUserTheme() {
             document.body.classList.add('dark-mode');
         }
     }
+    // Aplica as preferências de fonte do usuário
+    applyUserFont();
+}
+
+function applyUserFont() {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.preferences) return;
+    
+    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
+    applyFontSize(currentUser.preferences.fontSize || 'medium');
+}
+
+function applyFontFamily(fontFamily) {
+    // Aplica a fonte a todos os elementos
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+        allElements[i].style.fontFamily = fontFamily;
+    }
+    
+    // Remove estilos anteriores de placeholder se existirem
+    const existingStyle = document.getElementById('universal-font-style');
+    if (existingStyle) {
+        existingStyle.remove();
+    }
+    
+    // Aplica a fonte também aos placeholders
+    const style = document.createElement('style');
+    style.id = 'universal-font-style';
+    style.textContent = `
+        ::placeholder { font-family: ${fontFamily} !important; }
+        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        input, textarea, select, button { font-family: ${fontFamily} !important; }
+    `;
+    document.head.appendChild(style);
+}
+
+function applyFontSize(size) {
+    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
+    const fontSizeValue = sizeMap[size] || '14px';
+    document.documentElement.style.fontSize = fontSizeValue;
 }
 
 function handleConfirmation() {

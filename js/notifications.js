@@ -288,7 +288,6 @@ function getNotificationIcon(type) {
         card_due_today: '📅',
         card_due_week: '📆',
         card_due_month: '🗓️',
-        card_assignment: '📌',
         message_user: '💬',
         message_group: '👥💬',
         meeting: '📅',
@@ -717,6 +716,44 @@ function applyUserTheme() {
             document.body.classList.add('dark-mode');
         }
     }
+    applyUserFont();
+}
+
+function applyUserFont() {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.preferences) return;
+    
+    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
+    applyFontSize(currentUser.preferences.fontSize || 'medium');
+}
+
+function applyFontFamily(fontFamily) {
+    // Aplica a fonte a todos os elementos
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+        allElements[i].style.fontFamily = fontFamily;
+    }
+    
+    // Remove estilos anteriores de placeholder se existirem
+    const existingStyle = document.getElementById('universal-font-style');
+    if (existingStyle) existingStyle.remove();
+    
+    // Aplica a fonte também aos placeholders
+    const style = document.createElement('style');
+    style.id = 'universal-font-style';
+    style.textContent = `
+        ::placeholder { font-family: ${fontFamily} !important; }
+        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        input, textarea, select, button { font-family: ${fontFamily} !important; }
+    `;
+    document.head.appendChild(style);
+}
+
+function applyFontSize(size) {
+    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
+    const fontSizeValue = sizeMap[size] || '14px';
+    document.documentElement.style.fontSize = fontSizeValue;
 }
 
 // Função para adicionar uma nova notificação
@@ -860,6 +897,26 @@ export function addMessageNotification(senderName, senderId, receiverId, message
     return notification;
 }
 
+export function addCardAssignmentNotification(assignerName, assigneeId, cardTitle, boardTitle) {
+    const notification = {
+        id: 'card-assign-' + Date.now() + '-' + assigneeId,
+        type: 'card_assignment',
+        title: 'Nova Tarefa Atribuída',
+        message: `${assignerName} atribuiu o cartão "${cardTitle}" a você no quadro "${boardTitle}".`,
+        sender: assignerName,
+        date: new Date().toISOString(),
+        read: false,
+        status: 'unread',
+        data: {
+            cardTitle: cardTitle,
+            boardTitle: boardTitle
+        }
+    };
+    
+    addNotificationToUser(assigneeId, notification);
+    return notification;
+}
+
 export function addCardDueNotification(cardTitle, boardName, cardId, dueDate) {
     const today = new Date();
     const due = new Date(dueDate);
@@ -904,24 +961,6 @@ export function addReportNotification(period) {
     addNotification('report', 'Relatório Disponibilizado', `Seu relatório ${periodNames[period]} está disponível`, {
         period: period
     });
-}
-
-export function addCardAssignmentNotification(assignerName, assigneeId, cardTitle, boardName) {
-    const notification = {
-        id: 'card-assign-' + Date.now() + '-' + assigneeId,
-        type: 'card_assignment',
-        title: 'Nova Tarefa Atribuída',
-        message: `${assignerName} atribuiu o cartão "${cardTitle}" a você no quadro "${boardName}".`,
-        sender: assignerName,
-        board: boardName,
-        date: new Date().toISOString(),
-        read: false,
-        status: 'unread',
-        actions: ['view']
-    };
-    
-    addNotificationToUser(assigneeId, notification);
-    return notification;
 }
 
 function handleConfirmation() {

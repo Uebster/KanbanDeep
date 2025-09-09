@@ -741,6 +741,34 @@ function applyUserTheme() {
             document.body.classList.add('dark-mode');
         }
     }
+    applyUserFont();
+}
+
+function applyUserFont() {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.preferences) return;
+    
+    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
+    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
+    document.documentElement.style.fontSize = sizeMap[currentUser.preferences.fontSize] || '14px';
+}
+
+function applyFontFamily(fontFamily) {
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+        allElements[i].style.fontFamily = fontFamily;
+    }
+    const existingStyle = document.getElementById('universal-font-style');
+    if (existingStyle) existingStyle.remove();
+    const style = document.createElement('style');
+    style.id = 'universal-font-style';
+    style.textContent = `
+        ::placeholder { font-family: ${fontFamily} !important; }
+        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        input, textarea, select, button { font-family: ${fontFamily} !important; }
+    `;
+    document.head.appendChild(style);
 }
 
 function loadAndRenderAllTemplates() {

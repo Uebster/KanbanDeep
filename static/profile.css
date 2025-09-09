@@ -188,6 +188,7 @@ dialog h3 {
       padding: 30px;
       width: 100%;
       max-width: 800px;
+      margin: 20px auto; /* Centraliza o cartão na página */
     }
 
     /* ===== FORMULÁRIO ===== */
