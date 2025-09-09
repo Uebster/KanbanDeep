@@ -19,7 +19,9 @@ import {
 import { 
   showFloatingMessage, 
   initDraggableElements,
-  updateUserAvatar
+  updateUserAvatar,
+  showConfirmationDialog,
+  showDialogMessage
 } from './ui-controls.js';
 import { 
     addGroupInvitationNotification,
@@ -115,6 +117,19 @@ export function initGroupsPage() {
     initDraggableElements();
 }
 
+/**
+ * Exibe uma mensagem de feedback dentro de um elemento de formulário (não um diálogo).
+ * @param {HTMLElement} formElement - O elemento do formulário que contém um .feedback.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} type - 'error', 'success' ou 'info'.
+ */
+function showFormFeedback(formElement, message, type) {
+    const feedbackEl = formElement.querySelector('.feedback');
+    if (!feedbackEl) return;
+    feedbackEl.textContent = message;
+    feedbackEl.className = `feedback ${type} show`;
+}
+
 function setupEditGroupDialog() {
     const editDialog = document.getElementById('edit-group-dialog');
     const form = document.getElementById('edit-group-form');
@@ -137,7 +152,7 @@ function setupEditGroupDialog() {
         showConfirmationDialog(
             'Tem certeza que deseja cancelar as alterações?',
             (confirmationDialog) => {
-                showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Alterações canceladas.', 'info');
+                showDialogMessage(confirmationDialog, 'Alterações canceladas.', 'info');
                 
                 setTimeout(() => {
                     confirmationDialog.close();
@@ -296,14 +311,15 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
     document.getElementById('btn-add-server')?.addEventListener('click', showAddServerDialog);
     document.getElementById('confirm-server-btn')?.addEventListener('click', createServer);
     document.getElementById('cancel-server-btn')?.addEventListener('click', () => {
-        document.getElementById('server-dialog').close();
+        const dialog = document.getElementById('server-dialog');
+        showDialogMessage(dialog, 'Operação cancelada.', 'info');
+        setTimeout(() => dialog.close(), 1500);
     });
     document.getElementById('confirm-add-server-btn')?.addEventListener('click', addServer);
     document.getElementById('cancel-add-server-btn')?.addEventListener('click', () => {
-        showDialogMessage(document.querySelector('#add-server-dialog .feedback'), 'Operação cancelada.', 'info');
-        setTimeout(() => {
-            document.getElementById('add-server-dialog').close();
-        }, 1500);
+        const dialog = document.getElementById('add-server-dialog');
+        showDialogMessage(dialog, 'Operação cancelada.', 'info');
+        setTimeout(() => dialog.close(), 1500);
     });
     document.getElementById('paste-server-btn')?.addEventListener('click', pasteServerUrl);
     document.getElementById('copy-server-url-btn')?.addEventListener('click', copyServerUrl);
@@ -666,15 +682,14 @@ function saveGroupBoardTemplate() {
     const templateId = dialog.dataset.editingId;
     const icon = document.getElementById('group-board-template-icon')?.value || '📋';
     const name = document.getElementById('group-board-template-name').value.trim();
-    const feedbackEl = dialog.querySelector('.feedback');
 
     if (!name) {
-        showDialogMessage(feedbackEl, 'O nome do template é obrigatório.', 'error');
+        showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
         return;
     }
 
     if (!isGroupBoardTemplateNameUnique(name, templateId)) {
-        showDialogMessage(feedbackEl, 'Já existe um template com este nome no grupo. Por favor, escolha outro nome.', 'error');
+        showDialogMessage(dialog, 'Já existe um template com este nome no grupo. Por favor, escolha outro nome.', 'error');
         return;
     }
 
@@ -692,7 +707,7 @@ function saveGroupBoardTemplate() {
     });
 
     if (columns.length === 0) {
-        showDialogMessage(feedbackEl, 'Adicione pelo menos uma coluna ao template.', 'error');
+        showDialogMessage(dialog, 'Adicione pelo menos uma coluna ao template.', 'error');
         return;
     }
     
@@ -727,7 +742,7 @@ function saveGroupBoardTemplate() {
                 const success = saveGroupBoardTemplates(currentUser.id, groupTemplates);
                 
                 if (success) {
-                    showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Template salvo com sucesso!', 'success');
+                    showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
                     setTimeout(() => {
                         confirmationDialog.close();
                         dialog.close();
@@ -740,7 +755,7 @@ function saveGroupBoardTemplate() {
                 return true;
             } catch (error) {
                 console.error('Erro ao salvar template:', error);
-                showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Não foi possível salvar o template.', 'error');
+                showDialogMessage(confirmationDialog, 'Não foi possível salvar o template.', 'error');
                 return false;
             }
         }
@@ -755,7 +770,7 @@ function deleteGroupBoardTemplate(templateId) {
             groupTemplates = groupTemplates.filter(t => t.id !== templateId);
             saveGroupBoardTemplates(currentUser.id, groupTemplates);
             loadGroupTemplates();
-            showDialogMessage(dialog.querySelector('.feedback'), 'Template excluído.', 'info');
+            showDialogMessage(dialog, 'Template excluído.', 'info');
             setTimeout(() => dialog.close(), 1500);
             return true;
         }
@@ -843,15 +858,14 @@ function saveGroupTagTemplate() {
     const templateId = dialog.dataset.editingId;
     const icon = document.getElementById('group-tag-template-icon')?.value || '🏷️';
     const name = document.getElementById('group-tag-template-name').value.trim();
-    const feedbackEl = dialog.querySelector('.feedback');
     
     if (!name) {
-        showDialogMessage(feedbackEl, 'O nome do conjunto é obrigatório.', 'error');
+        showDialogMessage(dialog, 'O nome do conjunto é obrigatório.', 'error');
         return;
     }
 
     if (!isGroupTagTemplateNameUnique(name, templateId)) {
-        showDialogMessage(feedbackEl, 'Já existe um conjunto com este nome no grupo. Por favor, escolha outro nome.', 'error');
+        showDialogMessage(dialog, 'Já existe um conjunto com este nome no grupo. Por favor, escolha outro nome.', 'error');
         return;
     }
 
@@ -869,7 +883,7 @@ function saveGroupTagTemplate() {
     });
 
     if (tags.length === 0) {
-        showDialogMessage(feedbackEl, 'Adicione pelo menos uma etiqueta ao conjunto.', 'error');
+        showDialogMessage(dialog, 'Adicione pelo menos uma etiqueta ao conjunto.', 'error');
         return;
     }
 
@@ -904,7 +918,7 @@ function saveGroupTagTemplate() {
                 const success = saveGroupTagTemplates(currentUser.id, groupTemplates);
                 
                 if (success) {
-                    showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Conjunto salvo com sucesso!', 'success');
+                    showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
                     setTimeout(() => {
                         confirmationDialog.close();
                         dialog.close();
@@ -917,7 +931,7 @@ function saveGroupTagTemplate() {
                 return true;
             } catch (error) {
                 console.error('Erro ao salvar conjunto:', error);
-                showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Não foi possível salvar o conjunto.', 'error');
+                showDialogMessage(confirmationDialog, 'Não foi possível salvar o conjunto.', 'error');
                 return false;
             }
         }
@@ -932,7 +946,7 @@ function deleteGroupTagTemplate(templateId) {
             groupTemplates = groupTemplates.filter(t => t.id !== templateId);
             saveGroupTagTemplates(currentUser.id, groupTemplates);
             loadGroupTemplates();
-            showDialogMessage(dialog.querySelector('.feedback'), 'Conjunto de etiquetas excluído.', 'info');
+            showDialogMessage(dialog, 'Conjunto de etiquetas excluído.', 'info');
             setTimeout(() => dialog.close(), 1500);
             return true;
         }
@@ -1160,29 +1174,32 @@ function showCreateServerDialog() {
 function createServer() {
     const dialog = document.getElementById('server-dialog');
     const serverName = document.getElementById('server-name').value.trim();
-    const feedbackEl = dialog.querySelector('.feedback');
     
     if (!serverName) {
-        showDialogMessage(feedbackEl, 'O nome do servidor é obrigatório.', 'error');
+        showDialogMessage(dialog, 'O nome do servidor é obrigatório.', 'error');
         return;
     }
-    
-    const newServer = {
-        id: 'server-' + Date.now(),
-        name: serverName,
-        url: window.location.origin,
-        createdAt: new Date().toISOString()
-    };
-    
-    servers.push(newServer);
-    saveServers();
-    renderServers();
-    
-    showDialogMessage(feedbackEl, 'Servidor criado com sucesso!', 'success');
-    
-    setTimeout(() => {
-        dialog.close();
-    }, 1500);
+
+    showConfirmationDialog(
+        `Confirma a criação do servidor "${serverName}"?`,
+        (confirmDialog) => {
+            const newServer = {
+                id: 'server-' + Date.now(),
+                name: serverName,
+                url: window.location.origin,
+                createdAt: new Date().toISOString()
+            };
+            
+            servers.push(newServer);
+            saveServers();
+            renderServers();
+            
+            showDialogMessage(confirmDialog, 'Servidor criado com sucesso!', 'success');
+            setTimeout(() => dialog.close(), 1500); // Fecha o diálogo original
+            return true; // Fecha o diálogo de confirmação
+        }
+        // onCancel usará o comportamento padrão de ui-controls.js
+    );
 }
 
 function showAddServerDialog() {
@@ -1197,9 +1214,9 @@ function showAddServerDialog() {
 function pasteServerUrl() {
     navigator.clipboard.readText()
         .then(text => {
+            const dialog = document.getElementById('add-server-dialog');
             if (!text) {
-                const feedbackEl = document.querySelector('#add-server-dialog .feedback');
-                showDialogMessage(feedbackEl, 'A área de transferência está vazia.', 'error');
+                showDialogMessage(dialog, 'A área de transferência está vazia.', 'error');
                 return;
             }
             
@@ -1207,16 +1224,13 @@ function pasteServerUrl() {
             try {
                 new URL(text);
                 document.getElementById('server-url').value = text;
-                const feedbackEl = document.querySelector('#add-server-dialog .feedback');
-                showDialogMessage(feedbackEl, 'URL colada com sucesso!', 'success');
+                showDialogMessage(dialog, 'URL colada com sucesso!', 'success');
             } catch (e) {
-                const feedbackEl = document.querySelector('#add-server-dialog .feedback');
-                showDialogMessage(feedbackEl, 'O conteúdo da área de transferência não é uma URL válida.', 'error');
+                showDialogMessage(dialog, 'O conteúdo da área de transferência não é uma URL válida.', 'error');
             }
         })
         .catch(err => {
-            const feedbackEl = document.querySelector('#add-server-dialog .feedback');
-            showDialogMessage(feedbackEl, 'Não foi possível acessar a área de transferência.', 'error');
+            showDialogMessage(document.getElementById('add-server-dialog'), 'Não foi possível acessar a área de transferência.', 'error');
         });
 }
 
@@ -1224,18 +1238,17 @@ function copyServerUrl() {
     const urlInput = document.getElementById('server-share-url');
     urlInput.select();
     
+    const dialog = document.getElementById('share-server-dialog');
     try {
         navigator.clipboard.writeText(urlInput.value);
-        const feedbackEl = document.querySelector('#share-server-dialog .feedback');
-        showDialogMessage(feedbackEl, 'URL copiada com sucesso!', 'success');
+        showDialogMessage(dialog, 'URL copiada com sucesso!', 'success');
         
         // Fechar o diálogo após 1.5 segundos
         setTimeout(() => {
-            document.getElementById('share-server-dialog').close();
+            dialog.close();
         }, 1500);
     } catch (err) {
-        const feedbackEl = document.querySelector('#share-server-dialog .feedback');
-        showDialogMessage(feedbackEl, 'Falha ao copiar a URL.', 'error');
+        showDialogMessage(dialog, 'Falha ao copiar a URL.', 'error');
     }
 }
 
@@ -1251,12 +1264,11 @@ function confirmDeleteServer(serverId) {
             renderServers();
             
             // Mostra a mensagem de sucesso
-            showDialogMessage(dialog.querySelector('.feedback'), 'Servidor excluído com sucesso.', 'success');
+            showDialogMessage(dialog, 'Servidor excluído com sucesso.', 'success');
             
             // Fecha o diálogo automaticamente após 1.5 segundos
             setTimeout(() => {
                 dialog.close();
-                dialog.remove();
             }, 1500);
             
             // Retorna false para evitar fechamento automático pelo showConfirmationDialog
@@ -1283,10 +1295,9 @@ function shareServer(serverId) {
 async function addServer() {
     const dialog = document.getElementById('add-server-dialog');
     const serverUrl = document.getElementById('server-url').value.trim();
-    const feedbackEl = dialog.querySelector('.feedback');
     
     if (!serverUrl) {
-        showDialogMessage(feedbackEl, 'A URL do servidor é obrigatória.', 'error');
+        showDialogMessage(dialog, 'A URL do servidor é obrigatória.', 'error');
         return;
     }
     
@@ -1294,24 +1305,24 @@ async function addServer() {
     try {
         new URL(serverUrl);
     } catch (e) {
-        showDialogMessage(feedbackEl, 'URL inválida. Por favor, insira uma URL válida.', 'error');
+        showDialogMessage(dialog, 'URL inválida. Por favor, insira uma URL válida.', 'error');
         return;
     }
     
     // Verificar se já existe um servidor com esta URL
     const existingServer = servers.find(s => s.url === serverUrl);
     if (existingServer) {
-        showDialogMessage(feedbackEl, 'Este servidor já foi adicionado.', 'error');
+        showDialogMessage(dialog, 'Este servidor já foi adicionado.', 'error');
         return;
     }
     
     // Verificar conexão com o servidor
-    showDialogMessage(feedbackEl, 'Testando conexão com o servidor...', 'info');
+    showDialogMessage(dialog, 'Testando conexão com o servidor...', 'info');
     
     const connectionTest = await testServerConnection(serverUrl);
     
     if (!connectionTest.success) {
-        showDialogMessage(feedbackEl, `Falha na conexão: ${connectionTest.message}`, 'error');
+        showDialogMessage(dialog, `Falha na conexão: ${connectionTest.message}`, 'error');
         return;
     }
     
@@ -1332,7 +1343,7 @@ async function addServer() {
             saveServers();
             renderServers();
             
-            showDialogMessage(confirmDialog.querySelector('.feedback'), 'Servidor adicionado com sucesso!', 'success');
+            showDialogMessage(confirmDialog, 'Servidor adicionado com sucesso!', 'success');
             
             setTimeout(() => {
                 confirmDialog.close();
@@ -1485,7 +1496,7 @@ function createGroup(e) {
     const selectedMembers = Array.from(membersSelect.selectedOptions).map(option => option.value);
 
     if (!groupName) {
-        showDialogMessage(feedbackEl, 'O nome do grupo é obrigatório.', 'error');
+        showFormFeedback(form, 'O nome do grupo é obrigatório.', 'error');
         return;
     }
     
@@ -1494,7 +1505,7 @@ function createGroup(e) {
         (dialog) => {
             const existingGroup = groups.find(g => g.name.toLowerCase() === groupName.toLowerCase());
             if (existingGroup) {
-                showDialogMessage(dialog.querySelector('.feedback'), 'Já existe um grupo com este nome.', 'error');
+                showDialogMessage(dialog, 'Já existe um grupo com este nome.', 'error');
                 
                 setTimeout(() => {
                     dialog.close();
@@ -1506,7 +1517,7 @@ function createGroup(e) {
             
             const currentUser = getCurrentUser();
             if (!currentUser) {
-                showDialogMessage(dialog.querySelector('.feedback'), 'Erro: usuário não autenticado.', 'error');
+                showDialogMessage(dialog, 'Erro: usuário não autenticado.', 'error');
                 return false;
             }
             
@@ -1535,7 +1546,7 @@ function createGroup(e) {
                     sendGroupInvitation(savedGroup.id, memberId, currentUser);
                 });
 
-                showDialogMessage(dialog.querySelector('.feedback'), 'Grupo criado com sucesso! Convites enviados.', 'success');
+                showDialogMessage(dialog, 'Grupo criado com sucesso! Convites enviados.', 'success');
                 
                 // Atualizar a lista de grupos
                 loadGroups();
@@ -1549,7 +1560,7 @@ function createGroup(e) {
                 
                 return true;
             } else {
-                showDialogMessage(dialog.querySelector('.feedback'), 'Erro ao criar o grupo.', 'error');
+                showDialogMessage(dialog, 'Erro ao criar o grupo.', 'error');
                 return false;
             }
         }
@@ -1560,8 +1571,7 @@ function cancelGroupCreation() {
     showConfirmationDialog(
         'Tem certeza que deseja cancelar a criação do grupo? Todas as informações serão perdidas.',
         (dialog) => {
-            const feedbackEl = dialog.querySelector('.feedback');
-            showDialogMessage(feedbackEl, 'Alterações descartadas.', 'info');
+            showDialogMessage(dialog, 'Alterações descartadas.', 'info');
             
             setTimeout(() => {
                 dialog.close();
@@ -1663,7 +1673,6 @@ function saveGroupChanges(e) {
     showConfirmationDialog(
         'Deseja salvar todas as alterações no grupo?',
         (confirmationDialog) => {
-            // Atualizar grupo
             currentGroup.name = name;
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
@@ -1679,7 +1688,7 @@ function saveGroupChanges(e) {
             
             // Salvar alterações
             if (saveGroup(currentGroup)) {
-                showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Grupo atualizado com sucesso! Notificações enviadas.', 'success');
+                showDialogMessage(confirmationDialog, 'Grupo atualizado com sucesso! Notificações enviadas.', 'success');
                 
                 // Atualizar exibição
                 renderGroups();
@@ -1692,7 +1701,7 @@ function saveGroupChanges(e) {
                 
                 return true;
             } else {
-                showDialogMessage(confirmationDialog.querySelector('.feedback'), 'Erro ao salvar alterações.', 'error');
+                showDialogMessage(confirmationDialog, 'Erro ao salvar alterações.', 'error');
                 return false;
             }
         }
@@ -1765,8 +1774,8 @@ function deleteGroup() {
                         });
                         
                         // Mostrar mensagem de sucesso DENTRO do diálogo de senha
-                        showDialogMessage(feedbackEl, 'Grupo excluído com sucesso!', 'success');
-                        loadGroups();
+                        showDialogMessage(passwordDialog, 'Grupo excluído com sucesso!', 'success');
+                            loadGroups();
                         
                         // Fechar o diálogo e mudar de aba após 1.5 segundos
                         setTimeout(() => {
@@ -1774,7 +1783,7 @@ function deleteGroup() {
                             switchTab('my-groups');
                         }, 1500);
                     } else {
-                        showDialogMessage(feedbackEl, 'Erro ao excluir o grupo.', 'error');
+                        showDialogMessage(passwordDialog, 'Erro ao excluir o grupo.', 'error');
                         confirmBtn.disabled = false;
                         cancelBtn.disabled = false;
                     }
@@ -1786,7 +1795,7 @@ function deleteGroup() {
             };
 
             cancelBtn.addEventListener('click', () => {
-                showDialogMessage(feedbackEl, 'Exclusão cancelada.', 'info');
+                showDialogMessage(passwordDialog, 'Exclusão cancelada.', 'info');
                 confirmBtn.disabled = true;
                 cancelBtn.disabled = true;
                 setTimeout(closePasswordDialog, 1500);
@@ -1845,7 +1854,7 @@ function promptForPassword() {
             if (password === currentUser.password || validateMasterPassword(password)) {
                 closeAndResolve(password);
             } else {
-                showDialogMessage(feedbackEl, 'Senha incorreta. Tente novamente.', 'error');
+                showDialogMessage(passwordDialog, 'Senha incorreta. Tente novamente.', 'error');
                 passwordInput.value = '';
                 passwordInput.focus();
             }
@@ -1927,7 +1936,7 @@ function leaveGroup() {
                         saveUserProfile(userProfile);
                     }
 
-                    showDialogMessage(feedbackEl, `Você saiu do grupo "${currentGroup.name}".`, 'success');
+                    showDialogMessage(passwordDialog, `Você saiu do grupo "${currentGroup.name}".`, 'success');
                     
                     setTimeout(() => {
                         passwordDialog.close();
@@ -1936,7 +1945,7 @@ function leaveGroup() {
                         switchTab('my-groups');
                     }, 1500);
                 } else {
-                    showDialogMessage(feedbackEl, 'Senha incorreta. Tente novamente.', 'error');
+                    showDialogMessage(passwordDialog, 'Senha incorreta. Tente novamente.', 'error');
                     passwordInput.value = '';
                     passwordInput.focus();
                 }
@@ -2189,91 +2198,6 @@ function saveNotification(notification) {
     
     return true;
 }
-function showConfirmationDialog(message, onConfirm) {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">Confirmação</h3>
-        <p>${message}</p>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button id="confirm-cancel-btn" class="btn btn-secondary">Não</button>
-            <button id="confirm-ok-btn" class="btn btn-primary">Sim</button>
-        </div>
-    `;
-    document.body.appendChild(dialog);
-    dialog.showModal();
-
-    const confirmBtn = dialog.querySelector('#confirm-ok-btn');
-    const cancelBtn = dialog.querySelector('#confirm-cancel-btn');
-    const feedbackEl = dialog.querySelector('.feedback');
-
-    // Função para fechar e remover o diálogo de forma segura
-    const closeDialog = () => {
-        dialog.close();
-        setTimeout(() => dialog.remove(), 300);
-    };
-
-    // Botão "Não" / Cancelar - mostra mensagem e depois fecha
-    cancelBtn.addEventListener('click', () => {
-        showDialogMessage(feedbackEl, 'Operação cancelada.', 'info');
-        
-        // Desabilita os botões após clicar em "Não"
-        confirmBtn.disabled = true;
-        cancelBtn.disabled = true;
-        
-        // Fecha o diálogo após 1.5 segundos
-        setTimeout(() => {
-            closeDialog();
-        }, 1500);
-    });
-
-    // Botão "Sim" / Confirmar
-    confirmBtn.addEventListener('click', () => {
-        // Desabilita os botões para prevenir múltiplos cliques
-        confirmBtn.disabled = true;
-        cancelBtn.disabled = true;
-        
-        // Executa a ação de confirmação
-        const result = onConfirm(dialog);
-        
-        // Se a ação retornar false, reabilita os botões
-        if (result === false) {
-            confirmBtn.disabled = false;
-            cancelBtn.disabled = false;
-        }
-        // Se retornar true, o diálogo será fechado pela função onConfirm
-    });
-}
-
-function showDialogMessage(element, message, type = 'info') {
-    if (!element) return;
-    
-    element.textContent = message;
-    element.className = `feedback ${type} show`;
-    
-    if (type !== 'error') {
-        setTimeout(() => {
-            element.classList.remove('show');
-        }, 3000);
-    }
-}
-
-// Adicionar event listeners para as abas de grupo
-document.querySelectorAll('.group-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        // Remover classe active de todas as abas e conteúdos
-        document.querySelectorAll('.group-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.group-content').forEach(c => c.classList.remove('active'));
-        
-        // Adicionar classe active à aba clicada
-        tab.classList.add('active');
-        
-        // Mostrar o conteúdo correspondente
-        const target = tab.getAttribute('data-target');
-        document.getElementById(target).classList.add('active');
-    });
-});
 
 function removeMemberFromGroup(group, memberId) {
     const users = getAllUsers();

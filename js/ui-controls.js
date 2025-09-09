@@ -306,8 +306,11 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
                 setTimeout(closeAndCleanup, 1500);
             }
         } else {
-            // Comportamento padrão: apenas fecha
-            closeAndCleanup();
+            // Comportamento padrão: mostra mensagem de cancelamento e fecha
+            showDialogMessage(dialog, 'Operação cancelada.', 'info');
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            setTimeout(closeAndCleanup, 1500);
         }
     });
 

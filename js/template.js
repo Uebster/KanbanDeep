@@ -3,14 +3,14 @@ import {
     getSystemBoardTemplates, 
     getUserBoardTemplates,
     saveUserBoardTemplates,
-    getSystemTagTemplates, 
+    getSystemTagTemplates,
     getUserTagTemplates,
     saveUserTagTemplates,
     saveBoard,
     saveColumn
 } from './storage.js';
 import { getCurrentUser, updateUser } from './auth.js';
-import { showFloatingMessage, updateUserAvatar } from './ui-controls.js';
+import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 
 let currentUser;
 let untitledColumnCounter = 1;
@@ -64,6 +64,7 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
         ).join('');
 
         const actionsHtml = isEditable ? `
+            <button class="btn btn-sm btn-primary btn-use-template">Usar</button>
             <button class="btn btn-sm btn-edit-board">Editar</button>
             <button class="btn btn-sm btn-danger btn-delete-board">Excluir</button>
         ` : `<button class="btn btn-sm btn-primary btn-use-template">Usar</button>`;
@@ -83,11 +84,10 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
         }
     });
     
+    gridElement.querySelectorAll('.btn-use-template').forEach(btn => btn.onclick = (e) => useBoardTemplate(e.target.closest('.template-card').dataset.id));
     if (isEditable) {
         gridElement.querySelectorAll('.btn-edit-board').forEach(btn => btn.onclick = (e) => showBoardTemplateDialog(e.target.closest('.template-card').dataset.id));
         gridElement.querySelectorAll('.btn-delete-board').forEach(btn => btn.onclick = (e) => deleteBoardTemplate(e.target.closest('.template-card').dataset.id));
-    } else {
-        gridElement.querySelectorAll('.btn-use-template').forEach(btn => btn.onclick = (e) => useBoardTemplate(e.target.closest('.template-card').dataset.id));
     }
 }
 
@@ -146,6 +146,7 @@ function renderTagTemplates(templates, gridElement, isEditable) {
         ).join('');
         
         const actionsHtml = isEditable ? `
+            <button class="btn btn-sm btn-primary btn-use-tag">Usar</button>
             <button class="btn btn-sm btn-edit-tag">Editar</button>
             <button class="btn btn-sm btn-danger btn-delete-tag">Excluir</button>
         ` : `<button class="btn btn-sm btn-primary btn-use-tag">Usar</button>`;
@@ -165,11 +166,10 @@ function renderTagTemplates(templates, gridElement, isEditable) {
         }
     });
 
+    gridElement.querySelectorAll('.btn-use-tag').forEach(btn => btn.onclick = (e) => useTagTemplate(e.target.closest('.template-card').dataset.id));
     if (isEditable) {
         gridElement.querySelectorAll('.btn-edit-tag').forEach(btn => btn.onclick = (e) => showTagTemplateDialog(e.target.closest('.template-card').dataset.id));
         gridElement.querySelectorAll('.btn-delete-tag').forEach(btn => btn.onclick = (e) => deleteTagTemplate(e.target.closest('.template-card').dataset.id));
-    } else {
-        gridElement.querySelectorAll('.btn-use-tag').forEach(btn => btn.onclick = (e) => useTagTemplate(e.target.closest('.template-card').dataset.id));
     }
 }
 
@@ -315,52 +315,39 @@ function saveBoardTemplate() {
     
     showConfirmationDialog(
         'Deseja salvar este template?',
-        async (confirmationDialog) => {
-            try {                
-                // Atualiza ou cria o template
-                let templatesToSave = getUserBoardTemplates(currentUser.id);
-                if (templateId) {
-                    const index = templatesToSave.findIndex(t => t.id === templateId);
-                    if (index !== -1) {
-                        templatesToSave[index] = { 
-                            ...templatesToSave[index], 
-                            icon,
-                            name, 
-                            description: document.getElementById('board-template-desc').value, 
-                            columns 
-                        };
-                    }
-                } else {
-                    const newTemplate = {
-                        id: 'user-board-' + Date.now(),
-                        name,
-                        icon,
-                        description: document.getElementById('board-template-desc').value,
-                        columns
+        (confirmationDialog) => {
+            let templatesToSave = getUserBoardTemplates(currentUser.id);
+            if (templateId) {
+                const index = templatesToSave.findIndex(t => t.id === templateId);
+                if (index !== -1) {
+                    templatesToSave[index] = { 
+                        ...templatesToSave[index], 
+                        icon, name, 
+                        description: document.getElementById('board-template-desc').value, 
+                        columns 
                     };
-                    templatesToSave.push(newTemplate);
                 }
+            } else {
+                const newTemplate = {
+                    id: 'user-board-' + Date.now(),
+                    name, icon,
+                    description: document.getElementById('board-template-desc').value,
+                    columns
+                };
+                templatesToSave.push(newTemplate);
+            }
 
-                // Salva no perfil do usuário
-                const success = saveUserBoardTemplates(currentUser.id, templatesToSave);
-                
-                if (success) {
-                    // Recarrega a interface
-                    loadAndRenderAllTemplates();
-                    
-                    showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
-                    setTimeout(() => {
-                        confirmationDialog.close();
-                        dialog.close();
-                    }, 1500);
-                } else {
-                    throw new Error('Falha ao salvar templates');
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('Erro ao salvar template:', error);
-                showDialogMessage(confirmationDialog, 'Não foi possível salvar o template.', 'error');
+            const success = saveUserBoardTemplates(currentUser.id, templatesToSave);
+
+            if (success) {
+                loadAndRenderAllTemplates();
+                showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
+                setTimeout(() => {
+                    dialog.close(); // Fecha o diálogo principal de edição
+                }, 1500);
+                return true; // Sinaliza para fechar o diálogo de confirmação
+            } else {
+                showDialogMessage(confirmationDialog, 'Erro ao salvar o template.', 'error');
                 return false;
             }
         }
@@ -490,52 +477,39 @@ function saveTagTemplate() {
 
     showConfirmationDialog(
         'Deseja salvar este conjunto de etiquetas?',
-        async (confirmationDialog) => {
-            try {                
-                // Atualiza ou cria o template
-                let templatesToSave = getUserTagTemplates(currentUser.id);
-                if (templateId) {
-                    const index = templatesToSave.findIndex(t => t.id === templateId);
-                    if (index !== -1) {
-                        templatesToSave[index] = { 
-                            ...templatesToSave[index], 
-                            icon,
-                            name, 
-                            description: document.getElementById('tag-template-desc').value, 
-                            tags 
-                        };
-                    }
-                } else {
-                    const newTemplate = {
-                        id: 'user-tag-' + Date.now(),
-                        name,
-                        icon,
-                        description: document.getElementById('tag-template-desc').value,
-                        tags
+        (confirmationDialog) => {
+            let templatesToSave = getUserTagTemplates(currentUser.id);
+            if (templateId) {
+                const index = templatesToSave.findIndex(t => t.id === templateId);
+                if (index !== -1) {
+                    templatesToSave[index] = { 
+                        ...templatesToSave[index], 
+                        icon, name, 
+                        description: document.getElementById('tag-template-desc').value, 
+                        tags 
                     };
-                    templatesToSave.push(newTemplate);
                 }
+            } else {
+                const newTemplate = {
+                    id: 'user-tag-' + Date.now(),
+                    name, icon,
+                    description: document.getElementById('tag-template-desc').value,
+                    tags
+                };
+                templatesToSave.push(newTemplate);
+            }
 
-                // Salva no perfil do usuário
-                const success = saveUserTagTemplates(currentUser.id, templatesToSave);
-                
-                if (success) {
-                    // Recarrega a interface
-                    loadAndRenderAllTemplates();
-                    
-                    showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
-                    setTimeout(() => {
-                        confirmationDialog.close();
-                        dialog.close();
-                    }, 1500);
-                } else {
-                    throw new Error('Falha ao salvar templates');
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('Erro ao salvar template:', error);
-                showDialogMessage(confirmationDialog, 'Não foi possível salvar o conjunto.', 'error');
+            const success = saveUserTagTemplates(currentUser.id, templatesToSave);
+
+            if (success) {
+                loadAndRenderAllTemplates();
+                showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
+                setTimeout(() => {
+                    dialog.close(); // Fecha o diálogo principal de edição
+                }, 1500);
+                return true; // Sinaliza para fechar o diálogo de confirmação
+            } else {
+                showDialogMessage(confirmationDialog, 'Erro ao salvar o conjunto.', 'error');
                 return false;
             }
         }
@@ -744,61 +718,6 @@ function showTemplateDetails(template, type) {
         dialog.close();
         setTimeout(() => dialog.remove(), 300);
     };
-}
-
-function showConfirmationDialog(message, onConfirm) {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">Confirmação</h3>
-        <p>${message}</p>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary">Não</button>
-            <button class="btn btn-primary">Sim</button>
-        </div>
-    `;
-    document.body.appendChild(dialog);
-    dialog.showModal();
-
-    const confirmBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
-    const feedbackEl = dialog.querySelector('.feedback');
-
-    const closeDialog = () => { 
-        dialog.close(); 
-        setTimeout(() => dialog.remove(), 300);
-    };
-    
-    cancelBtn.addEventListener('click', closeDialog);
-
-    confirmBtn.addEventListener('click', async () => {
-        confirmBtn.disabled = true;
-        cancelBtn.disabled = true;
-
-        const success = await onConfirm(dialog);
-
-        if (success) {
-            setTimeout(closeDialog, 1500);
-        } else {
-            confirmBtn.disabled = false;
-            cancelBtn.disabled = false;
-        }
-    });
-}
-
-function showDialogMessage(dialog, message, type) {
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (!feedbackEl) return;
-    
-    feedbackEl.textContent = message;
-    feedbackEl.className = `feedback ${type} show`;
-    
-    if (type !== 'error') {
-        setTimeout(() => {
-            feedbackEl.classList.remove('show');
-        }, 3000);
-    }
 }
 
 function applyUserTheme() {
