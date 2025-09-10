@@ -30,7 +30,8 @@ import {
     addGroupInvitationNotification,
     addGroupRemovalNotification,
     addMeetingNotification,
-    addMessageNotification
+    addMessageNotification,
+    addReportNotification
 } from './notifications.js';
 
 let currentUser;
@@ -1820,6 +1821,7 @@ function createGroup(e) {
                 access: groupAccess,
                 tagTemplate: groupTagTemplate,
                 permissions: permissions,
+                lastReportSent: null, // Inicializa o controle de relatório
                 reportSettings: reportSettings,
                 boardIds: [], // Começa vazio, será preenchido abaixo
                 memberIds: [currentUser.id], // Apenas o criador é adicionado inicialmente
@@ -2690,6 +2692,52 @@ function removeMemberFromGroup(group, memberId) {
             return true;
         }
     );
+}
+
+/**
+ * Verifica todos os grupos e envia relatórios automáticos se necessário.
+ * Esta função é exportada para ser chamada pelo main.js na inicialização.
+ */
+export function checkAndSendReports() {
+    const allGroups = getAllGroups();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
+
+    allGroups.forEach(group => {
+        const settings = group.reportSettings;
+        if (!settings || settings.frequency === 'none') {
+            return; // Pula se não houver relatórios configurados
+        }
+
+        const lastSent = group.lastReportSent ? new Date(group.lastReportSent) : null;
+
+        let shouldSend = false;
+
+        if (!lastSent) { // Se nunca foi enviado, envia o primeiro
+            shouldSend = true;
+        } else {
+            lastSent.setHours(0, 0, 0, 0);
+            const diffDays = (today - lastSent) / (1000 * 60 * 60 * 24);
+
+            if (settings.frequency === 'daily' && diffDays >= 1) {
+                shouldSend = true;
+            } else if (settings.frequency === 'weekly' && today.getDay() == settings.dayOfWeek && diffDays >= 7) {
+                shouldSend = true;
+            } else if (settings.frequency === 'monthly' && today.getDate() == settings.dayOfMonth && diffDays >= 28) {
+                shouldSend = true;
+            }
+        }
+
+        if (shouldSend) {
+            // Envia notificação para cada membro
+            group.memberIds.forEach(memberId => {
+                addReportNotification(memberId, settings.frequency, group.name);
+            });
+            // Atualiza a data do último envio e salva o grupo
+            group.lastReportSent = new Date().toISOString();
+            saveGroup(group);
+        }
+    });
 }
 
 function sendMessageToAllMembers() {

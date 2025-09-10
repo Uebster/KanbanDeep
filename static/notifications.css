@@ -194,6 +194,16 @@ body {
     color: var(--text);
 }
 
+.notification-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-danger {
+    background-color: var(--error);
+    color: white;
+}
+
 /* Lista de notificações */
 .notifications-list {
     display: flex;

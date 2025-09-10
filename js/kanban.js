@@ -4,11 +4,11 @@ import { getCurrentUser, updateUser } from './auth.js';
 import { 
     getUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
     getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard,
-    getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates, 
+    getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
-import { addCardAssignmentNotification } from './notifications.js';
+import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
 // ===== ESTADO GLOBAL DO MÓDULO =====
 let currentUser = null;
@@ -59,6 +59,7 @@ export async function initKanbanPage() {
     // 3. Configuração da UI e Eventos
     setupEventListeners();
     initDraggableElements();
+    checkAllCardDueDates(); // Verifica os cartões com vencimento próximo
 
     // 4. Renderização Inicial
     initUIControls();
@@ -540,13 +541,10 @@ function renderBoardSelector() {
         message.style.color = 'var(--text-muted)';
         message.style.textAlign = 'center';
         
-        // Insere a mensagem antes dos botões
-        const buttons = boardsDropdown.querySelectorAll('button');
-        if (buttons.length > 0) {
-            boardsDropdown.insertBefore(message, buttons[0]);
-        } else {
-            boardsDropdown.appendChild(message);
-        }
+        // CORREÇÃO: Insere a mensagem antes do elemento <select> (que está escondido).
+        // O seletor é um filho direto do dropdown, o que evita o erro "NotFoundError"
+        // que ocorria ao tentar inserir antes de um botão aninhado.
+        boardsDropdown.insertBefore(message, selector);
     } else {
         // Mostra o select e remove mensagem se existir
         selector.style.display = 'block';
@@ -1438,6 +1436,36 @@ function getDragAfterElement(container, coordinate, isHorizontal) {
             return closest;
         }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+/**
+ * Itera sobre todos os cartões do usuário e envia notificações de vencimento.
+ */
+function checkAllCardDueDates() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    boards.forEach(board => {
+        board.columns.forEach(column => {
+            column.cards.forEach(card => {
+                // Só notifica se o cartão tiver data, um responsável e não tiver sido notificado ainda
+                if (card.dueDate && card.assignedTo && !card.dueDateNotified) {
+                    const dueDate = new Date(card.dueDate);
+                    dueDate.setHours(0, 0, 0, 0);
+
+                    const diffTime = dueDate.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    // Notifica se estiver atrasado ou vencendo em até 2 dias
+                    if (diffDays <= 2) {
+                        addCardDueNotification(card.assignedTo, card.title, board.title, card.id, card.dueDate);
+                        card.dueDateNotified = true; // Marca como notificado
+                        saveCard(card); // Salva a alteração no cartão
+                    }
+                }
+            });
+        });
+    });
 }
 
 // --- LÓGICA DO MENU DE CONTEXTO (BOTÃO DIREITO) ---

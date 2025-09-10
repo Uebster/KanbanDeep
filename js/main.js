@@ -6,7 +6,7 @@ import { initKanbanPage } from './kanban.js';
 import { initListUsersPage } from './list-users.js';
 import { initCreateUserPage } from './create-user.js';
 import { initProfilePage } from './profile.js';
-import { initGroupsPage } from './groups.js';
+import { initGroupsPage, checkAndSendReports } from './groups.js';
 import { initNotificationsPage } from './notifications.js';
 import { initTemplatesPage } from './template.js';
 import { initPublicProfilePage } from './public-profile.js';
@@ -18,6 +18,7 @@ import { updateUserAvatar } from './ui-controls.js';
 function main() {
     initUIControls(); // <-- CHAMA A NOVA FUNÇÃO
     initDraggableElements();
+    checkAndSendReports(); // Verifica e envia relatórios agendados
 
     const path = window.location.pathname;
 

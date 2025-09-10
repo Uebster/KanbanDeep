@@ -5,7 +5,8 @@ import {
     getGroup,
     saveGroup,
     getUserProfile,
-    saveUserProfile
+    saveUserProfile,
+    addFriend
 } from './storage.js';
 import { getCurrentUser } from './auth.js';
 import { 
@@ -44,6 +45,7 @@ function setupEventListeners() {
     document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
     // Botão de marcar todas como lidas
     document.getElementById('markAllRead')?.addEventListener('click', markAllAsRead);
+    document.getElementById('deleteAllRead')?.addEventListener('click', deleteAllReadNotifications);
     
     // Filtro de notificações
     document.getElementById('notificationFilter')?.addEventListener('change', filterNotifications);
@@ -107,131 +109,24 @@ function loadNotifications() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
     
-    // Garante que 'notifications' seja sempre um array, mesmo que vazio.
     notifications = getNotifications(currentUser.id) || [];
 }
 
-function generateSampleNotifications() {
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const lastWeek = new Date(now);
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    
-    return [
-        {
-            id: 'notif-1',
-            type: 'friend_request',
-            title: 'Solicitação de Amizade',
-            message: 'Maria Silva quer ser sua amiga',
-            sender: 'user-maria',
-            date: now.toISOString(),
-            read: false,
-            status: 'pending'
-        },
-        {
-            id: 'notif-2',
-            type: 'friend_accepted',
-            title: 'Amizade Aceita',
-            message: 'João Santos aceitou sua solicitação de amizade',
-            sender: 'user-joao',
-            date: yesterday.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-3',
-            type: 'group_request',
-            title: 'Solicitação de Grupo',
-            message: 'Você foi convidado para o grupo "Projeto Alpha"',
-            group: 'group-alpha',
-            date: now.toISOString(),
-            read: false,
-            status: 'pending'
-        },
-        {
-            id: 'notif-4',
-            type: 'card_overdue',
-            title: 'Cartão Atrasado',
-            message: 'O cartão "Relatório Trimestral" está atrasado',
-            board: 'Trabalho',
-            card: 'card-123',
-            date: now.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-5',
-            type: 'card_due_today',
-            title: 'Cartão com Vencimento Hoje',
-            message: 'O cartão "Reunião de Equipe" vence hoje',
-            board: 'Trabalho',
-            card: 'card-456',
-            date: now.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-6',
-            type: 'card_mention',
-            title: 'Menção em Cartão',
-            message: 'Você foi mencionado no cartão "Planejamento de Sprint"',
-            board: 'Trabalho',
-            card: 'card-789',
-            sender: 'user-carlos',
-            date: yesterday.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-7',
-            type: 'message_user',
-            title: 'Mensagem de Usuário',
-            message: 'Ana Costa enviou uma mensagem para você',
-            sender: 'user-ana',
-            date: now.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-8',
-            type: 'message_group',
-            title: 'Mensagem de Grupo',
-            message: 'Nova mensagem no grupo "Projeto Beta"',
-            group: 'group-beta',
-            sender: 'user-pedro',
-            date: yesterday.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-9',
-            type: 'meeting',
-            title: 'Reunião Agendada',
-            message: 'Reunião de equipe marcada para amanhã às 14:00',
-            group: 'group-alpha',
-            meetingDate: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-            date: now.toISOString(),
-            read: false
-        },
-        {
-            id: 'notif-10',
-            type: 'report',
-            title: 'Relatório Semanal',
-            message: 'Seu relatório semanal está disponível',
-            period: 'week',
-            date: lastWeek.toISOString(),
-            read: true
-        }
-    ];
-}
-
 function renderNotifications() {
-    const notificationsList = document.querySelector('.notifications-list');
+    const notificationsList = document.querySelector('#all-notifications .notifications-list');
     if (!notificationsList) return;
     
     notificationsList.innerHTML = '';
     
-    if (notifications.length === 0) {
+    // Filtra para não mostrar solicitações pendentes na aba principal
+    const displayableNotifications = notifications.filter(n => n.status !== 'pending');
+
+    if (displayableNotifications.length === 0) {
         notificationsList.innerHTML = '<p class="no-notifications">Nenhuma notificação encontrada.</p>';
         return;
     }
     
-    const filteredNotifications = filterNotificationsByType(notifications, currentFilter);
+    const filteredNotifications = filterNotificationsByType(displayableNotifications, currentFilter);
     const timeFilteredNotifications = filterNotificationsByTime(filteredNotifications, currentTimeFilter);
     
     timeFilteredNotifications.forEach(notification => {
@@ -247,6 +142,7 @@ function createNotificationElement(notification) {
     
     const icon = getNotificationIcon(notification.type);
     const date = formatDate(notification.date);
+    const data = notification.data || {};
     
     notificationEl.innerHTML = `
         <div class="notification-icon">${icon}</div>
@@ -254,8 +150,8 @@ function createNotificationElement(notification) {
             <div class="notification-title">${notification.title}</div>
             <div class="notification-message">${notification.message}</div>
             <div class="notification-meta">
-                ${notification.board ? `<span>Quadro: ${notification.board}</span>` : ''}
-                ${notification.group ? `<span>Grupo: ${notification.group}</span>` : ''}
+                ${(notification.board || data.boardName) ? `<span>Quadro: ${notification.board || data.boardName}</span>` : ''}
+                ${(notification.group || data.groupName) ? `<span>Grupo: ${notification.group || data.groupName}</span>` : ''}
                 ${notification.sender ? `<span>De: ${notification.sender}</span>` : ''}
             </div>
         </div>
@@ -507,6 +403,34 @@ function markAllAsRead() {
     showFloatingMessage('Todas as notificações marcadas como lidas', 'success');
 }
 
+function deleteAllReadNotifications() {
+    const readNotifications = notifications.filter(n => n.read);
+    if (readNotifications.length === 0) {
+        showFloatingMessage('Não há notificações lidas para excluir.', 'info');
+        return;
+    }
+
+    showConfirmationDialog(
+        `Tem certeza que deseja excluir permanentemente ${readNotifications.length} notificações lidas? Esta ação não pode ser desfeita.`,
+        (dialog) => {
+            const currentUser = getCurrentUser();
+            if (!currentUser) return false;
+
+            // Filtra para manter apenas as não lidas
+            notifications = notifications.filter(n => !n.read);
+            
+            saveNotifications(currentUser.id, notifications);
+            renderNotifications();
+            updateNotificationBadge();
+
+            showDialogMessage(dialog, 'Notificações lidas foram excluídas.', 'success');
+            return true;
+        },
+        null, // onCancel
+        'Sim, Excluir'
+    );
+}
+
 function handleNotificationAction(e) {
     if (e.target.classList.contains('accept-btn')) {
         const notificationId = e.target.dataset.id;
@@ -539,31 +463,30 @@ function acceptNotification(notificationId) {
                 if (notification.type === 'friend_request') {
                     // Adicionar amizade bidirecional
                     await addFriend(currentUser.id, notification.senderId);
-                    showDialogMessage(dialog.querySelector('.feedback'), 'Solicitação de amizade aceita!', 'success');
+                    showDialogMessage(dialog, 'Solicitação de amizade aceita!', 'success');
                 } else if (notification.type === 'group_request') {
-                    // Adicionar usuário ao grupo
-                    const group = getGroup(notification.groupId);
-                    if (group) {
-                        if (!group.memberIds.includes(currentUser.id)) {
-                            group.memberIds.push(currentUser.id);
+                    // Adicionar o solicitante (não o admin) ao grupo
+                    const group = getGroup(notification.data.groupId);
+                    const userToAdd = getUserProfile(notification.data.userId);
+
+                    if (group && userToAdd) {
+                        if (!group.memberIds.includes(userToAdd.id)) {
+                            group.memberIds.push(userToAdd.id);
                             saveGroup(group);
                             
-                            // Adicionar grupo ao perfil do usuário
-                            const userProfile = getUserProfile(currentUser.id);
-                            if (userProfile) {
-                                if (!userProfile.groupIds) userProfile.groupIds = [];
-                                if (!userProfile.groupIds.includes(group.id)) {
-                                    userProfile.groupIds.push(group.id);
-                                    saveUserProfile(userProfile);
-                                }
+                            if (!userToAdd.groupIds) userToAdd.groupIds = [];
+                            if (!userToAdd.groupIds.includes(group.id)) {
+                                userToAdd.groupIds.push(group.id);
+                                saveUserProfile(userToAdd);
                             }
-                            
-                            showDialogMessage(dialog.querySelector('.feedback'), 'Você entrou no grupo com sucesso!', 'success');
+                            showDialogMessage(dialog, `${userToAdd.name} foi adicionado ao grupo!`, 'success');
                         }
+                    } else {
+                        showDialogMessage(dialog, 'Erro: Grupo ou usuário não encontrado.', 'error');
                     }
                 } else if (notification.type === 'group_invitation') {
                     // Lógica para convites de grupo
-                    const group = getGroup(notification.groupId);
+                    const group = getGroup(notification.data.groupId);
                     if (group && !group.memberIds.includes(currentUser.id)) {
                         group.memberIds.push(currentUser.id);
                         saveGroup(group);
@@ -576,7 +499,7 @@ function acceptNotification(notificationId) {
                             saveUserProfile(userProfile);
                         }
                         
-                        showDialogMessage(dialog.querySelector('.feedback'), 'Convite de grupo aceito!', 'success');
+                        showDialogMessage(dialog, 'Convite de grupo aceito!', 'success');
                     }
                 }
                 
@@ -587,7 +510,7 @@ function acceptNotification(notificationId) {
                 return true;
             } catch (error) {
                 console.error('Erro ao aceitar notificação:', error);
-                showDialogMessage(dialog.querySelector('.feedback'), 'Erro ao processar a solicitação.', 'error');
+                showDialogMessage(dialog, 'Erro ao processar a solicitação.', 'error');
                 return false;
             }
         }
@@ -612,7 +535,7 @@ function rejectNotification(notificationId) {
             renderNotifications();
             updateNotificationBadge();
             
-            showDialogMessage(dialog.querySelector('.feedback'), 'Solicitação recusada.', 'info');
+            showDialogMessage(dialog, 'Solicitação recusada.', 'info');
             return true;
         }
     );
@@ -846,13 +769,15 @@ export function addGroupInvitationNotification(groupName, groupId, adminName, ad
         type: 'group_invitation',
         title: 'Convite para Grupo',
         message: `${adminName} convidou você para o grupo "${groupName}"`,
-        group: groupName,
-        groupId: groupId,
-        adminId: adminId,
         date: new Date().toISOString(),
         read: false,
         status: 'pending',
-        actions: ['accept', 'reject']
+        actions: ['accept', 'reject'],
+        data: {
+            groupName: groupName,
+            groupId: groupId,
+            adminId: adminId
+        }
     };
     
     addNotificationToUser(userId, notification);
@@ -956,6 +881,27 @@ export function addReportNotification(period) {
     addNotification('report', 'Relatório Disponibilizado', `Seu relatório ${periodNames[period]} está disponível`, {
         period: period
     });
+}
+
+export function addGroupRequestNotification(groupName, groupId, userName, userId, adminId) {
+    const notification = {
+        id: 'group-request-' + Date.now(),
+        type: 'group_request',
+        title: 'Solicitação para Grupo',
+        message: `${userName} quer entrar no grupo "${groupName}"`,
+        sender: userName,
+        senderId: userId,
+        date: new Date().toISOString(),
+        read: false,
+        status: 'pending',
+        actions: ['accept', 'reject'],
+        data: {
+            groupId: groupId,
+            userId: userId,
+            groupName: groupName
+        }
+    };
+    addNotificationToUser(adminId, notification);
 }
 
 function handleConfirmation() {

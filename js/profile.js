@@ -1,10 +1,11 @@
 // js/profile.js - VERSÃO FINAL CORRIGIDA
 
 import { getCurrentUser, updateUser, logout, validateMasterPassword } from './auth.js';
-import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTemplates, getAllGroups, getGroup,
-      getNotifications,   // <-- Adicione esta
-  saveNotifications   // <-- Adicione esta
- } from './storage.js';
+import { 
+    getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTemplates, 
+    getAllGroups, getGroup
+} from './storage.js';
+import { addGroupRequestNotification } from './notifications.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 
 // Variável para armazenar dados originais do usuário
@@ -1036,7 +1037,7 @@ function showGroupSearchDialog() {
         }
         
         // Enviar notificação para o administrador do grupo
-        addGroupJoinRequestNotification(
+        addGroupRequestNotification(
             groupName,
             groupId,
             currentUser.name,
@@ -1075,26 +1076,4 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
-}
-
-// Adicione esta função ao notifications.js ou aqui se não estiver disponível
-function addGroupJoinRequestNotification(groupName, groupId, userName, userId, adminId) {
-    const notifications = getNotifications(adminId) || [];
-    
-    const newNotification = {
-        id: 'notification-' + Date.now(),
-        type: 'group_join_request',
-        title: 'Solicitação de Participação',
-        message: `${userName} solicitou participar do grupo "${groupName}"`,
-        timestamp: new Date().toISOString(),
-        read: false,
-        data: {
-            groupId: groupId,
-            userId: userId,
-            groupName: groupName
-        }
-    };
-    
-    notifications.unshift(newNotification);
-    saveNotifications(adminId, notifications);
 }
