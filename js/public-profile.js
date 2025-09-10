@@ -10,7 +10,7 @@ import {
     getUserProfile,
     getAllGroups 
 } from './storage.js';
-import { showDialogMessage, initDraggableElements } from './ui-controls.js';
+import { showDialogMessage, initDraggableElements, showConfirmationDialog, showFloatingMessage } from './ui-controls.js';
 import { 
     addFriendRequestNotification, 
     addFollowNotification,
@@ -49,42 +49,72 @@ export function initPublicProfilePage() {
         return;
     }
 
+    applyUserTheme(); // Aplica tema e fonte
     loadUserData();
     setupEventListeners();
     initDraggableElements();
     checkRelationshipStatus();
     checkGroupInviteCapability();
-    setupHeader();
 }
 
-function setupHeader() {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-        updateUserAvatar(currentUser);
+function applyUserTheme() {
+    const user = getCurrentUser(); // O usuário que está vendo o perfil
+    if (!user) return;
+
+    const userTheme = user.theme || 'auto';
+    const systemTheme = localStorage.getItem('appTheme') || 'dark';
+    
+    document.body.classList.remove('light-mode', 'dark-mode');
+
+    if (userTheme === 'light') {
+        document.body.classList.add('light-mode');
+    } else if (userTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    } else {
+        if (systemTheme === 'light') {
+            document.body.classList.add('light-mode');
+        } else {
+            document.body.classList.add('dark-mode');
+        }
     }
- // Event listeners para o header
-    document.getElementById('user-avatar-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'profile-dropdown'));
-    document.getElementById('actions-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'actions-dropdown'));
+    applyUserFont();
+}
 
-    // Navegação
-    document.getElementById('switch-user-btn')?.addEventListener('click', () => window.location.href = 'list-users.html');
-    document.getElementById('user-profile-btn')?.addEventListener('click', () => window.location.href = 'profile.html');
-    document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
-    document.getElementById('my-groups-btn')?.addEventListener('click', () => window.location.href = 'groups.html');
-    document.getElementById('templates-btn')?.addEventListener('click', () => window.location.href = 'templates.html');
-    document.getElementById('notifications-btn')?.addEventListener('click', () => window.location.href = 'notifications.html');
-    document.getElementById('exit-btn')?.addEventListener('click', () => {
-        if (confirm('Tem certeza que deseja fechar o aplicativo?')) {
-            window.close();
-        }
-    });
+function applyUserFont() {
+    const user = getCurrentUser();
+    if (!user || !user.preferences) return;
+    
+    applyFontFamily(user.preferences.fontFamily || 'Segoe UI');
+    applyFontSize(user.preferences.fontSize || 'medium');
+}
 
-    // Fechar dropdowns ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.menu-container')) {
-            closeAllDropdowns();
-        }
-    });
+function applyFontFamily(fontFamily) {
+    // Aplica a fonte a todos os elementos
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+        allElements[i].style.fontFamily = fontFamily;
+    }
+    
+    // Remove estilos anteriores de placeholder se existirem
+    const existingStyle = document.getElementById('universal-font-style');
+    if (existingStyle) existingStyle.remove();
+    
+    // Aplica a fonte também aos placeholders
+    const style = document.createElement('style');
+    style.id = 'universal-font-style';
+    style.textContent = `
+        ::placeholder { font-family: ${fontFamily} !important; }
+        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        input, textarea, select, button { font-family: ${fontFamily} !important; }
+    `;
+    document.head.appendChild(style);
+}
+
+function applyFontSize(size) {
+    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
+    const fontSizeValue = sizeMap[size] || '14px';
+    document.documentElement.style.fontSize = fontSizeValue;
 }
 
 function toggleDropdown(e, dropdownId) {
@@ -242,6 +272,9 @@ function setupEventListeners() {
     
     // Modal de solicitação de amizade
     document.getElementById('send-friend-request-btn').addEventListener('click', sendFriendRequest);
+    
+    // Botão de cancelar solicitação de amizade
+    document.getElementById('cancel-friend-request-btn').addEventListener('click', cancelFriendRequest);
 }
 
 function showAvatarModal() {
@@ -318,9 +351,7 @@ function sendFriendRequest() {
     relationshipStatus.friendRequestPending = true;
     updateRelationshipButtons();
     
-    // Mostrar feedback de sucesso
-    feedbackEl.textContent = 'Solicitação enviada! O usuário foi notificado.';
-    feedbackEl.classList.add('success', 'show');
+    showDialogMessage(dialog, 'Solicitação enviada! O usuário foi notificado.', 'success');
     
     // Desabilitar botões temporariamente
     const sendBtn = document.getElementById('send-friend-request-btn');
@@ -344,13 +375,7 @@ function sendFriendRequest() {
 function cancelFriendRequest() {
     const dialog = document.getElementById('friend-request-modal');
     const feedbackEl = dialog.querySelector('.feedback');
-    
-    // Limpar feedback anterior
-    feedbackEl.className = 'feedback';
-    
-    // Mostrar feedback de cancelamento
-    feedbackEl.textContent = 'Solicitação cancelada.';
-    feedbackEl.classList.add('info', 'show');
+    showDialogMessage(dialog, 'Solicitação cancelada.', 'info');
     
     // Desabilitar botões temporariamente
     const sendBtn = document.getElementById('send-friend-request-btn');
@@ -369,9 +394,6 @@ function cancelFriendRequest() {
         document.getElementById('friend-request-message').value = '';
     }, 2000);
 }
-
-// Adicione este event listener na função setupEventListeners
-document.getElementById('cancel-friend-request-btn').addEventListener('click', cancelFriendRequest);
 
 function toggleFollow() {
     if (relationshipStatus.isFollowing) {
@@ -413,18 +435,49 @@ function toggleFollow() {
 }
 
 function sendMessage() {
-    const message = prompt(`Enviar mensagem para ${viewedUser.name}:`);
-    if (message && message.trim()) {
-        // Enviar notificação de mensagem
-        addMessageNotification(
-            currentUser.name, 
-            currentUser.id, 
-            viewedUser.id, 
-            message.length > 50 ? message.substring(0, 50) + '...' : message
-        );
-        
-        showFloatingMessage('Mensagem enviada!', 'success');
-    }
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Enviar Mensagem para ${viewedUser.name}</h3>
+        <div class="form-group">
+            <textarea id="private-message-textarea" placeholder="Escreva sua mensagem..." rows="5"></textarea>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary">Cancelar</button>
+            <button class="btn btn-primary">Enviar</button>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+    initDraggableElements(); // Torna o diálogo arrastável
+    dialog.showModal();
+
+    const textarea = dialog.querySelector('#private-message-textarea');
+    const sendBtn = dialog.querySelector('.btn-primary');
+    const cancelBtn = dialog.querySelector('.btn-secondary');
+
+    const closeDialog = () => {
+        dialog.close();
+        dialog.remove();
+    };
+
+    cancelBtn.addEventListener('click', closeDialog);
+
+    sendBtn.addEventListener('click', () => {
+        const message = textarea.value.trim();
+        if (!message) {
+            showDialogMessage(dialog, 'A mensagem não pode estar vazia.', 'error');
+            return;
+        }
+
+        addMessageNotification(currentUser.name, currentUser.id, viewedUser.id, message.length > 50 ? message.substring(0, 50) + '...' : message);
+
+        showDialogMessage(dialog, 'Mensagem enviada com sucesso!', 'success');
+        sendBtn.disabled = true;
+        cancelBtn.disabled = true;
+        setTimeout(closeDialog, 1500);
+    });
 }
 
 function unfriendUser() {
@@ -454,6 +507,3 @@ function showGroupInviteDialog() {
     // Implementar diálogo para selecionar grupo e enviar convite
     // Similar ao de solicitação de amizade
 }
-
-// Inicializar a página quando carregada
-document.addEventListener('DOMContentLoaded', initPublicProfilePage);

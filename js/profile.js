@@ -25,6 +25,8 @@ export function initProfilePage() {
         return;
     }
    
+    document.getElementById('page-title').textContent = "Perfil do Usuário";
+
         if (currentUser) {
         updateUserAvatar(currentUser);
     }

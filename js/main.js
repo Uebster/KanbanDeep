@@ -9,6 +9,7 @@ import { initProfilePage } from './profile.js';
 import { initGroupsPage } from './groups.js';
 import { initNotificationsPage } from './notifications.js';
 import { initTemplatesPage } from './template.js';
+import { initPublicProfilePage } from './public-profile.js';
 import { updateUserAvatar } from './ui-controls.js';
 
 /**
@@ -32,6 +33,8 @@ function main() {
 
         if (path.includes('create-user.html')) {
             initCreateUserPage();
+        } else if (path.includes('public-profile.html')) {
+            initPublicProfilePage();
         } else if (path.includes('profile.html')) {
             initProfilePage();
         } else if (path.includes('groups.html')) {
@@ -74,10 +77,9 @@ function setupGlobalHeader() {
     
     const avatarBtn = document.getElementById('user-avatar-btn');
     if (avatarBtn) {
-        const userAvatar = document.getElementById('user-avatar');
-        if (userAvatar && currentUser) {
-            userAvatar.src = currentUser.avatar || '../assets/kanban-deep-logo.png';
-        }
+        // CORREÇÃO: Usa a função padronizada para exibir o avatar corretamente
+        if (currentUser) updateUserAvatar(currentUser);
+
         avatarBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             document.getElementById('profile-dropdown')?.classList.toggle('show');
@@ -94,6 +96,9 @@ function setupGlobalHeader() {
     // Adiciona listeners de navegação apenas aos botões que encontrar
     const profileBtn = document.getElementById('user-profile-btn');
     if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+
+    const kanbanBtn = document.getElementById('kanban-btn');
+    if (kanbanBtn) kanbanBtn.addEventListener('click', () => window.location.href = 'kanban.html');
 
     const groupsBtn = document.getElementById('my-groups-btn');
     if (groupsBtn) groupsBtn.addEventListener('click', () => window.location.href = 'groups.html');

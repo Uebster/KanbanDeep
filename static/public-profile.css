@@ -34,70 +34,9 @@ body {
     font-family: var(--app-font-family);
     background-color: var(--bg-page);
     color: var(--text);
-    padding: 20px;
     min-height: 100vh;
+    padding: 20px; /* Adiciona espaçamento em todos os lados */
 }
-/* ===== LAYOUT PRINCIPAL DA APLICAÇÃO ===== */
-#app { display: flex; flex-direction: column; height: 100vh; width: 100%; }
-
-/* ===== CABEÇALHO PRINCIPAL ===== */
-#main-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 25px;
-    height: var(--header-height);
-    background-color: var(--header); 
-    color: white;
-    flex-shrink: 0;
-    z-index: 1000;
-}
-#main-header .btn {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
-}
-.avatar-btn {
-    background: none; border: none; padding: 0; border-radius: 50%;
-    cursor: pointer; width: 38px; height: 38px;
-}
-.avatar-btn img {
-    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.5);
-}
-
-/* ===== MENUS SUSPENSOS (DROPDOWNS) ===== */
-.menu-container { position: relative; }
-.dropdown {
-    display: none; position: absolute; top: calc(100% + 10px);
-    background-color: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4); animation: fadeIn 0.2s ease-out;
-}
-.dropdown {
-    display: none; position: absolute; top: calc(100% + 10px);
-    background-color: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-}
-.dropdown.show { display: block; }
-.menu-container:first-child .dropdown { left: 0; }
-.menu-container:last-child .dropdown { right: 0; }
-.dropdown button {
-    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-    padding: 10px 12px; margin-bottom: 4px; background: transparent; border: none;
-    color: var(--text); font-size: 1rem; cursor: pointer;
-    transition: background-color 0.2s; border-radius: 6px;
-}
-.dropdown button:hover { background-color: var(--primary); color: white; }
-.dropdown hr { margin: 6px 0; border: none; border-top: 1px solid var(--border); }
-#page-title { font-size: 1.5rem; font-weight: 500; }
-.btn {
-    padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
-    font-size: 0.9rem; font-weight: 500; transition: all 0.2s ease;
-}
-.btn:hover { opacity: 0.9; transform: scale(1.05); }
-.btn-primary { background-color: var(--primary); color: white; }
-.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
 
 /* ===== FEEDBACK E MODAIS ===== */
 dialog {
@@ -181,21 +120,6 @@ dialog h3 {
     cursor: grabbing; /* <<< O cursor se torna uma "mãozinha fechada" ao clicar */
 }
 
-/* Layout Principal */
-.profile-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-@media (max-width: 900px) {
-    .profile-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* Cabeçalho */
 #main-header {
     display: flex;
@@ -205,8 +129,63 @@ dialog h3 {
     height: var(--header-height);
     background-color: var(--header);
     color: white;
-    margin-bottom: 30px;
     border-radius: 8px;
+    flex-shrink: 0;
+    z-index: 1000;
+    margin-bottom: 20px; /* Remove margem lateral/superior, pois o body já tem padding */
+}
+
+/* Adicionado para consistência */
+#main-header .btn {
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+}
+
+/* Adicionado para consistência */
+.avatar-btn {
+    background: none; border: none; padding: 0; border-radius: 50%;
+    cursor: pointer; width: 38px; height: 38px;
+}
+
+/* Adicionado para consistência */
+.avatar-btn img {
+    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.5);
+}
+
+/* ===== MENUS SUSPENSOS (DROPDOWNS) - PADRONIZADO ===== */
+.menu-container { position: relative; }
+.dropdown {
+    display: none; position: absolute; top: calc(100% + 10px);
+    background-color: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4); animation: fadeIn 0.2s ease-out;
+}
+.dropdown.show { display: block; }
+.menu-container:first-child .dropdown { left: 0; }
+.menu-container:last-child .dropdown { right: 0; }
+.dropdown button {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    padding: 10px 12px; margin-bottom: 4px; background: transparent; border: none;
+    color: var(--text); font-size: 1rem; cursor: pointer;
+    transition: background-color 0.2s; border-radius: 6px;
+}
+.dropdown button:hover { background-color: var(--primary); color: white; }
+.dropdown hr { margin: 6px 0; border: none; border-top: 1px solid var(--border); }
+
+/* Layout Principal */
+.profile-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto; /* Centraliza o layout principal */
+}
+
+@media (max-width: 900px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Cartão Principal */
@@ -345,12 +324,14 @@ dialog h3 {
     flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 20px;
+    justify-content: center; /* Centraliza os botões */
 }
 
 #relationship-actions .btn {
     flex: 1;
     min-width: 140px;
     justify-content: center;
+    margin: 0; /* Remove margem extra dos botões */
 }
 
 /* Grupos Públicos */
@@ -397,6 +378,7 @@ dialog h3 {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    text-decoration: none; /* Garante que não haja sublinhado */
 }
 
 .btn-primary {
@@ -409,9 +391,15 @@ dialog h3 {
     color: var(--text);
 }
 
+.btn-danger {
+    background-color: var(--error);
+    color: white;
+}
+
 .btn:hover {
     opacity: 0.9;
     transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Adiciona sombra no hover */
 }
 
 /* Modal de Avatar */
@@ -551,4 +539,37 @@ body.light-mode .group-item {
 
 .drag-handle:active {
     cursor: grabbing;
+}
+
+/* Garante que a fonte seja aplicada aos placeholders */
+::placeholder {
+    font-family: var(--app-font-family) !important;
+}
+:-ms-input-placeholder {
+    font-family: var(--app-font-family) !important;
+}
+::-ms-input-placeholder {
+    font-family: var(--app-font-family) !important;
+}
+input, textarea, select, button {
+    font-family: var(--app-font-family) !important;
+}
+
+/* Estilo para o textarea no diálogo de mensagem */
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: var(--bg-page);
+    color: var(--text);
+    font-size: 1rem;
+    transition: border-color 0.3s;
+    resize: vertical;
+    min-height: 100px;
+}
+.form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(76, 212, 230, 0.3);
 }

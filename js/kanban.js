@@ -1889,12 +1889,13 @@ function showPreferencesDialog() {
     newDialog.querySelector('#pref-language').value = user.language || 'pt-BR';
     newDialog.querySelector('#pref-font-family').value = originalKanbanFont;
     newDialog.querySelector('#pref-font-size').value = originalKanbanFontSize;
-    newDialog.querySelector('#pref-show-tags').checked = user.preferences?.showTags !== false;
-    newDialog.querySelector('#pref-show-date').checked = user.preferences?.showDate !== false;
-    newDialog.querySelector('#pref-show-assignment').checked = user.preferences?.showAssignment !== false;
-    newDialog.querySelector('#pref-show-card-details').checked = user.preferences?.showCardDetails !== false;
-    newDialog.querySelector('#pref-show-icon').checked = user.preferences?.showBoardIcon !== false;
-    newDialog.querySelector('#pref-show-title').checked = user.preferences?.showBoardTitle !== false;
+    newDialog.querySelector('#pref-card-show-tags').checked = user.preferences?.showTags !== false;
+    newDialog.querySelector('#pref-card-show-date').checked = user.preferences?.showDate !== false;
+    newDialog.querySelector('#pref-card-show-status').checked = user.preferences?.showStatus !== false;
+    newDialog.querySelector('#pref-card-show-assignment').checked = user.preferences?.showAssignment !== false;
+    newDialog.querySelector('#pref-card-show-details').checked = user.preferences?.showCardDetails !== false;
+    newDialog.querySelector('#pref-board-show-icon').checked = user.preferences?.showBoardIcon !== false;
+    newDialog.querySelector('#pref-board-show-title').checked = user.preferences?.showBoardTitle !== false;
     populateTagTemplatesSelect(user.preferences?.defaultTagTemplateId);
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
@@ -1970,13 +1971,13 @@ function showPreferencesDialog() {
         { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) },
         { id: 'pref-language', action: null },
         { id: 'pref-default-tag-template', action: null },
-        { id: 'pref-show-tags', action: () => applyCardPreview() },
-        { id: 'pref-show-date', action: () => applyCardPreview() },
-        { id: 'pref-show-status', action: () => applyCardPreview() },
-        { id: 'pref-show-card-details', action: () => applyCardPreview() },
-        { id: 'pref-show-assignment', action: () => applyCardPreview() },
-        { id: 'pref-show-title', action: () => applyTitlePreview() },
-        { id: 'pref-show-icon', action: () => applyTitlePreview() }
+        { id: 'pref-card-show-tags', action: () => applyCardPreview() },
+        { id: 'pref-card-show-date', action: () => applyCardPreview() },
+        { id: 'pref-card-show-status', action: () => applyCardPreview() },
+        { id: 'pref-card-show-details', action: () => applyCardPreview() },
+        { id: 'pref-card-show-assignment', action: () => applyCardPreview() },
+        { id: 'pref-board-show-title', action: () => applyTitlePreview() },
+        { id: 'pref-board-show-icon', action: () => applyTitlePreview() }
     ];
 
     fieldsToTrack.forEach(field => {
@@ -2030,15 +2031,14 @@ function savePreferences() {
             ...user.preferences,
             fontFamily: document.getElementById('pref-font-family').value,
             fontSize: document.getElementById('pref-font-size').value,
-            showTags: document.getElementById('pref-show-tags').checked,
-            showDate: document.getElementById('pref-show-date').checked,
-            showStatus: document.getElementById('pref-show-status').checked,
-            showAssignment: document.getElementById('pref-show-assignment').checked,
-            showAssignment: document.getElementById('pref-show-assignment').checked,
+            showTags: document.getElementById('pref-card-show-tags').checked,
+            showDate: document.getElementById('pref-card-show-date').checked,
+            showStatus: document.getElementById('pref-card-show-status').checked,
+            showAssignment: document.getElementById('pref-card-show-assignment').checked,
             defaultTagTemplateId: document.getElementById('pref-default-tag-template').value,
-            showBoardIcon: document.getElementById('pref-show-icon').checked,
-            showBoardTitle: document.getElementById('pref-show-title').checked,
-            showCardDetails: document.getElementById('pref-show-card-details').checked
+            showBoardIcon: document.getElementById('pref-board-show-icon').checked,
+            showBoardTitle: document.getElementById('pref-board-show-title').checked,
+            showCardDetails: document.getElementById('pref-card-show-details').checked
         }
     };
 
@@ -2462,14 +2462,14 @@ function applyTitlePreview() {
     // O diálogo é clonado, então precisamos pegar o que está atualmente no DOM.
     const dialog = document.querySelector('#preferences-dialog');
     
-    const showTitle = dialog.querySelector('#pref-show-title').checked;
-    const showIcon = dialog.querySelector('#pref-show-icon').checked;
+    const showTitle = dialog.querySelector('#pref-board-show-title').checked;
+    const showIcon = dialog.querySelector('#pref-board-show-icon').checked;
 
     const iconHtml = showIcon ? `<span class="board-icon">${currentBoard.icon || '📋'}</span>` : '';
     const titleHtml = showTitle ? `<span class="board-title-text">${currentBoard.title}</span>` : '';
 
     titleElement.innerHTML = `${iconHtml}${titleHtml}`.trim();
-    titleElement.style.display = (showTitle || showIcon) ? 'block' : 'none';
+    titleElement.style.display = (showTitle || showIcon) ? 'flex' : 'none';
 }
 
 function applyCardPreview() {
@@ -2478,11 +2478,11 @@ function applyCardPreview() {
 
     // Atualiza o objeto de preferências do usuário em memória (temporariamente)
     // para que a função renderCurrentBoard use os valores de preview.
-    currentUser.preferences.showTags = dialog.querySelector('#pref-show-tags').checked;
-    currentUser.preferences.showDate = dialog.querySelector('#pref-show-date').checked;
-    currentUser.preferences.showStatus = dialog.querySelector('#pref-show-status').checked;
-    currentUser.preferences.showAssignment = dialog.querySelector('#pref-show-assignment').checked;
-    currentUser.preferences.showCardDetails = dialog.querySelector('#pref-show-card-details').checked;
+    currentUser.preferences.showTags = dialog.querySelector('#pref-card-show-tags').checked;
+    currentUser.preferences.showDate = dialog.querySelector('#pref-card-show-date').checked;
+    currentUser.preferences.showStatus = dialog.querySelector('#pref-card-show-status').checked;
+    currentUser.preferences.showAssignment = dialog.querySelector('#pref-card-show-assignment').checked;
+    currentUser.preferences.showCardDetails = dialog.querySelector('#pref-card-show-details').checked;
 
     // Simplesmente redesenha o quadro. A função createCardElement já
     // contém a lógica para mostrar/esconder os elementos com base nessas preferências.
