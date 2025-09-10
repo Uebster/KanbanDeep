@@ -45,7 +45,15 @@ function setupEventListeners() {
     const loginDialog = document.getElementById('login-dialog');
     document.getElementById('login-submit').addEventListener('click', handleLogin);
     document.getElementById('login-cancel').addEventListener('click', () => loginDialog.close());
-    loginDialog.addEventListener('close', () => document.getElementById('login-password').value = '');
+    loginDialog.addEventListener('close', () => {
+        // Limpa o campo de senha
+        document.getElementById('login-password').value = '';
+        // Esconde qualquer mensagem de feedback ao fechar
+        const feedbackEl = loginDialog.querySelector('.feedback');
+        if (feedbackEl) {
+            feedbackEl.classList.remove('show');
+        }
+    });
     
     document.getElementById('btn-exit-app')?.addEventListener('click', () => {
         showConfirmationDialog(

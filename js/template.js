@@ -16,13 +16,8 @@ let currentUser;
 let untitledColumnCounter = 1;
 let untitledTagCounter = 1;
 
-const ICON_LIBRARY = [
-  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
-];
-
 export function initTemplatesPage() {
     console.log("Iniciando página de templates...");
-    applyUserTheme();
     currentUser = getCurrentUser();
     
     if (!currentUser) {

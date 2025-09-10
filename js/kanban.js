@@ -32,9 +32,6 @@ let originalShowStatus = null;
 let originalShowAssignment = null;
 let originalShowCardDetails = null;
 let kanbanIsSaved = true;
-const ICON_LIBRARY = [
-  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
-];
 
 // ===== INICIALIZAÇÃO =====
 
@@ -145,6 +142,7 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('my-groups-btn')?.addEventListener('click', () => window.location.href = 'groups.html');
     document.getElementById('notifications-btn')?.addEventListener('click', () => window.location.href = 'notifications.html');
     document.getElementById('templates-btn')?.addEventListener('click', () => window.location.href = 'templates.html');
+    document.getElementById('friends-btn')?.addEventListener('click', () => window.location.href = 'friends.html');
     // --- Diálogos (Modais) ---
     document.getElementById('board-save-btn')?.addEventListener('click', handleSaveBoard);
     document.getElementById('column-save-btn')?.addEventListener('click', handleSaveColumn);

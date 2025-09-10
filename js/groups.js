@@ -24,7 +24,8 @@ import {
   initDraggableElements,
   updateUserAvatar,
   showConfirmationDialog,
-  showDialogMessage
+  showDialogMessage,
+  showIconPickerDialog
 } from './ui-controls.js';
 import { 
     addGroupInvitationNotification,
@@ -40,14 +41,9 @@ let groups = [];
 let servers = [];
 let currentGroup = null;
 let isGroupSaved = true; // Flag para rastrear alterações no diálogo de edição
-const ICON_LIBRARY = [
-  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
-];
 
 // groups.js - Adicione este código na função initGroupsPage(), após a verificação de estatísticas
 export function initGroupsPage() {
-    applyUserTheme();
-    
     currentUser = getCurrentUser();
     if (!currentUser) {
         showFloatingMessage('Usuário não logado. Redirecionando...', 'error');
@@ -1195,30 +1191,6 @@ function deleteGroupTagTemplate(templateId, groupId) {
     });
 }
 
-function showIconPickerDialog(callback) {
-    const dialog = document.getElementById('icon-picker-dialog');
-    if (!dialog) {
-        console.error('Diálogo do seletor de ícones não encontrado no HTML.');
-        return;
-    }
-    const iconGrid = dialog.querySelector('#icon-grid');
-    iconGrid.innerHTML = ''; // Limpa ícones anteriores
-
-    ICON_LIBRARY.forEach(icon => {
-        const iconBtn = document.createElement('button');
-        iconBtn.className = 'icon-picker-btn';
-        iconBtn.textContent = icon;
-        iconBtn.onclick = () => {
-            callback(icon);
-            dialog.close();
-        };
-        iconGrid.appendChild(iconBtn);
-    });
-
-    dialog.showModal();
-    dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
-}
-
 // js/groups.js - PART 3/4 - REFACTORED VERSION
 
 // ===== FUNÇÕES DE SERVIDORES =====
@@ -2150,125 +2122,6 @@ function renderStatusChart(data) {
     });
 }
 
-// ===== FUNÇÕES DE UTILIDADE =====
-
-function applyUserTheme() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-
-    const userTheme = currentUser.theme || 'auto';
-    const systemTheme = localStorage.getItem('appTheme') || 'dark';
-    
-    document.body.classList.remove('light-mode', 'dark-mode');
-
-    if (userTheme === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (userTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else {
-        if (systemTheme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.add('dark-mode');
-        }
-    }
-    // Aplica as preferências de fonte do usuário
-    applyUserFont();
-}
-
-function applyUserFont() {
-    const currentUser = getCurrentUser();
-    if (!currentUser || !currentUser.preferences) return;
-    
-    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
-    applyFontSize(currentUser.preferences.fontSize || 'medium');
-}
-
-function applyFontFamily(fontFamily) {
-    // Aplica a fonte a todos os elementos
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    
-    // Remove estilos anteriores de placeholder se existirem
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) {
-        existingStyle.remove();
-    }
-    
-    // Aplica a fonte também aos placeholders
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder { font-family: ${fontFamily} !important; }
-        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
-        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
-        input, textarea, select, button { font-family: ${fontFamily} !important; }
-    `;
-    document.head.appendChild(style);
-}
-
-function applyFontSize(size) {
-    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
-    const fontSizeValue = sizeMap[size] || '14px';
-    document.documentElement.style.fontSize = fontSizeValue;
-}
-
-/**
- * Calcula o número total de tarefas (cartões) em todos os quadros de um grupo.
- * @param {string} groupId - O ID do grupo.
- * @returns {number} O número total de tarefas.
- */
-function getGroupTaskCount(groupId) {
-    const group = getGroup(groupId);
-    if (!group || !group.boardIds) return 0;
-
-    return group.boardIds.reduce((total, boardId) => {
-        const board = getFullBoardData(boardId);
-        if (!board) return total;
-        return total + board.columns.reduce((boardTotal, column) => boardTotal + column.cards.length, 0);
-    }, 0);
-}
-
-/**
- * Calcula o número de tarefas concluídas em todos os quadros de um grupo.
- * @param {string} groupId - O ID do grupo.
- * @returns {number} O número de tarefas concluídas.
- */
-function getCompletedTaskCount(groupId) {
-    const group = getGroup(groupId);
-    if (!group || !group.boardIds) return 0;
-
-    return group.boardIds.reduce((total, boardId) => {
-        const board = getFullBoardData(boardId);
-        if (!board) return total;
-        return total + board.columns.reduce((boardTotal, column) => 
-            boardTotal + column.cards.filter(card => card.isComplete).length, 0);
-    }, 0);
-}
-
-/**
- * Calcula o número de tarefas atrasadas em todos os quadros de um grupo.
- * @param {string} groupId - O ID do grupo.
- * @returns {number} O número de tarefas atrasadas.
- */
-function getOverdueTaskCount(groupId) {
-    const group = getGroup(groupId);
-    if (!group || !group.boardIds) return 0;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
-
-    return group.boardIds.reduce((total, boardId) => {
-        const board = getFullBoardData(boardId);
-        if (!board) return total;
-        return total + board.columns.reduce((boardTotal, column) => 
-            boardTotal + column.cards.filter(card => !card.isComplete && card.dueDate && new Date(card.dueDate) < today).length, 0);
-    }, 0);
-}
-
-
 async function testServerConnection(serverUrl) {
     try {
         const response = await fetch(`${serverUrl}/api/status`, {
@@ -2575,4 +2428,57 @@ function loadGroupMembers(group) {
             sendMessageToMember(memberId);
         });
     });
+}
+
+/**
+ * Calcula o número total de tarefas (cartões) em todos os quadros de um grupo.
+ * @param {string} groupId - O ID do grupo.
+ * @returns {number} O número total de tarefas.
+ */
+function getGroupTaskCount(groupId) {
+    const group = getGroup(groupId);
+    if (!group || !group.boardIds) return 0;
+
+    return group.boardIds.reduce((total, boardId) => {
+        const board = getFullBoardData(boardId);
+        if (!board) return total;
+        return total + board.columns.reduce((boardTotal, column) => boardTotal + column.cards.length, 0);
+    }, 0);
+}
+
+/**
+ * Calcula o número de tarefas concluídas em todos os quadros de um grupo.
+ * @param {string} groupId - O ID do grupo.
+ * @returns {number} O número de tarefas concluídas.
+ */
+function getCompletedTaskCount(groupId) {
+    const group = getGroup(groupId);
+    if (!group || !group.boardIds) return 0;
+
+    return group.boardIds.reduce((total, boardId) => {
+        const board = getFullBoardData(boardId);
+        if (!board) return total;
+        return total + board.columns.reduce((boardTotal, column) => 
+            boardTotal + column.cards.filter(card => card.isComplete).length, 0);
+    }, 0);
+}
+
+/**
+ * Calcula o número de tarefas atrasadas em todos os quadros de um grupo.
+ * @param {string} groupId - O ID do grupo.
+ * @returns {number} O número de tarefas atrasadas.
+ */
+function getOverdueTaskCount(groupId) {
+    const group = getGroup(groupId);
+    if (!group || !group.boardIds) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
+
+    return group.boardIds.reduce((total, boardId) => {
+        const board = getFullBoardData(boardId);
+        if (!board) return total;
+        return total + board.columns.reduce((boardTotal, column) => 
+            boardTotal + column.cards.filter(card => !card.isComplete && card.dueDate && new Date(card.dueDate) < today).length, 0);
+    }, 0);
 }

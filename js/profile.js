@@ -4,8 +4,8 @@ import { getCurrentUser, updateUser, logout, validateMasterPassword } from './au
 import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTemplates, getAllGroups, getGroup,
       getNotifications,   // <-- Adicione esta
   saveNotifications   // <-- Adicione esta
- } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+} from './storage.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage, debounce } from './ui-controls.js';
 import { addGroupRequestNotification } from './notifications.js';
 
 // Variável para armazenar dados originais do usuário
@@ -17,8 +17,6 @@ let isSaved = true;
 
 // Função de inicialização exportada
 export function initProfilePage() {
-    applyUserTheme();
-    
     const currentUser = getCurrentUser();
     if (!currentUser) {
         showFloatingMessage('Usuário não logado. Redirecionando...', 'error');
@@ -37,33 +35,6 @@ export function initProfilePage() {
     setupPrivacyOptions();
     initDraggableElements();
 }
-
-// Aplica o tema do usuário
-function applyUserTheme() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-
-    const userTheme = currentUser.theme || 'auto';
-    const systemTheme = localStorage.getItem('appTheme') || 'dark';
-    
-    document.body.classList.remove('light-mode', 'dark-mode');
-
-    if (userTheme === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (userTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else {
-        if (systemTheme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.add('dark-mode');
-        }
-    }
-    
-    applyUserFont();
-}
-
-// Carrega dados do usuário para preenchimento automático
 function loadUserData() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
@@ -813,15 +784,6 @@ function applyFontFamily(fontFamily, isPreview = false) {
     }
 }
 
-// Adicione esta função para aplicar as configurações de fonte do usuário
-function applyUserFont() {
-    const currentUser = getCurrentUser();
-    if (!currentUser || !currentUser.preferences) return;
-    
-    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
-    applyFontSize(currentUser.preferences.fontSize || 'medium');
-}
-
 // profile.js - Adicione estas funções
 
 // Função para carregar e exibir os grupos do usuário
@@ -1048,18 +1010,4 @@ function showGroupSearchDialog() {
     setTimeout(() => {
         dialog.querySelector('#group-search-input').focus();
     }, 100);
-}
-
-// Adicione esta função de utilitário para debounce
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const context = this;
-        const later = () => {
-            clearTimeout(timeout);
-            func.apply(context, args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
 }

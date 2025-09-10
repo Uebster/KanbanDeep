@@ -1,9 +1,9 @@
 // js/friends.js
 
-import { getCurrentUser, updateUser } from './auth.js';
+import { getCurrentUser } from './auth.js';
 import { getAllUsers, getUserProfile, removeFriend, addFriend, getNotifications, saveNotifications } from './storage.js';
-import { addFriendRequestNotification } from './notifications.js';
-import { showFloatingMessage, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { addFriendRequestNotification, addFriendAcceptedNotification } from './notifications.js';
+import { showFloatingMessage, showConfirmationDialog, showDialogMessage, debounce } from './ui-controls.js';
 
 let currentUser;
 let allUsers = [];
@@ -158,7 +158,6 @@ function renderUserSearchResults(query = '') {
     }
 
     filteredUsers.forEach(user => {
-        const isRequestSent = sentRequests.some(req => req.userId === user.id);
         const itemEl = document.createElement('div');
         itemEl.className = 'user-item';
         itemEl.innerHTML = `
@@ -168,9 +167,7 @@ function renderUserSearchResults(query = '') {
                 <div class="user-username">@${user.username}</div>
             </div>
             <div class="user-actions">
-                <button class="btn btn-primary btn-sm" data-action="add-friend" data-id="${user.id}" ${isRequestSent ? 'disabled' : ''}>
-                    ${isRequestSent ? 'Solicitado' : 'Adicionar'}
-                </button>
+                <button class="btn btn-secondary btn-sm" data-action="view-profile" data-id="${user.id}">Ver Perfil</button>
             </div>
         `;
         resultsEl.appendChild(itemEl);
@@ -200,6 +197,10 @@ async function handleActionClick(e) {
                 addFriend(currentUser.id, requestToAccept.senderId);
                 requestToAccept.status = 'accepted';
                 saveNotifications(currentUser.id, getNotifications(currentUser.id));
+
+                // Notifica o usuário que enviou a solicitação
+                addFriendAcceptedNotification(currentUser.name, currentUser.id, requestToAccept.senderId);
+
                 showFloatingMessage('Amigo adicionado!', 'success');
                 loadAndRenderAll();
             }
@@ -237,16 +238,4 @@ async function handleActionClick(e) {
             window.location.href = `public-profile.html?userId=${id}`;
             break;
     }
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
 }

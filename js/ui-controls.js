@@ -1,4 +1,12 @@
 // js/ui-controls.js - Controles de UI universais e avançados
+import { getCurrentUser, updateUser } from './auth.js';
+
+/**
+ * Biblioteca de ícones padrão para uso em toda a aplicação.
+ */
+export const ICON_LIBRARY = [
+  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
+];
 
 // ===== FUNÇÕES DE CONTROLE DE MODAIS E TECLADO =====
 
@@ -326,12 +334,10 @@ export function showDialogMessage(dialog, message, type = 'info') {
     feedbackEl.textContent = message;
     feedbackEl.className = `feedback ${type} show`;
     
-    // Não esconde a mensagem de erro, apenas as outras
-    if (type !== 'error') {
-        setTimeout(() => {
-            feedbackEl.classList.remove('show');
-        }, 3000);
-    }
+    // Define um temporizador para esconder a mensagem após 3 segundos, para todos os tipos.
+    setTimeout(() => {
+        feedbackEl.classList.remove('show');
+    }, 2000);
 }
 
 /**
@@ -374,4 +380,119 @@ export function updateUserAvatar(user) {
     
     // Adicionar tooltip com nome do usuário
     avatarBtn.title = `Logado como: ${user.name}`;
+}
+
+// ===== FUNÇÕES DE TEMA E FONTE UNIVERSAIS =====
+
+/**
+ * Aplica o tema (claro/escuro) e a fonte com base nas preferências do usuário.
+ * Esta função deve ser chamada em todas as páginas após o login.
+ */
+export function applyUserTheme() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const userTheme = user.theme || 'auto';
+    const systemTheme = localStorage.getItem('appTheme') || 'dark';
+    
+    document.body.classList.remove('light-mode', 'dark-mode');
+
+    if (userTheme === 'light') {
+        document.body.classList.add('light-mode');
+    } else if (userTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    } else { // Modo 'auto'
+        if (systemTheme === 'light') {
+            document.body.classList.add('light-mode');
+        } else {
+            document.body.classList.add('dark-mode');
+        }
+    }
+    applyUserFont();
+}
+
+function applyUserFont() {
+    const user = getCurrentUser();
+    if (!user || !user.preferences) return;
+    
+    applyFontFamily(user.preferences.fontFamily || 'Segoe UI');
+    applyFontSize(user.preferences.fontSize || 'medium');
+}
+
+function applyFontFamily(fontFamily) {
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+        allElements[i].style.fontFamily = fontFamily;
+    }
+    const existingStyle = document.getElementById('universal-font-style');
+    if (existingStyle) existingStyle.remove();
+    const style = document.createElement('style');
+    style.id = 'universal-font-style';
+    style.textContent = `
+        ::placeholder { font-family: ${fontFamily} !important; }
+        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
+        input, textarea, select, button { font-family: ${fontFamily} !important; }
+    `;
+    document.head.appendChild(style);
+}
+
+function applyFontSize(size) {
+    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
+    const fontSizeValue = sizeMap[size] || '14px';
+    document.documentElement.style.fontSize = fontSizeValue;
+}
+
+/**
+ * Exibe um diálogo para o usuário selecionar um ícone da biblioteca padrão.
+ * @param {function(string): void} callback - Função a ser chamada com o ícone selecionado.
+ */
+export function showIconPickerDialog(callback) {
+    // Reutiliza um diálogo existente ou cria um novo
+    let dialog = document.getElementById('icon-picker-dialog');
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'icon-picker-dialog';
+        dialog.className = 'draggable';
+        dialog.innerHTML = `
+            <h3 class="drag-handle">Selecione um Ícone</h3>
+            <div id="icon-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; padding: 10px; border: 1px solid var(--border);">
+                <!-- Ícones serão inseridos aqui -->
+            </div>
+            <div class="modal-actions">
+                <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+        makeDraggable(dialog); // Garante que seja arrastável
+    }
+
+    const iconGrid = dialog.querySelector('#icon-grid');
+    iconGrid.innerHTML = ''; // Limpa ícones anteriores
+
+    ICON_LIBRARY.forEach(icon => {
+        const iconBtn = document.createElement('button');
+        iconBtn.className = 'icon-picker-btn'; // Use uma classe para estilização se necessário
+        iconBtn.textContent = icon;
+        iconBtn.style.fontSize = '2rem';
+        iconBtn.style.padding = '10px';
+        iconBtn.style.cursor = 'pointer';
+        iconBtn.onclick = () => {
+            callback(icon);
+            dialog.close();
+        };
+        iconGrid.appendChild(iconBtn);
+    });
+
+    dialog.showModal();
+    dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
+}
+
+export function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => { clearTimeout(timeout); func(...args); };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }

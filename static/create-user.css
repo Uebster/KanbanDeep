@@ -1,4 +1,13 @@
-    /* ===== CARTÃO PRINCIPAL ===== */
+/* static/create-user.css */
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-y: auto;
+}
     .card {
       background-color: var(--bg-card);
       border-radius: 8px;

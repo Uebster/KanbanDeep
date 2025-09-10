@@ -23,8 +23,6 @@ let currentTimeFilter = 'all';
 
 // Função de inicialização exportada
 export function initNotificationsPage() {
-    applyUserTheme();
-    
     const currentUser = getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
@@ -637,66 +635,6 @@ function updateNotificationBadge() {
     }
 }
 
-function applyUserTheme() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-
-    const userTheme = currentUser.theme || 'auto';
-    const systemTheme = localStorage.getItem('appTheme') || 'dark';
-    
-    document.body.classList.remove('light-mode', 'dark-mode');
-
-    if (userTheme === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (userTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else { // Modo 'auto'
-        if (systemTheme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.add('dark-mode');
-        }
-    }
-    applyUserFont();
-}
-
-function applyUserFont() {
-    const currentUser = getCurrentUser();
-    if (!currentUser || !currentUser.preferences) return;
-    
-    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
-    applyFontSize(currentUser.preferences.fontSize || 'medium');
-}
-
-function applyFontFamily(fontFamily) {
-    // Aplica a fonte a todos os elementos
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    
-    // Remove estilos anteriores de placeholder se existirem
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) existingStyle.remove();
-    
-    // Aplica a fonte também aos placeholders
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder { font-family: ${fontFamily} !important; }
-        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
-        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
-        input, textarea, select, button { font-family: ${fontFamily} !important; }
-    `;
-    document.head.appendChild(style);
-}
-
-function applyFontSize(size) {
-    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
-    const fontSizeValue = sizeMap[size] || '14px';
-    document.documentElement.style.fontSize = fontSizeValue;
-}
-
 // Função para adicionar uma nova notificação
 function addNotificationToUser(userId, notification) {
     const userNotifications = getNotifications(userId) || [];
@@ -736,6 +674,24 @@ export function addFriendRequestNotification(senderName, senderId, receiverId) {
     };
     
     addNotificationToUser(receiverId, notification);
+    return notification;
+}
+
+export function addFriendAcceptedNotification(accepterName, accepterId, originalSenderId) {
+    const notification = {
+        id: 'friend-accepted-' + Date.now() + '-' + originalSenderId,
+        type: 'friend_accepted',
+        title: 'Solicitação de Amizade Aceita',
+        message: `${accepterName} aceitou sua solicitação de amizade.`,
+        sender: accepterName,
+        senderId: accepterId,
+        date: new Date().toISOString(),
+        read: false,
+        status: 'unread',
+        actions: ['view']
+    };
+    
+    addNotificationToUser(originalSenderId, notification);
     return notification;
 }
 

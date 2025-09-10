@@ -1,6 +1,6 @@
 // js/main.js - VERSÃO FINAL SIMPLIFICADA E SEGURA
 
-import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme } from './ui-controls.js';
 import { getCurrentUser } from './auth.js';
 import { initKanbanPage } from './kanban.js';
 import { initListUsersPage } from './list-users.js';
@@ -18,7 +18,6 @@ import { updateUserAvatar } from './ui-controls.js';
  */
 function main() {
     initUIControls(); // <-- CHAMA A NOVA FUNÇÃO
-    initDraggableElements();
     checkAndSendReports(); // Verifica e envia relatórios agendados
 
     const path = window.location.pathname;
@@ -47,8 +46,6 @@ function main() {
             initNotificationsPage();
         } else if (path.includes('templates.html')) {
             initTemplatesPage();
-        } else if (path.includes('kanban.html')) {
-            initKanbanPage();
         } else if (path.includes('list-users.html') || path.endsWith('/')) {
             initListUsersPage();
     }
@@ -75,6 +72,9 @@ function setupGlobalHeader() {
         window.location.href = 'list-users.html';
         return;
     }
+
+    // Aplica o tema e a fonte do usuário em todas as páginas logadas
+    applyUserTheme();
 
     // --- Lógica Flexível de Botões ---
     // Procura por cada botão e adiciona o listener APENAS se ele existir.
