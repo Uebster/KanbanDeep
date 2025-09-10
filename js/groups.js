@@ -167,6 +167,8 @@ function setupEventListeners() {
     // --- ABA "CRIAR GRUPO" ---
     document.getElementById('create-group-form')?.addEventListener('submit', createGroup);
     document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
+    document.getElementById('group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
+    document.getElementById('edit-group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('btn-cancel-group')?.addEventListener('click', cancelGroupCreation);
 
     
@@ -368,6 +370,19 @@ function switchTab(tabId) {
     } else if (tabId === 'meetings') {
         loadAndRenderMeetings();
     }
+}
+
+function handleReportFrequencyChange(e) {
+    const frequency = e.target.value;
+    // Encontra o container pai (seja o formulário de criação ou o diálogo de edição)
+    const parentContainer = e.target.closest('form, dialog');
+    if (!parentContainer) return;
+
+    const weekContainer = parentContainer.querySelector('[id*="-report-day-of-week-container"]');
+    const monthContainer = parentContainer.querySelector('[id*="-report-day-of-month-container"]');
+
+    if (weekContainer) weekContainer.classList.toggle('hidden', frequency !== 'weekly');
+    if (monthContainer) monthContainer.classList.toggle('hidden', frequency !== 'monthly');
 }
 
 function loadAndRenderMeetings() {
@@ -1755,6 +1770,12 @@ function createGroup(e) {
         editTags: document.getElementById('perm-edit-tags').checked,
         createCards: document.getElementById('perm-create-cards').checked
     };
+    const reportFrequency = document.getElementById('group-report-frequency').value;
+    const reportSettings = {
+        frequency: reportFrequency,
+        dayOfWeek: reportFrequency === 'weekly' ? document.getElementById('group-report-day-of-week').value : null,
+        dayOfMonth: reportFrequency === 'monthly' ? document.getElementById('group-report-day-of-month').value : null,
+    };
     const boards = [];
     document.querySelectorAll('#group-boards-container .group-board-item').forEach(item => {
         const boardName = item.querySelector('.board-info strong').textContent;
@@ -1797,6 +1818,7 @@ function createGroup(e) {
                 access: groupAccess,
                 tagTemplate: groupTagTemplate,
                 permissions: permissions,
+                reportSettings: reportSettings,
                 boardIds: [], // Começa vazio, será preenchido abaixo
                 memberIds: [currentUser.id], // Apenas o criador é adicionado inicialmente
                 adminId: currentUser.id,
@@ -1971,6 +1993,27 @@ function editGroup(group) {
     // Seleciona o valor atual do grupo
     tagTemplateSelect.value = group.tagTemplate || '';
     
+    // --- LÓGICA PARA PREENCHER OS CAMPOS DE RELATÓRIO ---
+    const reportSettings = group.reportSettings || { frequency: 'none' };
+    const freqSelect = document.getElementById('edit-group-report-frequency');
+    const weekSelect = document.getElementById('edit-group-report-day-of-week');
+    const monthInput = document.getElementById('edit-group-report-day-of-month');
+    const weekContainer = document.getElementById('edit-group-report-day-of-week-container');
+    const monthContainer = document.getElementById('edit-group-report-day-of-month-container');
+
+    freqSelect.value = reportSettings.frequency;
+    // Mostra/esconde os campos condicionais
+    weekContainer.classList.toggle('hidden', reportSettings.frequency !== 'weekly');
+    monthContainer.classList.toggle('hidden', reportSettings.frequency !== 'monthly');
+
+    // Define os valores dos campos condicionais se aplicável
+    if (reportSettings.frequency === 'weekly') {
+        weekSelect.value = reportSettings.dayOfWeek || '1';
+    }
+    if (reportSettings.frequency === 'monthly') {
+        monthInput.value = reportSettings.dayOfMonth || '1';
+    }
+
     // Resetar o estado de "salvo" e adicionar listeners para rastrear alterações
     isGroupSaved = true;
     const formElements = dialog.querySelectorAll('input, textarea, select');
@@ -2025,6 +2068,13 @@ function saveGroupChanges(e) {
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
             currentGroup.tagTemplate = document.getElementById('edit-group-tag-template').value;
+            
+            const reportFrequency = document.getElementById('edit-group-report-frequency').value;
+            currentGroup.reportSettings = {
+                frequency: reportFrequency,
+                dayOfWeek: reportFrequency === 'weekly' ? document.getElementById('edit-group-report-day-of-week').value : null,
+                dayOfMonth: reportFrequency === 'monthly' ? document.getElementById('edit-group-report-day-of-month').value : null,
+            };
             
             // Enviar notificações para participantes pendentes
             if (window.pendingParticipants && window.pendingParticipants.length > 0) {
