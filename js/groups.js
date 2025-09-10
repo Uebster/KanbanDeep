@@ -29,7 +29,8 @@ import {
 import { 
     addGroupInvitationNotification,
     addGroupRemovalNotification,
-    addMeetingNotification
+    addMeetingNotification,
+    addMessageNotification
 } from './notifications.js';
 
 let currentUser;
@@ -169,6 +170,7 @@ function setupEventListeners() {
     document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
     document.getElementById('group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('edit-group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
+    document.getElementById('btn-message-all')?.addEventListener('click', sendMessageToAllMembers);
     document.getElementById('btn-cancel-group')?.addEventListener('click', cancelGroupCreation);
 
     
@@ -2690,6 +2692,91 @@ function removeMemberFromGroup(group, memberId) {
     );
 }
 
+function sendMessageToAllMembers() {
+    if (!currentGroup) {
+        showFloatingMessage('Nenhum grupo selecionado para enviar mensagem.', 'error');
+        return;
+    }
+
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Mensagem para o Grupo: ${currentGroup.name}</h3>
+        <div class="form-group">
+            <label for="group-broadcast-message-textarea">Mensagem:</label>
+            <textarea id="group-broadcast-message-textarea" placeholder="Escreva sua mensagem para todos os membros..." rows="5"></textarea>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary">Cancelar</button>
+            <button class="btn btn-primary">Enviar para Todos</button>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+    initDraggableElements();
+    dialog.showModal();
+
+    const textarea = dialog.querySelector('#group-broadcast-message-textarea');
+    const sendBtn = dialog.querySelector('.btn-primary');
+    const cancelBtn = dialog.querySelector('.btn-secondary');
+
+    const closeDialog = () => { dialog.close(); dialog.remove(); };
+    cancelBtn.addEventListener('click', closeDialog);
+
+    sendBtn.addEventListener('click', () => {
+        const message = textarea.value.trim();
+        if (!message) { showDialogMessage(dialog, 'A mensagem não pode estar vazia.', 'error'); return; }
+        const membersToNotify = currentGroup.memberIds.filter(id => id !== currentUser.id);
+        membersToNotify.forEach(memberId => addMessageNotification(`${currentUser.name} (Grupo: ${currentGroup.name})`, currentUser.id, memberId, message.length > 50 ? message.substring(0, 50) + '...' : message));
+        showDialogMessage(dialog, `Mensagem enviada para ${membersToNotify.length} membro(s).`, 'success');
+        sendBtn.disabled = true; cancelBtn.disabled = true;
+        setTimeout(closeDialog, 1500);
+    });
+}
+
+function sendMessageToMember(memberId) {
+    const member = allUsers.find(u => u.id === memberId);
+    if (!member) {
+        showFloatingMessage('Membro não encontrado.', 'error');
+        return;
+    }
+
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Enviar Mensagem para ${member.name}</h3>
+        <div class="form-group">
+            <textarea id="group-private-message-textarea" placeholder="Escreva sua mensagem..." rows="5"></textarea>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary">Cancelar</button>
+            <button class="btn btn-primary">Enviar</button>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+    initDraggableElements(); // Torna o diálogo arrastável
+    dialog.showModal();
+
+    const textarea = dialog.querySelector('#group-private-message-textarea');
+    const sendBtn = dialog.querySelector('.btn-primary');
+    const cancelBtn = dialog.querySelector('.btn-secondary');
+
+    const closeDialog = () => { dialog.close(); dialog.remove(); };
+    cancelBtn.addEventListener('click', closeDialog);
+
+    sendBtn.addEventListener('click', () => {
+        const message = textarea.value.trim();
+        if (!message) { showDialogMessage(dialog, 'A mensagem não pode estar vazia.', 'error'); return; }
+        addMessageNotification(currentUser.name, currentUser.id, member.id, message.length > 50 ? message.substring(0, 50) + '...' : message);
+        showDialogMessage(dialog, 'Mensagem enviada com sucesso!', 'success');
+        sendBtn.disabled = true; cancelBtn.disabled = true;
+        setTimeout(closeDialog, 1500);
+    });
+}
+
 // Função para mostrar diálogo de adicionar participante
 function showAddParticipantDialog() {
     const dialog = document.getElementById('add-participant-dialog');
@@ -2790,7 +2877,8 @@ function loadGroupMembers(group) {
             <div>
                 ${isAdmin ? 
                     '<span class="admin-badge">Administrador</span>' : 
-                    `<button class="btn btn-sm btn-danger remove-member-btn" data-member-id="${memberId}">Remover</button>`
+                    `<button class="btn btn-sm btn-secondary message-member-btn" data-member-id="${memberId}" title="Enviar Mensagem">✉️</button>
+                     <button class="btn btn-sm btn-danger remove-member-btn" data-member-id="${memberId}">Remover</button>`
                 }
             </div>
         `;
@@ -2803,6 +2891,14 @@ function loadGroupMembers(group) {
         btn.addEventListener('click', (e) => {
             const memberId = e.target.dataset.memberId;
             removeMemberFromGroup(group, memberId);
+        });
+    });
+
+    // Adicionar event listeners para os botões de mensagem
+    membersList.querySelectorAll('.message-member-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const memberId = e.target.closest('button').dataset.memberId;
+            sendMessageToMember(memberId);
         });
     });
 }

@@ -765,6 +765,12 @@ dialog h3 {
     flex-shrink: 0;
 }
 
+.form-actions-inline {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
 /* Estilos para a aba de Reuniões */
 .meetings-list {
     display: flex;
