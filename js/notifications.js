@@ -6,7 +6,8 @@ import {
     saveGroup,
     getUserProfile,
     saveUserProfile,
-    addFriend
+    addFriend,
+    getAllGroups
 } from './storage.js';
 import { getCurrentUser } from './auth.js';
 import { 
@@ -35,7 +36,6 @@ export function initNotificationsPage() {
     }
 
     setupEventListeners();
-    setupTabs();
     loadNotifications();
     renderNotifications();
     updateNotificationBadge();
@@ -49,7 +49,7 @@ function setupEventListeners() {
     
     // Filtro de notificações
     document.getElementById('notificationFilter')?.addEventListener('change', filterNotifications);
-    document.getElementById('timeFilter')?.addEventListener('change', filterNotificationsByTime);
+    document.getElementById('timeFilter')?.addEventListener('change', handleTimeFilterChange);
     document.getElementById('cardStatusFilter')?.addEventListener('change', filterCardNotifications);
     document.getElementById('meetingStatusFilter')?.addEventListener('change', filterMeetingNotifications);
     
@@ -67,13 +67,9 @@ function setupEventListeners() {
     document.getElementById('confirmation-cancel')?.addEventListener('click', () => {
         document.getElementById('confirmation-dialog').close();
     });
-    
-    document.getElementById('confirmation-confirm')?.addEventListener('click', handleConfirmation);
-}
 
-function setupTabs() {
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
+    // Lógica das abas
+    document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
             const tabId = tab.dataset.tab;
             switchTab(tabId);
@@ -218,6 +214,12 @@ function formatDate(dateString) {
 function filterNotifications() {
     const filter = document.getElementById('notificationFilter').value;
     currentFilter = filter;
+    renderNotifications();
+}
+
+function handleTimeFilterChange() {
+    const filter = document.getElementById('timeFilter').value;
+    currentTimeFilter = filter;
     renderNotifications();
 }
 
@@ -506,7 +508,7 @@ function acceptNotification(notificationId) {
                 saveNotifications(currentUser.id, notifications);
                 renderNotifications();
                 updateNotificationBadge();
-                
+
                 return true;
             } catch (error) {
                 console.error('Erro ao aceitar notificação:', error);
@@ -548,6 +550,7 @@ function viewNotification(notificationId) {
     const dialog = document.getElementById('notification-details-dialog');
     const content = document.getElementById('notification-details-content');
     const actionBtn = document.getElementById('action-notification-btn');
+    dialog.dataset.notificationId = notificationId; // Armazena o ID no diálogo
     
     // Marcar como lida
     notification.read = true;
@@ -576,21 +579,14 @@ function viewNotification(notificationId) {
     
     // Configurar botão de ação
     if (notification.type.includes('card_')) {
-        actionBtn.textContent = 'Abrir Cartão';
+        actionBtn.textContent = 'Ir para o Quadro';
         actionBtn.style.display = 'block';
-        actionBtn.onclick = () => {
-            // Lógica para abrir o cartão
-            showFloatingMessage(`Abrindo cartão: ${notification.card}`, 'info');
-            dialog.close();
-        };
     } else if (notification.type.includes('message_')) {
         actionBtn.textContent = 'Responder';
         actionBtn.style.display = 'block';
-        actionBtn.onclick = () => {
-            // Lógica para responder mensagem
-            showFloatingMessage('Abrindo conversa...', 'info');
-            dialog.close();
-        };
+    } else if (notification.type === 'report') {
+        actionBtn.textContent = 'Ver Relatório';
+        actionBtn.style.display = 'block';
     } else {
         actionBtn.style.display = 'none';
     }
@@ -599,8 +595,35 @@ function viewNotification(notificationId) {
 }
 
 function handleNotificationDialogAction() {
-    // Esta função será implementada com base no tipo de notificação
     const dialog = document.getElementById('notification-details-dialog');
+    const notificationId = dialog.dataset.notificationId;
+    if (!notificationId) return;
+
+    const notification = notifications.find(n => n.id === notificationId);
+    if (!notification) return;
+
+    if (notification.type.includes('card_')) {
+        // Para cartões, redireciona para o kanban e armazena o ID do cartão para foco
+        // A lógica de encontrar o boardId precisa ser melhorada no futuro
+        localStorage.setItem('focusCardId', notification.data.cardId);
+        showFloatingMessage(`Redirecionando para o quadro...`, 'info');
+        window.location.href = 'kanban.html';
+
+    } else if (notification.type.includes('message_')) {
+        // Para mensagens, redireciona para o perfil público do remetente
+        showFloatingMessage(`Abrindo perfil de ${notification.sender}...`, 'info');
+        window.location.href = `public-profile.html?userId=${notification.senderId}`;
+
+    } else if (notification.type === 'report' && notification.data.groupName) {
+        // Para relatórios, redireciona para a página de grupos e abre as estatísticas
+        const group = getAllGroups().find(g => g.name === notification.data.groupName);
+        if (group) {
+            localStorage.setItem('selectedGroupId', group.id);
+            localStorage.setItem('openStatistics', 'true');
+            window.location.href = 'groups.html';
+        }
+    }
+
     dialog.close();
 }
 
@@ -675,34 +698,6 @@ function applyFontSize(size) {
 }
 
 // Função para adicionar uma nova notificação
-export function addNotification(type, title, message, data = {}) {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-    
-    const newNotification = {
-        id: 'notif-' + Date.now(),
-        type,
-        title,
-        message,
-        date: new Date().toISOString(),
-        read: false,
-        ...data
-    };
-    
-    notifications.unshift(newNotification);
-    saveNotifications(currentUser.id, notifications);
-    
-    // Se estiver na página de notificações, atualizar a lista
-    if (window.location.pathname.includes('notifications.html')) {
-        renderNotifications();
-    } else {
-        updateNotificationBadge();
-    }
-    
-    // Mostrar notificação flutuante
-    showFloatingMessage(message, type.includes('overdue') ? 'error' : 'info');
-}
-
 function addNotificationToUser(userId, notification) {
     const userNotifications = getNotifications(userId) || [];
     userNotifications.unshift(notification);
@@ -719,8 +714,9 @@ function addNotificationToUser(userId, notification) {
     
     // Mostrar notificação flutuante se for o usuário atual
     if (currentUser && currentUser.id === userId) {
-        showFloatingMessage(notification.message, 
-                           notification.type.includes('removal') ? 'error' : 'info');
+        // Mapeia o tipo da notificação para um tipo de mensagem visual
+        const messageType = notification.type.includes('removal') || notification.type.includes('overdue') ? 'error' : 'info';
+        showFloatingMessage(notification.message, messageType);
     }
 }
 
@@ -837,7 +833,7 @@ export function addCardAssignmentNotification(assignerName, assigneeId, cardTitl
     return notification;
 }
 
-export function addCardDueNotification(cardTitle, boardName, cardId, dueDate) {
+export function addCardDueNotification(userId, cardTitle, boardName, cardId, dueDate) {
     const today = new Date();
     const due = new Date(dueDate);
     const diffTime = due - today;
@@ -857,30 +853,43 @@ export function addCardDueNotification(cardTitle, boardName, cardId, dueDate) {
         message = `O cartão "${cardTitle}" vence em ${Math.ceil(diffDays/7)} semanas`;
     }
     
-    addNotification(type, 'Notificação de Cartão', message, {
-        board: boardName,
-        card: cardId,
-        dueDate: dueDate
-    });
+    const notification = {
+        id: `card-due-${cardId}`,
+        type: type,
+        title: 'Alerta de Vencimento',
+        message: message,
+        date: new Date().toISOString(),
+        read: false,
+        data: { boardName, cardId, dueDate }
+    };
+    addNotificationToUser(userId, notification);
 }
 
 export function addMeetingNotification(meetingTitle, groupName, meetingDate) {
-    addNotification('meeting', 'Reunião Agendada', `${meetingTitle} no grupo ${groupName}`, {
+    addNotificationToUser(currentUser.id, { // Notifica o usuário atual
+        type: 'meeting', title: 'Reunião Agendada', message: `${meetingTitle} no grupo ${groupName}`,
         group: groupName,
         meetingDate: meetingDate
     });
 }
 
-export function addReportNotification(period) {
+export function addReportNotification(userId, period, groupName) {
     const periodNames = {
         daily: 'diário',
         weekly: 'semanal',
         monthly: 'mensal'
     };
     
-    addNotification('report', 'Relatório Disponibilizado', `Seu relatório ${periodNames[period]} está disponível`, {
-        period: period
-    });
+    const notification = {
+        id: `report-${groupName}-${Date.now()}`,
+        type: 'report',
+        title: 'Relatório de Grupo Disponível',
+        message: `O relatório ${periodNames[period]} do grupo "${groupName}" foi gerado.`,
+        date: new Date().toISOString(),
+        read: false,
+        data: { groupName, period }
+    };
+    addNotificationToUser(userId, notification);
 }
 
 export function addGroupRequestNotification(groupName, groupId, userName, userId, adminId) {
@@ -902,12 +911,4 @@ export function addGroupRequestNotification(groupName, groupId, userName, userId
         }
     };
     addNotificationToUser(adminId, notification);
-}
-
-function handleConfirmation() {
-    const dialog = document.getElementById('confirmation-dialog');
-    const feedbackEl = dialog.querySelector('.feedback');
-    
-    // Fechar o diálogo de confirmação
-    dialog.close();
 }

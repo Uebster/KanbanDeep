@@ -183,25 +183,6 @@ function applyTheme() {
     }
 }
 
-function showMessage(text, type = 'info') {
-    const container = document.getElementById('message-container');
-    if (!container) return;
-
-    const message = document.createElement('div');
-    message.className = `message ${type}`;
-
-    let icon = 'ℹ️';
-    if (type === 'error') icon = '❌';
-    if (type === 'success') icon = '✅';
-
-    message.innerHTML = `<span class="message-icon">${icon}</span> <span>${text}</span>`;
-    container.appendChild(message);
-
-    setTimeout(() => {
-        message.remove();
-    }, 5000);
-}
-
 // Função para mostrar mensagens dentro de diálogos
 function showDialogMessage(dialog, message, type) {
     const feedbackEl = dialog.querySelector('.feedback');

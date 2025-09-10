@@ -14,7 +14,8 @@ import { showDialogMessage, initDraggableElements, showConfirmationDialog, showF
 import { 
     addFriendRequestNotification, 
     addFollowNotification,
-    addMessageNotification
+    addMessageNotification,
+    addGroupInvitationNotification
 } from './notifications.js';
 
 let currentUser = null;
@@ -549,5 +550,66 @@ function checkGroupInviteCapability() {
 
 function showGroupInviteDialog() {
     // Implementar diálogo para selecionar grupo e enviar convite
-    // Similar ao de solicitação de amizade
+    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+
+    if (adminGroups.length === 0) {
+        showFloatingMessage('Você não administra nenhum grupo para poder convidar.', 'warning');
+        return;
+    }
+
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Convidar para Grupo</h3>
+        <p>Selecione um dos seus grupos para convidar <strong>${viewedUser.name}</strong>.</p>
+        <div class="form-group">
+            <label for="group-invite-select">Seus Grupos:</label>
+            <select id="group-invite-select">
+                ${adminGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+            </select>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary">Cancelar</button>
+            <button class="btn btn-primary">Enviar Convite</button>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+    initDraggableElements();
+    dialog.showModal();
+
+    const confirmBtn = dialog.querySelector('.btn-primary');
+    const cancelBtn = dialog.querySelector('.btn-secondary');
+    const groupSelect = dialog.querySelector('#group-invite-select');
+
+    const closeDialog = () => {
+        dialog.close();
+        dialog.remove();
+    };
+
+    cancelBtn.addEventListener('click', closeDialog);
+
+    confirmBtn.addEventListener('click', () => {
+        const groupId = groupSelect.value;
+        const group = adminGroups.find(g => g.id === groupId);
+
+        if (!group) {
+            showDialogMessage(dialog, 'Grupo inválido selecionado.', 'error');
+            return;
+        }
+
+        if (group.memberIds && group.memberIds.includes(viewedUser.id)) {
+            showDialogMessage(dialog, `${viewedUser.name} já é membro deste grupo.`, 'info');
+            return;
+        }
+
+        // Envia a notificação de convite
+        addGroupInvitationNotification(group.name, group.id, currentUser.name, currentUser.id, viewedUser.id);
+
+        showDialogMessage(dialog, `Convite para o grupo "${group.name}" enviado!`, 'success');
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+        setTimeout(closeDialog, 2000);
+    });
 }

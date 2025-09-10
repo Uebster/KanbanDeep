@@ -59,7 +59,7 @@ export async function initKanbanPage() {
     // 3. Configuração da UI e Eventos
     setupEventListeners();
     initDraggableElements();
-    checkAllCardDueDates(); // Verifica os cartões com vencimento próximo
+    checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId)
 
     // 4. Renderização Inicial
     initUIControls();
@@ -67,16 +67,6 @@ export async function initKanbanPage() {
     renderCurrentBoard();
     saveState(); // Salva o estado inicial para o Desfazer
     applyUserPreferences();
-}
-
-/**
- * Carrega o usuário atual e redireciona se não estiver logado.
- */
-function setupUser() {
-    currentUser = getCurrentUser();
-    if (!currentUser) {
-        window.location.href = 'list-users.html';
-    }
 }
 
 /**
@@ -1457,7 +1447,7 @@ function checkAllCardDueDates() {
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                     // Notifica se estiver atrasado ou vencendo em até 2 dias
-                    if (diffDays <= 2) {
+                    if (diffDays <= 2) { // Notifica se estiver atrasado ou vencendo em até 2 dias
                         addCardDueNotification(card.assignedTo, card.title, board.title, card.id, card.dueDate);
                         card.dueDateNotified = true; // Marca como notificado
                         saveCard(card); // Salva a alteração no cartão

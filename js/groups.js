@@ -92,58 +92,6 @@ export function initGroupsPage() {
     }
 }
 
-/**
- * Exibe uma mensagem de feedback dentro de um elemento de formulário (não um diálogo).
- * @param {HTMLElement} formElement - O elemento do formulário que contém um .feedback.
- * @param {string} message - A mensagem a ser exibida.
- * @param {string} type - 'error', 'success' ou 'info'.
- */
-function showFormFeedback(formElement, message, type) {
-    const feedbackEl = formElement.querySelector('.feedback');
-    if (!feedbackEl) return;
-    feedbackEl.textContent = message;
-    feedbackEl.className = `feedback ${type} show`;
-}
-
-function setupEditGroupDialog() {
-    const editDialog = document.getElementById('edit-group-dialog');
-    const form = document.getElementById('edit-group-form');
-    const cancelBtn = document.getElementById('cancel-edit-group');
-    const addParticipantBtn = document.getElementById('btn-add-participant');
-    
-    if (!editDialog || !form || !cancelBtn || !addParticipantBtn) return;
-    
-    // Remover event listeners existentes para evitar duplicação
-    form.removeEventListener('submit', saveGroupChanges);
-    cancelBtn.removeEventListener('click', handleCancelEdit);
-    addParticipantBtn.removeEventListener('click', handleAddParticipant);
-    
-    // Adicionar novos event listeners
-    form.addEventListener('submit', saveGroupChanges);
-    cancelBtn.addEventListener('click', handleCancelEdit);
-    addParticipantBtn.addEventListener('click', handleAddParticipant);
-    
-    function handleCancelEdit() {
-        showConfirmationDialog(
-            'Tem certeza que deseja cancelar as alterações?',
-            (confirmationDialog) => {
-                showDialogMessage(confirmationDialog, 'Alterações canceladas.', 'info');
-                
-                setTimeout(() => {
-                    confirmationDialog.close();
-                    editDialog.close();
-                }, 1500);
-                
-                return true;
-            }
-        );
-    }
-    
-function handleAddParticipant() {
-        showAddParticipantDialog();
-    }
-}
-
 function loadGroups() {
     const allGroupsData = getAllGroups();
     
@@ -167,7 +115,6 @@ function setupEventListeners() {
     document.getElementById('btn-schedule-meeting')?.addEventListener('click', showMeetingDialog);
 
     // --- ABA "CRIAR GRUPO" ---
-    document.getElementById('create-group-form')?.addEventListener('submit', createGroup);
     document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
     document.getElementById('group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('edit-group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
@@ -208,7 +155,7 @@ document.getElementById('my-groups')?.addEventListener('click', (e) => {
     }
 });
     // --- ABA "GERENCIAR GRUPO" ---
-// Adicionar este código ao setupEventListeners
+// Lógica de troca de abas internas (Grupos que Criei / Grupos que Participo)
 document.querySelectorAll('.group-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         // Remover classe active de todas as abas e conteúdos
@@ -221,7 +168,7 @@ document.querySelectorAll('.group-tab').forEach(tab => {
         // Mostrar o conteúdo correspondente
         const target = tab.dataset.target;
         document.getElementById(target).classList.add('active');
-    });
+    }); // Esta lógica substitui a função switchGroupTab
 });
     document.getElementById('edit-group-form')?.addEventListener('submit', saveGroupChanges);
 document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
@@ -362,7 +309,6 @@ function switchTab(tabId) {
     if (tabId === 'create-group') {
         loadUsersForSelection();
         loadTagTemplatesForGroup();
-        loadBoardTemplatesForGroup();
     } else if (tabId === 'group-templates') {
         loadGroupTemplates();
     } else if (tabId === 'statistics') {
@@ -509,112 +455,6 @@ function saveMeeting() {
     }, 1500);
 }
 
-function switchGroupTab(targetId) {
-    // Remover classe active de todas as abas e conteúdos
-    document.querySelectorAll('.group-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.group-content').forEach(c => c.classList.remove('active'));
-    
-    // Adicionar classe active à aba clicada
-    document.querySelector(`.group-tab[data-target="${targetId}"]`).classList.add('active');
-    
-    // Mostrar o conteúdo correspondente
-    document.getElementById(targetId).classList.add('active');
-}
-
-function showAddBoardDialog() {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">Adicionar Quadro ao Grupo</h3>
-        <div class="form-group">
-            <label for="board-name">Nome do Quadro:</label>
-            <input type="text" id="board-name" placeholder="Nome do quadro" required>
-        </div>
-        <div class="form-group">
-            <label for="board-template">Usar Template (Opcional):</label>
-            <select id="board-template">
-                <option value="">Começar com um quadro vazio</option>
-                <!-- Templates de quadro do sistema e do grupo serão preenchidos aqui -->
-            </select>
-        </div>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" id="cancel-board-btn">Cancelar</button>
-            <button class="btn btn-primary" id="save-board-btn">Salvar Quadro</button>
-        </div>
-    `;
-    
-    document.body.appendChild(dialog);
-    
-    // Carregar templates de quadro
-    loadBoardTemplatesForDialog(dialog);
-    
-    dialog.showModal();
-    
-    const cancelBtn = dialog.querySelector('#cancel-board-btn');
-    const saveBtn = dialog.querySelector('#save-board-btn');
-    const feedbackEl = dialog.querySelector('.feedback');
-    
-    cancelBtn.addEventListener('click', () => {
-        dialog.close();
-        dialog.remove();
-    });
-    
-    saveBtn.addEventListener('click', () => {
-        const boardName = document.getElementById('board-name').value.trim();
-        const template = document.getElementById('board-template').value;
-        
-        if (!boardName) {
-            showDialogMessage(feedbackEl, 'O nome do quadro é obrigatório.', 'error');
-            return;
-        }
-        
-        addBoardToGroup(boardName, template);
-        showDialogMessage(feedbackEl, 'Quadro adicionado com sucesso!', 'success');
-        
-        setTimeout(() => {
-            dialog.close();
-            dialog.remove();
-        }, 1500);
-    });
-}
-
-function loadBoardTemplatesForDialog(dialog) {
-    const templateSelect = dialog.querySelector('#board-template');
-    if (!templateSelect) return;
-    
-    // Limpar opções existentes, mantendo apenas a opção vazia
-    templateSelect.innerHTML = '<option value="">Começar com um quadro vazio</option>';
-    
-    // Carregar templates do grupo primeiro
-    const groupTemplates = getGroupBoardTemplates(currentUser.id);
-    if (groupTemplates.length > 0) {
-        const optgroupGroup = document.createElement('optgroup');
-        optgroupGroup.label = 'Templates do Grupo';
-        groupTemplates.forEach(template => {
-            const option = document.createElement('option');
-            option.value = template.id;
-            option.textContent = template.name;
-            optgroupGroup.appendChild(option);
-        });
-        templateSelect.appendChild(optgroupGroup);
-    }
-    
-    // Carregar templates do sistema
-    const systemTemplates = getSystemBoardTemplates();
-    if (systemTemplates.length > 0) {
-        const optgroupSystem = document.createElement('optgroup');
-        optgroupSystem.label = 'Templates do Sistema';
-        systemTemplates.forEach(template => {
-            const option = document.createElement('option');
-            option.value = template.id;
-            option.textContent = template.name;
-            optgroupSystem.appendChild(option);
-        });
-        templateSelect.appendChild(optgroupSystem);
-    }
-}
-
 function addBoardToGroup(name, templateId, description) {
     const container = document.getElementById('group-boards-container');
     const boardId = 'board-' + Date.now();
@@ -734,11 +574,6 @@ function loadTagTemplatesForGroup() {
     }
 }
 
-function loadBoardTemplatesForGroup() {
-    // Esta função pode ser usada para carregar templates de quadro em outros contextos
-    // Por enquanto, apenas a função loadBoardTemplatesForDialog é usada
-}
-
 // js/groups.js - PART 2/4 - REFACTORED VERSION
 
 // ===== FUNÇÕES DE TEMPLATES DE GRUPO =====
@@ -755,7 +590,7 @@ function showGroupBoardTemplateDialog(templateId = null) {
     const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
 
     if (adminGroups.length === 0) {
-        showAlertDialog("Você não administra nenhum grupo. Para criar templates, é necessário criá-los primeiro na aba 'Criar Grupo'.");
+        showFloatingMessage("Você não administra nenhum grupo para criar templates.", 'warning');
         return;
     }
 
@@ -1754,138 +1589,6 @@ function loadUsersForSelection() {
     });
 }
 
-function createGroup(e) {
-    e.preventDefault();
-    const form = e.target;
-    const feedbackEl = form.querySelector('.feedback');
-    
-    // Coleta de dados do formulário
-    const groupName = document.getElementById('group-name').value.trim();
-    const groupDescription = document.getElementById('group-description').value;
-    const groupAccess = document.getElementById('group-access').value;
-    const groupTagTemplate = document.getElementById('group-tag-template').value;
-    const permissions = {
-        createBoards: document.getElementById('perm-create-boards').checked,
-        editBoards: document.getElementById('perm-edit-boards').checked,
-        createColumns: document.getElementById('perm-create-columns').checked,
-        editColumns: document.getElementById('perm-edit-columns').checked,
-        createTags: document.getElementById('perm-create-tags').checked,
-        editTags: document.getElementById('perm-edit-tags').checked,
-        createCards: document.getElementById('perm-create-cards').checked
-    };
-    const reportFrequency = document.getElementById('group-report-frequency').value;
-    const reportSettings = {
-        frequency: reportFrequency,
-        dayOfWeek: reportFrequency === 'weekly' ? document.getElementById('group-report-day-of-week').value : null,
-        dayOfMonth: reportFrequency === 'monthly' ? document.getElementById('group-report-day-of-month').value : null,
-    };
-    const boards = [];
-    document.querySelectorAll('#group-boards-container .group-board-item').forEach(item => {
-        const boardName = item.querySelector('.board-info strong').textContent;
-        const templateId = item.dataset.templateId;
-        const description = item.dataset.description;
-        boards.push({ name: boardName, templateId, description });
-    });
-    const membersSelect = document.getElementById('group-members');
-    const selectedMembers = Array.from(membersSelect.selectedOptions).map(option => option.value);
-
-    if (!groupName) {
-        showFormFeedback(form, 'O nome do grupo é obrigatório.', 'error');
-        return;
-    }
-    
-    showConfirmationDialog(
-        `Confirma a criação do grupo "${groupName}"?`,
-        (dialog) => {
-            const existingGroup = groups.find(g => g.name.toLowerCase() === groupName.toLowerCase());
-            if (existingGroup) {
-                showDialogMessage(dialog, 'Já existe um grupo com este nome.', 'error');
-                
-                setTimeout(() => {
-                    dialog.close();
-                    switchTab('create-group');
-                }, 1500);
-                
-                return false;
-            }
-            
-            const currentUser = getCurrentUser();
-            if (!currentUser) {
-                showDialogMessage(dialog, 'Erro: usuário não autenticado.', 'error');
-                return false;
-            }
-            
-            const newGroup = {
-                name: groupName,
-                description: groupDescription,
-                access: groupAccess,
-                tagTemplate: groupTagTemplate,
-                permissions: permissions,
-                lastReportSent: null, // Inicializa o controle de relatório
-                reportSettings: reportSettings,
-                boardIds: [], // Começa vazio, será preenchido abaixo
-                memberIds: [currentUser.id], // Apenas o criador é adicionado inicialmente
-                adminId: currentUser.id,
-                createdAt: new Date().toISOString(),
-                statistics: {
-                    totalCards: 0,
-                    completedCards: 0,
-                    activeCards: 0
-                }
-            };
-            
-            const savedGroup = saveGroup(newGroup);
-
-            if (savedGroup) {
-                // Cria e vincula os quadros ao grupo recém-criado
-                const createdBoardIds = boards.map(boardInfo => {
-                    const selectedTemplate = getSystemBoardTemplates().find(t => t.id === boardInfo.templateId);
-                    const newColumns = selectedTemplate 
-                        ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) 
-                        : [];
-                    
-                    const newBoardData = {
-                        title: boardInfo.name,
-                        description: boardInfo.description,
-                        icon: selectedTemplate ? selectedTemplate.icon : '📋',
-                        ownerId: currentUser.id,
-                        visibility: 'group',
-                        groupId: savedGroup.id, // Vincula ao grupo
-                        columnIds: newColumns.map(c => c.id)
-                    };
-                    const savedBoard = saveBoard(newBoardData);
-                    return savedBoard.id;
-                });
-
-                savedGroup.boardIds = createdBoardIds;
-                saveGroup(savedGroup); // Salva o grupo novamente com os IDs dos quadros
-
-                // Enviar notificações para os membros selecionados
-                selectedMembers.forEach(memberId => {
-                    sendGroupInvitation(savedGroup.id, memberId, currentUser);
-                });
-
-                showDialogMessage(dialog, 'Grupo criado com sucesso! Convites enviados.', 'success');
-                
-                // Atualizar a lista de grupos
-                loadGroups();
-                
-                setTimeout(() => {
-                    dialog.close();
-                    form.reset();
-                    document.getElementById('group-boards-container').innerHTML = '';
-                    switchTab('my-groups');
-                }, 1500);
-                
-                return true;
-            } else {
-                showDialogMessage(dialog, 'Erro ao criar o grupo.', 'error');
-                return false;
-            }
-        }
-    );
-}
-
 function cancelGroupCreation() {
     showConfirmationDialog(
         'Tem certeza que deseja cancelar a criação do grupo? Todas as informações serão perdidas.',
@@ -1904,44 +1607,18 @@ function cancelGroupCreation() {
     );
 }
 
-function handleGroupAction(e) {
-    const action = e.target.dataset.action;
-    const groupId = e.target.dataset.groupId;
-    
-    // Define o grupo atual para outras funções usarem
-    currentGroup = groups.find(group => group.id === groupId);
-    if (!currentGroup) {
-        showFloatingMessage('Grupo não encontrado.', 'error');
-        return;
-    }
-    
-    switch (action) {
-        case 'view':
-            viewGroup(currentGroup);
-            break;
-        case 'edit':
-            editGroup(currentGroup);
-            break;
-        case 'delete':
-            deleteGroup(); // <-- REMOVIDO o parâmetro 'group'
-            break;
-        case 'leave':
-            leaveGroup(currentGroup);
-            break;
-        default:
-            showFloatingMessage('Ação inválida.', 'error');
-    }
-}
-
 function viewGroup(group) {
-    // Preencher nome do grupo nas estatísticas
-    document.getElementById('statistics-group-name').textContent = group.name;
-    
     // Alternar para a aba de estatísticas
     switchTab('statistics');
     
-    // Carregar estatísticas do grupo
-    loadGroupStatistics(group.id);
+    // Agora que a aba está ativa, os elementos existem.
+    const statsGroupNameEl = document.getElementById('statistics-group-name');
+    if (statsGroupNameEl) {
+        statsGroupNameEl.textContent = group.name;
+    }
+
+    // Carrega as estatísticas para o grupo específico que foi clicado.
+    loadAndRenderStatistics(group.id);
 }
 
 function editGroup(group) {
@@ -2214,69 +1891,6 @@ function deleteGroup() {
 }
 
 // js/groups.js - PART 4/4 - REFACTORED VERSION
-
-// Função promptForPassword atualizada com feedback no diálogo
-function promptForPassword() {
-    return new Promise((resolve) => {
-        const dialog = document.createElement('dialog');
-        dialog.className = 'draggable';
-        dialog.innerHTML = `
-            <h3 class="drag-handle">Confirmação de Segurança</h3>
-            <div class="form-group">
-                <label for="confirm-password-input">Digite sua senha ou a senha mestra:</label>
-                <input type="password" id="confirm-password-input" autocomplete="current-password" required>
-            </div>
-            <div class="feedback"></div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancel-password-btn">Cancelar</button>
-                <button class="btn btn-primary" id="confirm-password-btn">Confirmar</button>
-            </div>
-        `;
-        
-        document.body.appendChild(dialog);
-        dialog.showModal();
-        
-        const confirmBtn = dialog.querySelector('#confirm-password-btn');
-        const cancelBtn = dialog.querySelector('#cancel-password-btn');
-        const passwordInput = dialog.querySelector('#confirm-password-input');
-        const feedbackEl = dialog.querySelector('.feedback');
-
-        const closeAndResolve = (value) => {
-            dialog.close();
-            setTimeout(() => {
-                dialog.remove();
-                resolve(value);
-            }, 300);
-        };
-
-        const handleConfirm = () => {
-            const password = passwordInput.value;
-            if (!password) {
-                showDialogMessage(feedbackEl, 'A senha é obrigatória.', 'error');
-                return;
-            }
-            if (password === currentUser.password || validateMasterPassword(password)) {
-                closeAndResolve(password);
-            } else {
-                showDialogMessage(passwordDialog, 'Senha incorreta. Tente novamente.', 'error');
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
-        };
-
-        cancelBtn.addEventListener('click', () => {
-            showDialogMessage(feedbackEl, 'Operação cancelada.', 'info');
-            confirmBtn.disabled = true;
-            cancelBtn.disabled = true;
-            setTimeout(() => closeAndResolve(null), 1500);
-        });
-
-        confirmBtn.addEventListener('click', handleConfirm);
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleConfirm();
-        });
-    });
-}
 
 function leaveGroup() {
     if (!currentGroup) {
@@ -2601,35 +2215,59 @@ function applyFontSize(size) {
     document.documentElement.style.fontSize = fontSizeValue;
 }
 
-function handleConfirmation() {
-    const dialog = document.getElementById('confirmation-dialog');
-    const feedbackEl = dialog.querySelector('.feedback');
-    
-    if (dialog._confirmCallback) {
-        const result = dialog._confirmCallback(dialog);
-        if (result === true) {
-            dialog.close();
-        } else if (result === false) {
-            // Ação falhou, manter diálogo aberto
-            showDialogMessage(feedbackEl, 'Não foi possível completar a ação.', 'error');
-        }
-    } else {
-        dialog.close();
-    }
-}
-
-// Funções auxiliares (mantidas do original)
+/**
+ * Calcula o número total de tarefas (cartões) em todos os quadros de um grupo.
+ * @param {string} groupId - O ID do grupo.
+ * @returns {number} O número total de tarefas.
+ */
 function getGroupTaskCount(groupId) {
-    return Math.floor(Math.random() * 50);
+    const group = getGroup(groupId);
+    if (!group || !group.boardIds) return 0;
+
+    return group.boardIds.reduce((total, boardId) => {
+        const board = getFullBoardData(boardId);
+        if (!board) return total;
+        return total + board.columns.reduce((boardTotal, column) => boardTotal + column.cards.length, 0);
+    }, 0);
 }
 
+/**
+ * Calcula o número de tarefas concluídas em todos os quadros de um grupo.
+ * @param {string} groupId - O ID do grupo.
+ * @returns {number} O número de tarefas concluídas.
+ */
 function getCompletedTaskCount(groupId) {
-    return Math.floor(Math.random() * 50);
+    const group = getGroup(groupId);
+    if (!group || !group.boardIds) return 0;
+
+    return group.boardIds.reduce((total, boardId) => {
+        const board = getFullBoardData(boardId);
+        if (!board) return total;
+        return total + board.columns.reduce((boardTotal, column) => 
+            boardTotal + column.cards.filter(card => card.isComplete).length, 0);
+    }, 0);
 }
 
+/**
+ * Calcula o número de tarefas atrasadas em todos os quadros de um grupo.
+ * @param {string} groupId - O ID do grupo.
+ * @returns {number} O número de tarefas atrasadas.
+ */
 function getOverdueTaskCount(groupId) {
-    return Math.floor(Math.random() * 10);
+    const group = getGroup(groupId);
+    if (!group || !group.boardIds) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
+
+    return group.boardIds.reduce((total, boardId) => {
+        const board = getFullBoardData(boardId);
+        if (!board) return total;
+        return total + board.columns.reduce((boardTotal, column) => 
+            boardTotal + column.cards.filter(card => !card.isComplete && card.dueDate && new Date(card.dueDate) < today).length, 0);
+    }, 0);
 }
+
 
 async function testServerConnection(serverUrl) {
     try {
@@ -2649,19 +2287,6 @@ async function testServerConnection(serverUrl) {
     } catch (error) {
         return { success: false, message: 'Não foi possível conectar ao servidor' };
     }
-}
-
-function saveNotification(notification) {
-    // Obter notificações existentes
-    let notifications = universalLoad('notifications') || [];
-    
-    // Adicionar nova notificação
-    notifications.push(notification);
-    
-    // Salvar notificações
-    universalSave('notifications', notifications);
-    
-    return true;
 }
 
 function removeMemberFromGroup(group, memberId) {
@@ -2741,6 +2366,7 @@ export function checkAndSendReports() {
 }
 
 function sendMessageToAllMembers() {
+    // Esta função é chamada pelo botão no diálogo de edição de grupo.
     if (!currentGroup) {
         showFloatingMessage('Nenhum grupo selecionado para enviar mensagem.', 'error');
         return;
@@ -2752,7 +2378,7 @@ function sendMessageToAllMembers() {
         <h3 class="drag-handle">Mensagem para o Grupo: ${currentGroup.name}</h3>
         <div class="form-group">
             <label for="group-broadcast-message-textarea">Mensagem:</label>
-            <textarea id="group-broadcast-message-textarea" placeholder="Escreva sua mensagem para todos os membros..." rows="5"></textarea>
+            <textarea id="group-broadcast-message-textarea" placeholder="Escreva sua mensagem para todos os membros..." rows="5" style="width: 100%;"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">

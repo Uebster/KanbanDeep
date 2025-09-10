@@ -4,8 +4,8 @@ import {
     getAllUsers,
     deleteUser,
     setCurrentUser,
-    validateMasterPassword,
-    updateUser
+    updateUser,
+    validateMasterPassword
 } from './auth.js';
 import { showFloatingMessage, initDraggableElements, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 

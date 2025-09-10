@@ -42,34 +42,6 @@ export function getAllUsers() {
 }
 
 /**
- * Salva todos os usuários.
- * @param {Array} users - Lista de usuários a ser salva.
- */
-export function saveAllUsers(users) {
-    let success = true;
-    users.forEach(user => {
-        if (!saveUserProfile(user)) {
-            success = false;
-        }
-    });
-    return success;
-}
-
-/**
- * Valida as credenciais de login.
- * @param {string} username - Nome de usuário ou email.
- * @param {string} password - Senha.
- * @returns {Object|null} Usuário válido ou null.
- */
-export function validateCredentials(username, password) {
-    const users = getAllUsers();
-    return users.find(user => 
-        (user.username === username || user.email === username) && 
-        user.password === password
-    );
-}
-
-/**
  * Registra um novo usuário.
  * @param {Object} userData - Dados do usuário a ser registrado.
  * @returns {boolean} True se o registro foi bem-sucedido, false caso contrário.

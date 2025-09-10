@@ -174,31 +174,31 @@ function renderTagTemplates(templates, gridElement, isEditable) {
 }
 
 function useTagTemplate(templateId) {
-    const userTemplates = getUserTagTemplates(currentUser.id);
-    const allTemplates = [...getSystemTagTemplates(), ...userTemplates];
-    const template = allTemplates.find(t => t.id === templateId);
+    showConfirmationDialog(
+        'Deseja definir este conjunto como o seu padrão para novos cartões?',
+        (dialog) => {
+            const userTemplates = getUserTagTemplates(currentUser.id);
+            const allTemplates = [...getSystemTagTemplates(), ...userTemplates];
+            const template = allTemplates.find(t => t.id === templateId);
 
-    if (!template) {
-        showFloatingMessage('Conjunto não encontrado.', 'error');
-        return;
-    }
-
-    // Atualiza a preferência do usuário
-    const userData = getCurrentUser();
-    if (userData) {
-        const updatedUser = {
-            ...userData,
-            preferences: {
-                ...userData.preferences,
-                defaultTagTemplateId: templateId
+            if (!template) {
+                showDialogMessage(dialog, 'Conjunto não encontrado.', 'error');
+                return false;
             }
-        };
-        if (updateUser(userData.id, updatedUser)) {
-            showFloatingMessage(`Conjunto '${template.name}' definido como padrão!`, 'success');
-        } else {
-            showFloatingMessage('Erro ao definir conjunto padrão.', 'error');
+
+            // Atualiza a preferência do usuário
+            const userData = getCurrentUser();
+            if (userData) {
+                userData.preferences.defaultTagTemplateId = templateId;
+                if (updateUser(userData.id, userData)) {
+                    showDialogMessage(dialog, `Conjunto '${template.name}' definido como padrão!`, 'success');
+                    return true;
+                }
+            }
+            showDialogMessage(dialog, 'Erro ao definir conjunto padrão.', 'error');
+            return false;
         }
-    }
+    );
 }
 
 function showBoardTemplateDialog(templateId = null) {

@@ -1,6 +1,6 @@
 // js/main.js - VERSÃO FINAL SIMPLIFICADA E SEGURA
 
-import { initUIControls, initDraggableElements } from './ui-controls.js';
+import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 import { getCurrentUser } from './auth.js';
 import { initKanbanPage } from './kanban.js';
 import { initListUsersPage } from './list-users.js';
@@ -98,6 +98,9 @@ function setupGlobalHeader() {
     const profileBtn = document.getElementById('user-profile-btn');
     if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
 
+    // O botão Kanban é específico do Kanban, mas pode aparecer em outras páginas.
+    // Se aparecer, ele deve redirecionar para a página Kanban.
+    // A inicialização da página Kanban é feita no roteador principal.
     const kanbanBtn = document.getElementById('kanban-btn');
     if (kanbanBtn) kanbanBtn.addEventListener('click', () => window.location.href = 'kanban.html');
 
@@ -115,7 +118,15 @@ function setupGlobalHeader() {
 
     const exitBtn = document.getElementById('exit-btn');
     if (exitBtn) exitBtn.addEventListener('click', () => {
-        if (confirm('Tem certeza que deseja fechar o aplicativo?')) window.close();
+        showConfirmationDialog(
+            'Tem certeza que deseja fechar o aplicativo?',
+            (dialog) => {
+                showDialogMessage(dialog, 'Fechando...', 'info');
+                setTimeout(() => window.close(), 1000);
+                return true;
+            },
+            null, 'Sim, Fechar'
+        );
     });
 
     // Define o título da página (pode ser sobrescrito pelo script da página)

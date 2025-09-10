@@ -237,42 +237,12 @@ export function showFloatingMessage(message, type = 'info', duration = 4000) {
 }
 
 /**
- * Exibe uma mensagem global abaixo do cabeçalho principal.
- * @param {string} message - O texto da mensagem.
- * @param {string} type - 'success', 'error' ou 'info'.
- * @param {number} duration - Duração em milissegundos.
- */
-export function showGlobalMessage(message, type = 'info', duration = 4000) {
-    // Cria o elemento da mensagem
-    const messageEl = document.createElement('div');
-    messageEl.className = `global-message feedback ${type}`; // Usa a classe .feedback para o estilo
-    messageEl.textContent = message;
-
-    // Adiciona ao corpo do documento
-    document.body.appendChild(messageEl);
-
-    // Força a animação de entrada
-    setTimeout(() => {
-        messageEl.classList.add('show');
-    }, 10); // Pequeno delay para garantir que a transição CSS funcione
-
-    // Remove a mensagem após a duração
-    setTimeout(() => {
-        messageEl.classList.remove('show');
-        // Remove o elemento do HTML após a animação de saída
-        messageEl.addEventListener('transitionend', () => messageEl.remove());
-    }, duration);
-}
-
-// ui-controls.js - Adicione estas funções no final do arquivo
-
-/**
- * Exibe um diálogo de confirmação personalizado.
- * @param {string} message - A mensagem a ser exibida.
- * @param {Function} onConfirm - Callback para o botão "Sim". Recebe o diálogo como argumento. Deve retornar `true` para fechar o diálogo ou `false` para mantê-lo aberto.
- * @param {Function} [onCancel] - Callback para o botão "Não". Mesma lógica do onConfirm.
- * @param {string} [confirmText='Sim'] - Texto para o botão de confirmação.
- * @param {string} [cancelText='Não'] - Texto para o botão de cancelamento.
+ * Cria e exibe um diálogo de confirmação genérico e estilizado.
+ * @param {string} message - A pergunta a ser exibida.
+ * @param {function} onConfirm - A função a ser executada se o usuário confirmar. Retorna `true` para fechar o diálogo.
+ * @param {function|null} onCancel - A função a ser executada se o usuário cancelar.
+ * @param {string} confirmText - O texto do botão de confirmação.
+ * @param {string} cancelText - O texto do botão de cancelamento.
  */
 export function showConfirmationDialog(message, onConfirm, onCancel = null, confirmText = 'Sim', cancelText = 'Não') {
     const dialog = document.createElement('dialog');
@@ -287,7 +257,7 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         </div>
     `;
     document.body.appendChild(dialog);
-    makeDraggable(dialog); // Garante que o novo diálogo seja arrastável
+    initDraggableElements();
     dialog.showModal();
 
     const confirmBtn = dialog.querySelector('.btn-primary');
@@ -297,36 +267,28 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         dialog.close();
         setTimeout(() => dialog.remove(), 300);
     };
-    
+
     cancelBtn.addEventListener('click', () => {
         if (onCancel) {
             const result = onCancel(dialog);
-            // Só fecha se o callback retornar true
             if (result) {
                 setTimeout(closeAndCleanup, 1500);
             }
         } else {
-            // Comportamento padrão: mostra mensagem de cancelamento e fecha
             showDialogMessage(dialog, 'Operação cancelada.', 'info');
             confirmBtn.disabled = true;
             cancelBtn.disabled = true;
             setTimeout(closeAndCleanup, 1500);
         }
     });
-
+    
     confirmBtn.addEventListener('click', async () => {
-        // Desabilita os botões para prevenir múltiplos cliques
         confirmBtn.disabled = true;
         cancelBtn.disabled = true;
-
-        // Executa a ação de confirmação
-        const success = await onConfirm(dialog); // A função que chama decide o que fazer
-
-        // Se a ação foi bem-sucedida, o diálogo fecha após a mensagem
+        const success = await onConfirm(dialog);
         if (success) {
             setTimeout(closeAndCleanup, 1500);
         } else {
-            // Se houve erro, reabilita os botões para o usuário tentar novamente
             confirmBtn.disabled = false;
             cancelBtn.disabled = false;
         }
@@ -394,18 +356,4 @@ export function updateUserAvatar(user) {
     
     // Adicionar tooltip com nome do usuário
     avatarBtn.title = `Logado como: ${user.name}`;
-}
-
-/**
- * Inicializa o avatar do usuário em qualquer página
- * @param {Object} currentUser - Usuário atual (opcional, busca automaticamente se não fornecido)
- */
-export function initUserAvatar(currentUser = null) {
-    if (!currentUser) {
-        currentUser = getCurrentUser(); // Esta função precisa ser importada de auth.js
-    }
-    
-    if (currentUser) {
-        updateUserAvatar(currentUser);
-    }
 }

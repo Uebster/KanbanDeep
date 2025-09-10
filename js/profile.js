@@ -1,12 +1,12 @@
 // js/profile.js - VERSÃO FINAL CORRIGIDA
 
 import { getCurrentUser, updateUser, logout, validateMasterPassword } from './auth.js';
-import { 
-    getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTemplates, 
-    getAllGroups, getGroup
-} from './storage.js';
-import { addGroupRequestNotification } from './notifications.js';
+import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTemplates, getAllGroups, getGroup,
+      getNotifications,   // <-- Adicione esta
+  saveNotifications   // <-- Adicione esta
+ } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { addGroupRequestNotification } from './notifications.js';
 
 // Variável para armazenar dados originais do usuário
 let originalUserData = null;
@@ -383,14 +383,6 @@ function applyFontSize(size, isPreview = false) {
     }
 }
 // Adicione esta função para aplicar as configurações de fonte do usuário
-function applyUserFontAndSize() {
-    const currentUser = getCurrentUser();
-    if (!currentUser || !currentUser.preferences) return;
-    
-    applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
-    applyFontSize(currentUser.preferences.fontSize || 'medium');
-}
-
 function handleSaveClick() {
     
     showConfirmationDialog(
@@ -828,12 +820,6 @@ function applyUserFont() {
     
     applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
     applyFontSize(currentUser.preferences.fontSize || 'medium');
-}
-
-// Exportar função para ser usada em outras páginas
-export function getAppliedFontFamily() {
-    const currentUser = getCurrentUser();
-    return currentUser?.preferences?.fontFamily || 'Segoe UI, sans-serif';
 }
 
 // profile.js - Adicione estas funções
