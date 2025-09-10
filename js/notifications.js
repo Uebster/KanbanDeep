@@ -107,13 +107,8 @@ function loadNotifications() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
     
-    notifications = getNotifications(currentUser.id);
-    
-    // Se não houver notificações, criar algumas de exemplo
-    if (notifications.length === 0) {
-        notifications = generateSampleNotifications();
-        saveNotifications(currentUser.id, notifications);
-    }
+    // Garante que 'notifications' seja sempre um array, mesmo que vazio.
+    notifications = getNotifications(currentUser.id) || [];
 }
 
 function generateSampleNotifications() {

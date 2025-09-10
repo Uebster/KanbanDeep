@@ -28,7 +28,8 @@ import {
 } from './ui-controls.js';
 import { 
     addGroupInvitationNotification,
-    addGroupRemovalNotification 
+    addGroupRemovalNotification,
+    addMeetingNotification
 } from './notifications.js';
 
 let currentUser;
@@ -160,6 +161,9 @@ function setupEventListeners() {
     document.getElementById('btn-create-group')?.addEventListener('click', () => switchTab('create-group'));
 
     
+    // --- ABA "REUNIÕES" ---
+    document.getElementById('btn-schedule-meeting')?.addEventListener('click', showMeetingDialog);
+
     // --- ABA "CRIAR GRUPO" ---
     document.getElementById('create-group-form')?.addEventListener('submit', createGroup);
     document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
@@ -361,7 +365,130 @@ function switchTab(tabId) {
         populateGroupSelectorForStats(groupSelect);
         const selectedGroupId = groupSelect.value;
         if (selectedGroupId) loadAndRenderStatistics(selectedGroupId);
+    } else if (tabId === 'meetings') {
+        loadAndRenderMeetings();
     }
+}
+
+function loadAndRenderMeetings() {
+    const meetingsListContainer = document.getElementById('meetings-list');
+    const scheduleBtn = document.getElementById('btn-schedule-meeting');
+    if (!meetingsListContainer || !scheduleBtn) return;
+
+    const userGroups = getAllGroups().filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+    const isAdminOfAnyGroup = userGroups.some(g => g.adminId === currentUser.id);
+
+    // Mostra o botão de agendar apenas para administradores
+    scheduleBtn.style.display = isAdminOfAnyGroup ? 'block' : 'none';
+
+    const allMeetings = userGroups.flatMap(group => 
+        (group.meetings || []).map(meeting => ({ ...meeting, groupName: group.name }))
+    );
+
+    // Ordena as reuniões pela data, das mais próximas para as mais distantes
+    allMeetings.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    meetingsListContainer.innerHTML = '';
+
+    if (allMeetings.length === 0) {
+        meetingsListContainer.innerHTML = '<p class="no-templates">Nenhuma reunião agendada para os seus grupos.</p>';
+        return;
+    }
+
+    allMeetings.forEach(meeting => {
+        const meetingCard = document.createElement('div');
+        meetingCard.className = 'meeting-card';
+
+        const date = new Date(meeting.date);
+        const day = date.getDate();
+        const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+
+        meetingCard.innerHTML = `
+            <div class="meeting-date-box">
+                <span class="meeting-day">${day}</span>
+                <span class="meeting-month">${month}</span>
+            </div>
+            <div class="meeting-details">
+                <h4 class="meeting-title">${meeting.title}</h4>
+                <div class="meeting-meta">
+                    <span><strong>Grupo:</strong> ${meeting.groupName}</span>
+                    <span><strong>Horário:</strong> ${meeting.time}</span>
+                    ${meeting.location ? `<span><strong>Local:</strong> ${meeting.location}</span>` : ''}
+                </div>
+            </div>
+        `;
+        meetingsListContainer.appendChild(meetingCard);
+    });
+}
+
+function showMeetingDialog() {
+    const dialog = document.getElementById('meeting-dialog');
+    const groupSelect = document.getElementById('meeting-group-select');
+
+    // Popula o select com os grupos que o usuário administra
+    groupSelect.innerHTML = '';
+    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+    adminGroups.forEach(group => {
+        groupSelect.innerHTML += `<option value="${group.id}">${group.name}</option>`;
+    });
+
+    // Limpa campos
+    document.getElementById('meeting-title').value = '';
+    document.getElementById('meeting-date').value = '';
+    document.getElementById('meeting-time').value = '';
+    document.getElementById('meeting-location').value = '';
+    document.getElementById('meeting-description').value = '';
+
+    // Adiciona o listener de salvamento
+    const saveBtn = document.getElementById('save-meeting-btn');
+    // Clona para remover listeners antigos e evitar duplicação
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+    newSaveBtn.addEventListener('click', saveMeeting);
+
+    dialog.showModal();
+}
+
+function saveMeeting() {
+    const dialog = document.getElementById('meeting-dialog');
+    const groupId = document.getElementById('meeting-group-select').value;
+    const title = document.getElementById('meeting-title').value.trim();
+    const date = document.getElementById('meeting-date').value;
+    const time = document.getElementById('meeting-time').value;
+
+    if (!groupId || !title || !date || !time) {
+        showDialogMessage(dialog, 'Grupo, título, data e horário são obrigatórios.', 'error');
+        return;
+    }
+
+    const group = getGroup(groupId);
+    if (!group) return;
+
+    if (!group.meetings) group.meetings = [];
+
+    const newMeeting = {
+        id: 'meeting-' + Date.now(),
+        title, date, time,
+        location: document.getElementById('meeting-location').value.trim(),
+        description: document.getElementById('meeting-description').value.trim()
+    };
+
+    group.meetings.push(newMeeting);
+    saveGroup(group);
+
+    // Envia notificação para todos os membros
+    group.memberIds.forEach(memberId => {
+        // Não envia para si mesmo
+        if (memberId !== currentUser.id) {
+            addMeetingNotification(title, group.name, `${date}T${time}`);
+        }
+    });
+
+    showDialogMessage(dialog, 'Reunião agendada e membros notificados!', 'success');
+    setTimeout(() => {
+        dialog.close();
+        loadAndRenderMeetings(); // Atualiza a lista
+    }, 1500);
 }
 
 function switchGroupTab(targetId) {

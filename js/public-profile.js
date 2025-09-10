@@ -54,6 +54,7 @@ export function initPublicProfilePage() {
     setupEventListeners();
     initDraggableElements();
     checkRelationshipStatus();
+    loadMutualFriends();
     checkGroupInviteCapability();
 }
 
@@ -207,6 +208,49 @@ function loadUserData() {
     
     // Grupos públicos
     loadPublicGroups();
+}
+
+function loadMutualFriends() {
+    const section = document.getElementById('mutual-friends-section');
+    const container = document.getElementById('mutual-friends-container');
+    if (!section || !container) return;
+
+    // Não mostra para o seu próprio perfil
+    if (currentUser.id === viewedUser.id) {
+        section.style.display = 'none';
+        return;
+    }
+
+    const currentUserFriends = currentUser.friends || [];
+    const viewedUserFriends = viewedUser.friends || [];
+
+    const mutualFriendIds = currentUserFriends.filter(friendId => viewedUserFriends.includes(friendId));
+
+    if (mutualFriendIds.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    container.innerHTML = ''; // Limpa conteúdo anterior
+
+    const allUsers = getAllUsers();
+
+    mutualFriendIds.forEach(friendId => {
+        const friend = allUsers.find(u => u.id === friendId);
+        if (friend) {
+            const friendEl = document.createElement('a');
+            friendEl.href = `public-profile.html?userId=${friend.id}`;
+            friendEl.className = 'mutual-friend-item';
+            friendEl.title = friend.name;
+            friendEl.innerHTML = `
+                <div class="mutual-friend-avatar" style="background-image: url(${friend.avatar || ''})">
+                    ${!friend.avatar ? friend.name.charAt(0).toUpperCase() : ''}
+                </div>
+            `;
+            container.appendChild(friendEl);
+        }
+    });
 }
 
 function loadPersonalInfo() {

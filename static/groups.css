@@ -765,6 +765,65 @@ dialog h3 {
     flex-shrink: 0;
 }
 
+/* Estilos para a aba de Reuniões */
+.meetings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.meeting-card {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    background-color: var(--bg-page);
+    border-radius: 8px;
+    border-left: 5px solid var(--primary);
+    align-items: center;
+}
+
+.meeting-date-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    padding: 15px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.meeting-day {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.meeting-month {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.meeting-details {
+    flex-grow: 1;
+}
+
+.meeting-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.meeting-meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
 /* Estilos para os cartões de template */
 .template-card {
     background-color: var(--bg-card);

@@ -44,6 +44,7 @@
       <div class="tab" data-tab="create-group">Criar Grupo</div>
       <div class="tab" data-tab="manage-servers">Administrar Servidores</div>
       <div class="tab" data-tab="group-templates">Templates do Grupo</div>
+      <div class="tab" data-tab="meetings">Reuniões</div>
       <div class="tab" data-tab="statistics">Estatísticas</div>
     </div>
     
@@ -163,6 +164,20 @@
   </div>
 </div>
     
+    <!-- Conteúdo: Reuniões -->
+    <div class="tab-content" id="meetings">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Próximas Reuniões</h2>
+          <button id="btn-schedule-meeting" class="btn btn-primary" style="display: none;">+ Agendar Reunião</button>
+        </div>
+        <div id="meetings-list" class="meetings-list">
+          <!-- A lista de reuniões será renderizada aqui -->
+          <p class="loading-text">Carregando reuniões...</p>
+        </div>
+      </div>
+    </div>
+
     <!-- ABA: Administrar Servidores -->
     <div class="tab-content" id="manage-servers">
       <div class="card">
@@ -505,6 +520,42 @@
     <div class="modal-actions">
         <button class="btn btn-secondary" id="cancel-add-board-to-group-btn">Cancelar</button>
         <button class="btn btn-primary" id="confirm-add-board-to-group-btn">Adicionar Quadro</button>
+    </div>
+</dialog>
+
+<!-- Diálogo para Agendar Reunião -->
+<dialog id="meeting-dialog" class="draggable">
+    <h3 class="drag-handle" id="meeting-dialog-title">Agendar Nova Reunião</h3>
+    <div class="form-group">
+        <label for="meeting-group-select" class="required">Grupo:</label>
+        <select id="meeting-group-select"></select>
+    </div>
+    <div class="form-group">
+        <label for="meeting-title" class="required">Título da Reunião:</label>
+        <input type="text" id="meeting-title" placeholder="Ex: Reunião de Alinhamento Semanal">
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="meeting-date" class="required">Data:</label>
+            <input type="date" id="meeting-date">
+        </div>
+        <div class="form-group">
+            <label for="meeting-time" class="required">Horário:</label>
+            <input type="time" id="meeting-time">
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="meeting-location">Local (ou link):</label>
+        <input type="text" id="meeting-location" placeholder="Ex: Sala de Conferências 3 ou link do Google Meet">
+    </div>
+    <div class="form-group">
+        <label for="meeting-description">Descrição/Pauta:</label>
+        <textarea id="meeting-description" rows="4" placeholder="Tópicos a serem discutidos..."></textarea>
+    </div>
+    <div class="feedback"></div>
+    <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
+        <button id="save-meeting-btn" class="btn btn-primary">Agendar e Notificar</button>
     </div>
 </dialog>
 
