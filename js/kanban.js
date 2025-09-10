@@ -145,14 +145,6 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('my-groups-btn')?.addEventListener('click', () => window.location.href = 'groups.html');
     document.getElementById('notifications-btn')?.addEventListener('click', () => window.location.href = 'notifications.html');
     document.getElementById('templates-btn')?.addEventListener('click', () => window.location.href = 'templates.html');
-document.getElementById('search-card-btn')?.addEventListener('click', () => {
-    if (!currentBoard) {
-        showFloatingMessage('Selecione um quadro primeiro', 'error');
-        return;
-    }
-    showSearchDialog();
-});
-
     // --- Diálogos (Modais) ---
     document.getElementById('board-save-btn')?.addEventListener('click', handleSaveBoard);
     document.getElementById('column-save-btn')?.addEventListener('click', handleSaveColumn);
@@ -165,11 +157,6 @@ document.getElementById('search-card-btn')?.addEventListener('click', () => {
     // --- Atalhos e Contexto ---
     document.addEventListener('keydown', handleKeyDown);
     document.getElementById('columns-container').addEventListener('contextmenu', handleContextMenu);
-document.getElementById('exit-btn')?.addEventListener('click', confirmExit);
-
-
-// Adicione esta linha na função setupEventListeners do kanban.js
-document.getElementById('search-user-btn')?.addEventListener('click', showUserSearchDialog);
 
     // --- NOVA LÓGICA PARA FILTRO DE QUADROS ---
     document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
@@ -340,122 +327,6 @@ function resetSearchFilters() {
 
     showFloatingMessage('Filtros removidos.', 'info');
     dialog.close();
-}
-
-// Adicione esta função para buscar usuários
-function showUserSearchDialog() {
-    // Fechar diálogo anterior se existir
-    const existingDialog = document.getElementById('user-search-dialog');
-    if (existingDialog) {
-        existingDialog.remove();
-    }
-
-    const dialog = document.createElement('dialog');
-    dialog.id = 'user-search-dialog';
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <div class="drag-handle" style="cursor: move; padding: 10px; color: var(--text); background-color: var(--bg-column-header); border-bottom: 1px solid var(--border);">
-            <h3 style="margin: 0;">🔍 Buscar Usuários</h3>
-        </div>
-        <div style="padding: 20px;">
-            <input type="text" id="user-search-input" placeholder="Digite o nome do usuário..." 
-                          style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-page); color: var(--text); border: 1px solid var(--border);">
-            <div id="user-search-results" style="margin-top: 15px; max-height: 300px; overflow-y: auto;"></div>
-            <div style="margin-top: 15px; text-align: right;">
-                <button id="user-search-close" class="btn btn-secondary">Fechar</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(dialog);
-    dialog.showModal();
-    initDraggableElements();
-
-    const closeUserSearchDialog = () => {
-        dialog.close();
-        dialog.remove(); // Limpa o diálogo da tela
-    };
-
-    dialog.querySelector('#user-search-close').addEventListener('click', closeUserSearchDialog);
-    
-    const searchInput = document.getElementById('user-search-input');
-    searchInput.focus();
-
-    // Buscar usuários localmente, excluindo o usuário atual
-    const localUsers = getAllUsers().filter(user => user.id !== currentUser.id);
-    displayUserResults(localUsers);
-
-    searchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const filteredUsers = localUsers.filter(user => 
-            user.name.toLowerCase().includes(searchTerm) ||
-            (user.username && user.username.toLowerCase().includes(searchTerm))
-        );
-        displayUserResults(filteredUsers);
-    });
-}
-
-// Função para exibir resultados de usuários
-function displayUserResults(users) {
-    const resultsContainer = document.getElementById('user-search-results');
-    if (!resultsContainer) return;
-    resultsContainer.innerHTML = '';
-
-    if (users.length === 0) {
-        resultsContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-muted);">Nenhum usuário encontrado</p>';
-        return;
-    }
-
-    users.forEach(user => {
-        const userEl = document.createElement('div');
-        userEl.className = 'user-result-item';
-        userEl.style.padding = '10px';
-        userEl.style.borderBottom = '1px solid var(--border)';
-        userEl.style.cursor = 'pointer';
-        userEl.style.display = 'flex';
-        userEl.style.alignItems = 'center';
-        userEl.style.gap = '10px';
-        userEl.onmouseover = () => userEl.style.backgroundColor = 'var(--bg-column)';
-        userEl.onmouseout = () => userEl.style.backgroundColor = 'transparent';
-
-        // Avatar do usuário
-        const avatarEl = document.createElement('div');
-        avatarEl.style.width = '40px';
-        avatarEl.style.height = '40px';
-        avatarEl.style.borderRadius = '50%';
-        avatarEl.style.overflow = 'hidden';
-        avatarEl.style.display = 'flex';
-        avatarEl.style.alignItems = 'center';
-        avatarEl.style.justifyContent = 'center';
-        const hue = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
-        avatarEl.style.backgroundColor = `hsl(${hue}, 65%, 65%)`;
-        avatarEl.style.color = 'white';
-        avatarEl.style.fontWeight = 'bold';
-        avatarEl.style.flexShrink = '0';
-
-        if (user.avatar) {
-            avatarEl.innerHTML = `<img src="${user.avatar}" alt="${user.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
-        } else {
-            avatarEl.textContent = user.name.charAt(0).toUpperCase();
-        }
-
-        // Informações do usuário
-        const infoEl = document.createElement('div');
-        infoEl.innerHTML = `
-            <div style="font-weight: bold;">${user.name}</div>
-            <div style="font-size: 0.9em; color: var(--text-muted);">@${user.username}</div>
-        `;
-
-        userEl.appendChild(avatarEl);
-        userEl.appendChild(infoEl);
-
-        // Evento de clique para abrir o perfil
-        userEl.addEventListener('click', () => {
-            window.location.href = `public-profile.html?userId=${user.id}`;
-        });
-
-        resultsContainer.appendChild(userEl);
-    });
 }
 
 function handleFilterChange(filterType) {
@@ -2533,23 +2404,6 @@ function showIconPickerDialog(callback) {
     newDialog.querySelector('#close-icon-picker-btn').onclick = () => newDialog.close();
 }
 
-function confirmExit() {
-    // Usa a sua função showConfirmationDialog que já funciona
-    showConfirmationDialog(
-        'Tem certeza que deseja fechar o aplicativo?',
-        (dialog) => { // onConfirm
-            showDialogMessage(dialog, 'Fechando...', 'info');
-            setTimeout(() => window.close(), 1000);
-            return true;
-        },
-        (dialog) => { // onCancel
-            showDialogMessage(dialog, 'Operação cancelada.', 'info');
-            return true; // Retorna true para fechar o diálogo de confirmação
-        },
-        'Sim, Sair',
-        'Não'
-    );
-}
 function applyThemeFromSelect(themeValue) {
     document.body.classList.remove('light-mode', 'dark-mode');
     

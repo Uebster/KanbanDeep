@@ -8,6 +8,7 @@ import { initCreateUserPage } from './create-user.js';
 import { initProfilePage } from './profile.js';
 import { initGroupsPage, checkAndSendReports } from './groups.js';
 import { initNotificationsPage } from './notifications.js';
+import { initFriendsPage } from './friends.js';
 import { initTemplatesPage } from './template.js';
 import { initPublicProfilePage } from './public-profile.js';
 import { updateUserAvatar } from './ui-controls.js';
@@ -40,6 +41,8 @@ function main() {
             initProfilePage();
         } else if (path.includes('groups.html')) {
             initGroupsPage();
+        } else if (path.includes('friends.html')) {
+            initFriendsPage();
         } else if (path.includes('notifications.html')) {
             initNotificationsPage();
         } else if (path.includes('templates.html')) {
@@ -109,6 +112,9 @@ function setupGlobalHeader() {
     
     const templatesBtn = document.getElementById('templates-btn'); 
     if (templatesBtn) templatesBtn.addEventListener('click', () => window.location.href = 'templates.html');
+
+    const friendsBtn = document.getElementById('friends-btn');
+    if (friendsBtn) friendsBtn.addEventListener('click', () => window.location.href = 'friends.html');
 
     const notificationsBtn = document.getElementById('notifications-btn');
     if (notificationsBtn) notificationsBtn.addEventListener('click', () => window.location.href = 'notifications.html');

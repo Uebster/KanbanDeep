@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amigos - KanbanDeep</title>
+    <link rel="stylesheet" href="../static/universal.css">
+    <link rel="stylesheet" href="../static/friends.css">
+</head>
+<body>
+    <div id="message-container"></div>
+    
+    <!-- Cabeçalho Global Padrão -->
+    <header id="main-header">
+        <div class="menu-container">
+            <button id="user-avatar-btn" class="avatar-btn">
+                <img id="user-avatar" src="" alt="Avatar do Usuário">
+            </button>
+            <div id="profile-dropdown" class="dropdown">            
+                <button id="switch-user-btn">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn">👤 Meu Perfil</button>
+                <button id="kanban-btn">📋 Meus Quadros</button>
+                <button id="my-groups-btn">👥 Meus Grupos</button>
+                <button id="templates-btn">🎨 Gerenciar Templates</button>
+                <button id="notifications-btn">🔔 Notificações</button>
+                <hr>
+                <button id="exit-btn">🚪 Sair</button>
+            </div>
+        </div>
+        <h1 id="page-title">Amigos</h1>
+        <div class="menu-container">
+            <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+            <div id="actions-dropdown" class="dropdown">
+                <button id="undo-btn">↩️ Desfazer</button>
+                <button id="redo-btn">↪️ Refazer</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="tabs">
+            <button class="tab active" data-tab="my-friends">Meus Amigos</button>
+            <button class="tab" data-tab="pending-requests">Solicitações</button>
+            <button class="tab" data-tab="find-users">Buscar Usuários</button>
+        </div>
+
+        <!-- Conteúdo da Aba: Meus Amigos -->
+        <div id="my-friends" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Lista de Amigos</h2>
+                    <input type="text" id="friend-filter-input" class="filter-input" placeholder="Filtrar amigos por nome...">
+                </div>
+                <div id="friends-list" class="user-list">
+                    <!-- Amigos serão renderizados aqui -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo da Aba: Solicitações Pendentes -->
+        <div id="pending-requests" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">Solicitações Recebidas</h2>
+                <div id="received-requests-list" class="request-list">
+                    <!-- Solicitações recebidas serão renderizadas aqui -->
+                </div>
+            </div>
+            <div class="card" style="margin-top: 20px;">
+                <h2 class="card-title">Solicitações Enviadas</h2>
+                <div id="sent-requests-list" class="request-list">
+                    <!-- Solicitações enviadas serão renderizadas aqui -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo da Aba: Buscar Usuários -->
+        <div id="find-users" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Encontrar Novos Amigos</h2>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="user-search-input" class="filter-input" placeholder="Digite um nome ou nome de usuário para buscar...">
+                </div>
+                <div id="user-search-results" class="user-list">
+                    <!-- Resultados da busca serão renderizados aqui -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="../js/main.js"></script>
+</body>
+</html>

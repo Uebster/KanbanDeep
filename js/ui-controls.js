@@ -13,26 +13,37 @@ export function initUIControls() {
 }
 
 /**
- * Fecha o elemento de UI que está mais à frente na tela (o último aberto).
+ * Retorna o elemento de UI de maior prioridade que está aberto.
+ * A ordem de prioridade é: Diálogos > Dropdowns.
+ * @returns {HTMLElement|null} O elemento da camada superior ou null.
  */
-function closeTopLayer() {
-    // Prioridade 1: Diálogos (<dialog>)
+function getTopmostLayer() {
+    // Prioridade 1: Diálogos (<dialog>) abertos
     const openDialogs = document.querySelectorAll('dialog[open]');
     if (openDialogs.length > 0) {
-        const topDialog = openDialogs[openDialogs.length - 1];
-        // Para o diálogo de preferências, simula um clique no botão cancelar
-        if (topDialog.id === 'preferences-dialog') {
-            topDialog.querySelector('#pref-cancel-btn')?.click();
-        } else {
-            topDialog.close();
-        }
-        return; // Para a execução aqui
+        return openDialogs[openDialogs.length - 1]; // Retorna o último aberto, que está no topo
     }
 
-    // Prioridade 2: Dropdowns (.dropdown.show)
+    // Prioridade 2: Dropdowns (.dropdown.show) abertos
     const openDropdown = document.querySelector('.dropdown.show');
     if (openDropdown) {
-        openDropdown.classList.remove('show');
+        return openDropdown;
+    }
+
+    return null;
+}
+
+/**
+ * Fecha o elemento de UI que está na camada superior.
+ */
+function closeTopLayer() {
+    const topLayer = getTopmostLayer();
+    if (!topLayer) return;
+
+    if (topLayer.tagName === 'DIALOG') {
+        topLayer.close();
+    } else if (topLayer.classList.contains('dropdown')) {
+        topLayer.classList.remove('show');
     }
 }
 
@@ -50,18 +61,15 @@ function setupGlobalCloseListeners() {
 
     // Fecha ao clicar fora
     document.addEventListener('click', (e) => {
-        const openDropdown = document.querySelector('.dropdown.show');
-        const openDialog = document.querySelector('dialog[open]');
+        const topLayer = getTopmostLayer();
+        if (!topLayer) return;
 
-        // Só age se o clique for fora de um menu E fora de um diálogo
-        if (!e.target.closest('.menu-container') && !e.target.closest('dialog')) {
-            if (openDropdown) closeTopLayer();
-        }
-        
-        // Lógica específica para fechar diálogos clicando no backdrop
-        // A condição `e.target === openDialog` garante que o clique foi no backdrop
-        // e não em um elemento filho do diálogo
-        if(openDialog && e.target === openDialog){
+        // Se a camada superior for um diálogo, fecha apenas se o clique for no backdrop.
+        if (topLayer.tagName === 'DIALOG' && e.target === topLayer) {
+            closeTopLayer();
+        } 
+        // Se for um dropdown, fecha se o clique for fora do seu container.
+        else if (topLayer.classList.contains('dropdown') && !e.target.closest('.menu-container')) {
             closeTopLayer();
         }
     });

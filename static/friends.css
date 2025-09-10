@@ -1,0 +1,144 @@
+/* static/friends.css */
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    padding: 12px 24px;
+    background-color: transparent;
+    color: var(--text-muted);
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: var(--transition-fast);
+}
+
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.5s; }
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.card {
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    padding: 30px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.card-title {
+    font-size: 1.5rem;
+    color: var(--text);
+}
+
+.filter-input, .search-container input {
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-page);
+    color: var(--text);
+    font-size: 1rem;
+    min-width: 300px;
+}
+
+.user-list, .request-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-height: 100px; /* Para a mensagem de "vazio" ter espaço */
+}
+
+.user-item, .request-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--bg-page);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.user-item:hover, .request-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border-color: var(--primary);
+}
+
+.user-avatar, .request-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.user-avatar img, .request-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-info, .request-info {
+    flex-grow: 1;
+}
+
+.user-name, .request-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.user-username, .request-message {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.user-actions, .request-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.empty-list-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.empty-list-message .icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
