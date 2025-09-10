@@ -1,111 +1,24 @@
 /* static/kanban.css (Com o novo estilo inspirado na imagem) */
 
 /* ===== ESTILOS GLOBAIS E VARIÁVEIS ===== */
-:root {
-    /* Cores */
-    --bg-page: #1e1e1e; /* Um preto um pouco mais suave */
-    --bg-header: #2d2d2d;
-    --bg-card: #4a4a4a;
-    --bg-column: #2d2d2d; /* Fundo base da coluna */
-    --bg-column-header: #3c3c3c; /* Cor do cabeçalho da coluna */
-    --text: #e0e0e0;
-    --text-muted: #bbb;
-    --border: #555;
-    --border-light: #666;
-    --primary: #4cd4e6; /* Cor correta da logo (Verde Água) */
-    --header: #333;
-    --success: #2ecc71;
-    --error: #e74c3c;
-    --warning: #f39c12;
-    --info: #4cd4e6;
-    --header-height: 60px; /* Um pouco mais compacto */
-
-    /* Tipografia e Dimensões */
-    --app-font-family: "Segoe UI", "Inter", sans-serif;
-    --app-font-size: 14px;
-}
-
 /* ===== RESET E TEMA CLARO ===== */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { font-size: var(--app-font-size); }
 body {
-    font-family: var(--app-font-family);
-    background-color: var(--bg-page);
-    color: var(--text);
     height: 100vh;
     overflow: hidden;
-}
-body.light-mode {
-    --bg-page: #f5f5f5;
-    --bg-header: #ffffff;
-    --bg-card: #ffffff;
-    --bg-column: #e0e0e0;
-    --bg-column-header: #d1d1d1;
-    --text: #222222;
-    --text-muted: #666666;
-    --border: #cccccc;
-    --border-light: #d1d1d1;
-    --primary: #d4d4d4;
-    --header: #d4d4d4;
 }
 
 /* ===== LAYOUT PRINCIPAL DA APLICAÇÃO ===== */
 #app { display: flex; flex-direction: column; height: 100vh; width: 100%; }
 
-/* ===== CABEÇALHO PRINCIPAL ===== */
-#main-header {
-    display: flex;
-    margin: 20px 20px 0 20px;    /* Margem em todos os lados, com 0 na parte inferior */
-    border-radius: 8px;         /* Bordas arredondadas */
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 25px;
-    height: var(--header-height);
-    background-color: var(--header); 
-    color: white;
-    flex-shrink: 0;
-    z-index: 1000;
-}
-#main-header .btn {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
-}
-.avatar-btn {
-    background: none; border: none; padding: 0; border-radius: 50%;
-    cursor: pointer; width: 38px; height: 38px;
-}
-.avatar-btn img {
-    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.5);
-}
-
-/* ===== MENUS SUSPENSOS (DROPDOWNS) ===== */
-.menu-container { position: relative; }
-.dropdown {
-    display: none; position: absolute; top: calc(100% + 10px);
-    background-color: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4); animation: fadeIn 0.2s ease-out;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.menu-container:first-child .dropdown { left: 0; }
-.menu-container:last-child .dropdown { right: 0; }
-.dropdown.show { display: block; }
-.dropdown button, .dropdown select {
-    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-    padding: 10px 12px; margin-bottom: 4px; background: transparent; border: none;
-    color: var(--text); font-size: 1rem; cursor: pointer;
-    transition: background-color 0.2s; border-radius: 6px;
-}
-.dropdown button:hover { background-color: var(--primary); color: white; transform: scale(1.05)}
-.dropdown hr { margin: 6px 0; border: none; border-top: 1px solid var(--border); }
-
 /* Menu Horizontal */
 .horizontal-menu .dropdown {
-    width: max-content; left: 50%; transform: translateX(-50%); padding: 10px 15px;
+    /* Garante que o menu central sempre se posicione corretamente */
+    width: max-content;
+    left: 50%;
+    right: auto; /* Anula qualquer regra de 'right' herdada */
+    transform: translateX(-50%);
+    padding: 10px 15px;
+    animation: fadeInSimple 0.2s ease-out; /* Usa uma animação mais simples para evitar o "pulo" */
 }
 .horizontal-menu .dropdown.show { display: flex; gap: 10px; align-items: center; }
 .horizontal-menu .dropdown button {
@@ -139,6 +52,12 @@ body.light-mode {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(76, 212, 230, 0.3);
+}
+
+/* Animação simples para o menu horizontal */
+@keyframes fadeInSimple {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 /* Estilos para o filtro de quadros Pessoal/Grupo */
@@ -186,34 +105,6 @@ body.light-mode {
 #columns-container {
     display: flex; gap: 20px; overflow-x: auto;
     padding-bottom: 20px; flex-grow: 1;
-}
-
-/* ===== FEEDBACK E MODAIS ===== */
-.feedback {
-    text-align: center;
-    padding: 12px;
-    border-radius: 6px;
-    margin-top: 20px;
-    display: none;
-}
-
-.feedback.show {
-    display: block;
-}
-
-.feedback.success {
-    background-color: rgba(46, 204, 113, 0.2);
-    color: var(--success);
-}
-
-.feedback.error {
-    background-color: rgba(231, 76, 60, 0.2);
-    color: var(--error);
-}
-
-.feedback.info {
-    background-color: rgba(76, 212, 230, 0.2); /* Cor da logo com transparência */
-    color: var(--info);
 }
 
 /* ===== NOVO ESTILO DAS COLUNAS (INSPIRADO NA IMAGEM) ===== */
@@ -374,45 +265,6 @@ body.light-mode {
     margin-top: 8px; /* Espaço entre o título e a linha */
 }
 
-/* ===== BOTÕES PADRÃO ===== */
-.btn {
-    padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;
-    font-size: 0.95rem; font-weight: 500; transition: all 0.2s ease;
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: 8px; text-decoration: none; color: var(--text);
-}
-.btn:hover { opacity: 0.9; transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-.btn:active { transform: translateY(0); }
-.btn-primary { background-color: var(--primary); color: white; }
-.btn-secondary { background-color: var(--border-light); color: var(--text); }
-.btn-danger { background-color: var(--error); color: white; }
-
-/* ===== DIÁLOGOS (MODAIS) ===== */
-dialog {
-    background-color: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 25px; color: var(--text);
-    width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-dialog[open] { animation: fadeIn 0.3s ease; }
-dialog::backdrop { background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px); }
-dialog h3 {
-    margin-top: 0; margin-bottom: 25px; color: var(--primary);
-    font-size: 1.4rem; cursor: grab;
-}
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px; }
-
-/* ===== FORMULÁRIOS NOS DIÁLOGOS ===== */
-.form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
-.form-group label { margin-bottom: 8px; font-weight: 500; color: var(--text-muted); }
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%; padding: 12px; border: 1px solid var(--border);
-    border-radius: 6px; background-color: var(--bg-page);
-    color: var(--text); font-size: 1rem; font-family: var(--app-font-family);
-}
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    outline: none; border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.3);
-}
 .form-group input[type="color"] { padding: 5px; height: 45px; }
 
 /* Em kanban.css */
@@ -515,86 +367,6 @@ fieldset.form-group label {
     margin: 8px 0;
 }
 
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        /* Estilo personalizado para os checkboxes */
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            position: relative;
-            padding-left: 35px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            font-size: 1rem;
-            user-select: none;
-            height: 25px;
-        }
-
-        /* Esconde o checkbox padrão */
-        .checkbox-container input {
-            position: absolute;
-            opacity: 0;
-            cursor: pointer;
-            height: 0;
-            width: 0;
-        }
-
-        /* Checkbox customizado */
-        .checkmark {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 22px;
-            width: 22px;
-            background-color: var(--bg-page);
-            border: 2px solid var(--border);
-            border-radius: 5px;
-            transition: all 0.2s ease;
-        }
-
-        /* Estilo quando o checkbox está marcado */
-        .checkbox-container input:checked ~ .checkmark {
-            background-color: var(--primary);
-            border-color: var(--primary);
-        }
-
-        /* Cria o indicador de check (escondido quando não estiver marcado) */
-        .checkmark:after {
-            content: "";
-            position: absolute;
-            display: none;
-        }
-
-        /* Mostra o indicador quando estiver marcado */
-        .checkbox-container input:checked ~ .checkmark:after {
-            display: block;
-        }
-
-        /* Estilo do indicador de check */
-        .checkbox-container .checkmark:after {
-            left: 7px;
-            top: 3px;
-            width: 5px;
-            height: 10px;
-            border: solid white;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
-        }
-
-        /* Efeito de foco */
-        .checkbox-container input:focus ~ .checkmark {
-            box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3);
-        }
-
-        /* Efeito hover */
-        .checkbox-container:hover input ~ .checkmark {
-            border-color: var(--primary);
-        }
-        
 .no-boards-message {
     padding: 10px;
     color: var(--text-muted);

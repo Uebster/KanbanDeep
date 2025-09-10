@@ -1,0 +1,372 @@
+/* static/universal.css */
+/* Este arquivo contém todos os estilos globais e compartilhados pela aplicação. */
+
+/* ===== VARIÁVEIS GLOBAIS E TEMA ===== */
+:root {
+    /* Cores Principais */
+    --bg-page: #1e1e1e;
+    --bg-card: #3c3c3c;
+    --bg-header: #232323;
+    --text: #e0e0e0;
+    --text-muted: #bbb;
+    --border: #555;
+    --border-light: #666;
+    --primary: #4cd4e6; /* Verde Água Padrão */
+    --header: #333;
+
+    /* Cores de Feedback */
+    --success: #2ecc71;
+    --error: #e74c3c;
+    --warning: #f39c12;
+    --info: #4cd4e6;
+
+    /* Tipografia e Dimensões */
+    --app-font-family: "Segoe UI", "Inter", sans-serif;
+    --app-font-size: 14px;
+    --header-height: 60px;
+    --transition-fast: 0.2s ease;
+}
+
+body.light-mode {
+    --bg-page: #f5f5f5;
+    --bg-card: #ffffff;
+    --bg-header: #eaeaea;
+    --text: #222222;
+    --text-muted: #666666;
+    --border: #cccccc;
+    --border-light: #d1d1d1;
+    --header: #d4d4d4;
+}
+
+/* ===== RESET E ESTILOS GLOBAIS ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: var(--app-font-size);
+}
+
+body {
+    font-family: var(--app-font-family);
+    background-color: var(--bg-page);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+/* Força a fonte em elementos que podem resistir */
+input, textarea, select, button {
+    font-family: var(--app-font-family) !important;
+}
+::placeholder { font-family: var(--app-font-family) !important; }
+:-ms-input-placeholder { font-family: var(--app-font-family) !important; }
+::-ms-input-placeholder { font-family: var(--app-font-family) !important; }
+
+
+/* ===== CABEÇALHO PRINCIPAL ===== */
+#main-header {
+    display: flex;
+    margin: 20px 20px 0 20px;
+    border-radius: 8px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px;
+    height: var(--header-height);
+    background-color: var(--header);
+    color: white;
+    flex-shrink: 0;
+    z-index: 1000;
+}
+
+#main-header .btn {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+#page-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+/* Avatar no cabeçalho */
+.avatar-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    width: 38px;
+    height: 38px;
+}
+
+.avatar-btn img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ===== MENUS SUSPENSOS (DROPDOWNS) ===== */
+.menu-container {
+    position: relative;
+}
+
+.dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    min-width: 240px;
+    z-index: 1001;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    animation: fadeInDropdown 0.2s ease-out;
+}
+
+@keyframes fadeInDropdown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown.show {
+    display: block;
+}
+
+.menu-container:first-child .dropdown { left: 0; }
+.menu-container:last-child .dropdown { right: 0; }
+
+.dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-radius: 6px;
+}
+
+.dropdown button:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+.dropdown hr {
+    margin: 6px 0;
+    border: none;
+    border-top: 1px solid var(--border);
+}
+
+/* ===== BOTÕES PADRÃO ===== */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-secondary { background-color: var(--border-light); color: var(--text); }
+.btn-danger { background-color: var(--error); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+
+/* ===== DIÁLOGOS (MODAIS) ===== */
+dialog {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 25px;
+    color: var(--text);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    margin: auto;
+}
+
+dialog[open] {
+    animation: fadeInDialog 0.3s ease;
+}
+
+@keyframes fadeInDialog {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+}
+
+dialog h3 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: var(--primary);
+    font-size: 1.4rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+.drag-handle {
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* ===== MENSAGENS DE FEEDBACK ===== */
+.feedback {
+    text-align: center;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 15px;
+    display: none;
+    font-weight: 500;
+}
+
+.feedback.show {
+    display: block;
+}
+
+.feedback.success { background-color: rgba(46, 204, 113, 0.2); color: var(--success); }
+.feedback.error { background-color: rgba(231, 76, 60, 0.2); color: var(--error); }
+.feedback.info { background-color: rgba(76, 212, 230, 0.2); color: var(--info); }
+.feedback.warning { background-color: rgba(243, 156, 18, 0.2); color: var(--warning); }
+
+/* Container para mensagens flutuantes */
+#message-container {
+    position: fixed;
+    top: calc(var(--header-height) + 20px); /* Abaixo do header */
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+/* ===== FORMULÁRIOS ===== */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: var(--bg-page);
+    color: var(--text);
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.2);
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ===== CHECKBOX CUSTOMIZADO ===== */
+.checkbox-container {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 1rem;
+    user-select: none;
+    height: 25px;
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+.checkmark { position: absolute; top: 0; left: 0; height: 22px; width: 22px; background-color: var(--bg-page); border: 2px solid var(--border); border-radius: 5px; transition: all 0.2s ease; }
+.checkbox-container:hover input ~ .checkmark { border-color: var(--primary); }
+.checkbox-container input:checked ~ .checkmark { background-color: var(--primary); border-color: var(--primary); }
+.checkmark:after { content: ""; position: absolute; display: none; }
+.checkbox-container input:checked ~ .checkmark:after { display: block; }
+.checkbox-container .checkmark:after { left: 7px; top: 3px; width: 5px; height: 10px; border: solid white; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.checkbox-container input:focus ~ .checkmark { box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3); }
+
+/* ===== UTILITÁRIOS ===== */
+.hidden {
+    display: none !important;
+}
+
+.required::after {
+    content: " *";
+    color: var(--error);
+}
+
+.password-strength {
+    height: 6px;
+    border-radius: 3px;
+    margin-top: 5px;
+    background-color: #777;
+    overflow: hidden;
+}
+
+.password-strength-meter {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.strength-0 { width: 0%; background-color: #e74c3c; }
+.strength-1 { width: 25%; background-color: #e74c3c; }
+.strength-2 { width: 50%; background-color: #f39c12; }
+.strength-3 { width: 75%; background-color: #f1c40f; }
+.strength-4 { width: 100%; background-color: #2ecc71; }

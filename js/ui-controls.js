@@ -60,7 +60,7 @@ function setupGlobalCloseListeners() {
         
         // Lógica específica para fechar diálogos clicando no backdrop
         // A condição `e.target === openDialog` garante que o clique foi no backdrop
-        // e não em um elemento filho do diálogo.
+        // e não em um elemento filho do diálogo
         if(openDialog && e.target === openDialog){
             closeTopLayer();
         }
@@ -165,11 +165,21 @@ export function makeDraggable(element) {
     function elementDrag(e) {
         e = e || window.event;
         e.preventDefault();
+
+        //console.log("Target:", e.target);
+        //console.log("Current target:", e.currentTarget)
+
+        // Garante que só arraste se clicar na área de drag (drag-handle)
+        if (!e.target.classList.contains('drag-handle')) return;
+
         // Calcula a nova posição do cursor
         pos1 = pos3 - e.clientX;
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
         pos4 = e.clientY;
+        
+    
+
         // Define a nova posição do elemento
         element.style.top = (element.offsetTop - pos2) + "px";
         element.style.left = (element.offsetLeft - pos1) + "px";

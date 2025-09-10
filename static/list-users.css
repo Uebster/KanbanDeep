@@ -1,38 +1,4 @@
-    /* ===== ESTILOS GLOBAIS ===== */
-    :root {
-      /* cores */
-      --bg-page: #2b2b2b;
-      --bg-card: #444;
-      --text: #e0e0e0;
-      --text2: #3d3d3d;
-      --text-muted: #bbb;
-      --border: #444;
-      --border-light: #555;
-      --primary: #4cd4e6; /* Cor correta da logo (Verde Água) */
-      --transition-fast: 0.2s;
-      --success: #2ecc71;
-      --error: #e74c3c;
-      --warning: #f39c12;
-      --info: #4cd4e6; /* Cor da logo */
-      --app-font-size: 14px;
-
-      /* tipografia */
-      --app-font-family: "Segoe UI", "Inter", sans-serif;
-      --app-font-size: 14px;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html { font-size: var(--app-font-size); }
-
     body {
-      font-family: var(--app-font-family);
-      background-color: var(--bg-page);
-      color: var(--text);
       min-height: 100vh;
       display: flex;
       justify-content: center; /* Centraliza horizontalmente */
@@ -40,16 +6,6 @@
       flex-direction: column;
       padding: 20px;
       overflow-y: auto;
-    }
-
-    body.light-mode {
-      --bg-page: #f5f5f5;
-      --bg-card: #ffffff;
-      --text: #222222;
-      --text2: #333333;
-      --text-muted: #666666;
-      --border: #cccccc;
-      --border-light: #bbbbbb;
     }
 
     /* ===== CABEÇALHO ===== */
@@ -187,33 +143,6 @@ header div {
     object-fit: cover;
 }
 
-/* ===== BOTÕES (PADRÃO GERAL) ===== */
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 500;
-    transition: all 0.3s ease; /* Transição suave para todas as propriedades */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    text-decoration: none;
-    color: var(--text);
-}
-
-.btn:hover {
-    opacity: 0.9;
-    transform: scale(1.05); /* Efeito de escala sutil no hover */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.btn:active {
-    transform: scale(1); /* Remove a escala ao clicar */
-}
-
 /* ===== BOTÕES ESPECÍFICOS ===== */
 .btn-primary {
     background-color: var(--primary);
@@ -241,64 +170,6 @@ header div {
     color: white;
 }
 
-
-/* ===== FEEDBACK E MODAIS ===== */
-.feedback {
-    text-align: center;
-    padding: 12px;
-    border-radius: 6px;
-    margin-top: 20px;
-    display: none;
-}
-
-.feedback.show {
-    display: block;
-}
-
-.feedback.success {
-    background-color: rgba(46, 204, 113, 0.2);
-    color: var(--success);
-}
-
-.feedback.error {
-    background-color: rgba(231, 76, 60, 0.2);
-    color: var(--error);
-}
-
-.feedback.info { background-color: rgba(52, 152, 219, 0.2); 
-    color: var(--info); 
-}
-
-dialog {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 25px;
-    color: var(--text);
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-
-dialog::backdrop {
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(3px);
-}
-
-dialog h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    color: var(--primary);
-    cursor: grab;
-}
-
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 20px;
-}
-
 .form-group {
     width: 100%;
 }
@@ -306,14 +177,4 @@ dialog h3 {
 .form-group label {
     display: block;
     margin-bottom: 8px;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border-light);
-    border-radius: 6px;
-    background-color: var(--bg-page);
-    color: var(--text);
-    font-size: 1rem;
 }

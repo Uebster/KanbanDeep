@@ -1,177 +1,13 @@
 /* static/public-profile.css */
-:root {
-    --bg-page: #1e1e1e;
-    --bg-card: #3c3c3c;
-    --bg-header: #232323;
-    --text: #e0e0e0;
-    --text-muted: #bbb;
-    --border: #555;
-    --primary: #4cd4e6; 
-    --header: #333;
-    --transition-fast: 0.2s ease;
-    --app-font-family: "Segoe UI", "Inter", sans-serif;
-    --success: #2ecc71;
-    --error: #e74c3c;
-    --warning: #f39c12;
-    --info: #4cd4e6;
-    --header-height: 60px;
-    --app-font-size: 14px;
-}
-
-body.light-mode {
-    --bg-page: #f5f5f5;
-    --bg-card: #ffffff;
-    --bg-header: #eaeaea;
-    --text: #222222;
-    --text-muted: #666666;
-    --border: #cccccc;
-    --header: #d4d4d4;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { font-size: var(--app-font-size); }
 body {
-    font-family: var(--app-font-family);
-    background-color: var(--bg-page);
-    color: var(--text);
     min-height: 100vh;
     padding: 20px; /* Adiciona espaçamento em todos os lados */
 }
 
-/* ===== FEEDBACK E MODAIS ===== */
-dialog {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 25px;
-    color: var(--text);
-    width: 90%;
-    max-width: 450px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    margin: auto; /* <<< ADICIONE ESTA LINHA */
-}
-dialog[open] {
-    animation: fadeIn 0.3s ease;
-}
-dialog::backdrop {
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(3px);
-}
-dialog h3 {
-    margin-top: 0;
-    margin-bottom: 25px;
-    color: var(--primary);
-    font-size: 1.4rem;
-}
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 25px;
-}
-
-/* --- Estilo PADRÃO para Feedback DENTRO de Diálogos --- */
-.feedback {
-    text-align: center;
-    padding: 12px;
-    border-radius: 6px;
-    margin-top: 15px;
-    margin-bottom: -10px; /* Empurra os botões para cima */
-    display: none;
-    font-weight: 500;
-}
-.feedback.show { display: block; }
-.feedback.success { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-.feedback.error { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-
-/* Em profile.css */
-.feedback.info {
-    background-color: rgba(52, 152, 219, 0.2);
-    color: #3498db;
-}
-
-/* Estilos para mensagens em diálogos */
-.dialog-message {
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 4px;
-    display: none;
-}
-
-.dialog-message.error {
-    background-color: #ffebee;
-    color: #c62828;
-    border: 1px solid #ef9a9a;
-    display: block;
-}
-
-.dialog-message.success {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border: 1px solid #a5d6a7;
-    display: block;
-}
-
-.drag-handle {
-    cursor: grab; /* <<< O cursor se torna uma "mãozinha aberta" */
-}
-
-.drag-handle:active {
-    cursor: grabbing; /* <<< O cursor se torna uma "mãozinha fechada" ao clicar */
-}
-
 /* Cabeçalho */
 #main-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 25px;
-    height: var(--header-height);
-    background-color: var(--header);
-    color: white;
-    border-radius: 8px;
-    flex-shrink: 0;
-    z-index: 1000;
     margin-bottom: 20px; /* Remove margem lateral/superior, pois o body já tem padding */
 }
-
-/* Adicionado para consistência */
-#main-header .btn {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
-}
-
-/* Adicionado para consistência */
-.avatar-btn {
-    background: none; border: none; padding: 0; border-radius: 50%;
-    cursor: pointer; width: 38px; height: 38px;
-}
-
-/* Adicionado para consistência */
-.avatar-btn img {
-    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.5);
-}
-
-/* ===== MENUS SUSPENSOS (DROPDOWNS) - PADRONIZADO ===== */
-.menu-container { position: relative; }
-.dropdown {
-    display: none; position: absolute; top: calc(100% + 10px);
-    background-color: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px; min-width: 240px; z-index: 1001;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4); animation: fadeIn 0.2s ease-out;
-}
-.dropdown.show { display: block; }
-.menu-container:first-child .dropdown { left: 0; }
-.menu-container:last-child .dropdown { right: 0; }
-.dropdown button {
-    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-    padding: 10px 12px; margin-bottom: 4px; background: transparent; border: none;
-    color: var(--text); font-size: 1rem; cursor: pointer;
-    transition: background-color 0.2s; border-radius: 6px;
-}
-.dropdown button:hover { background-color: var(--primary); color: white; }
-.dropdown hr { margin: 6px 0; border: none; border-top: 1px solid var(--border); }
 
 /* Layout Principal */
 .profile-layout {
@@ -327,13 +163,6 @@ dialog h3 {
     justify-content: center; /* Centraliza os botões */
 }
 
-#relationship-actions .btn {
-    flex: 1;
-    min-width: 140px;
-    justify-content: center;
-    margin: 0; /* Remove margem extra dos botões */
-}
-
 /* Grupos Públicos */
 .groups-container {
     display: grid;
@@ -401,26 +230,6 @@ dialog h3 {
     background-position: center;
 }
 
-/* Botões */
-.btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none; /* Garante que não haja sublinhado */
-}
-
-.btn-primary {
-    background-color: var(--primary);
-    color: white;
-}
-
 .btn-secondary {
     background-color: var(--border);
     color: var(--text);
@@ -429,12 +238,6 @@ dialog h3 {
 .btn-danger {
     background-color: var(--error);
     color: white;
-}
-
-.btn:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Adiciona sombra no hover */
 }
 
 /* Modal de Avatar */
@@ -565,31 +368,6 @@ body.light-mode .group-item {
     background-color: rgba(52, 152, 219, 0.2);
     color: #3498db;
 }
-
-/* Estilos para o handle de arrastar */
-.drag-handle {
-    cursor: move;
-    user-select: none;
-}
-
-.drag-handle:active {
-    cursor: grabbing;
-}
-
-/* Garante que a fonte seja aplicada aos placeholders */
-::placeholder {
-    font-family: var(--app-font-family) !important;
-}
-:-ms-input-placeholder {
-    font-family: var(--app-font-family) !important;
-}
-::-ms-input-placeholder {
-    font-family: var(--app-font-family) !important;
-}
-input, textarea, select, button {
-    font-family: var(--app-font-family) !important;
-}
-
 /* Estilo para o textarea no diálogo de mensagem */
 .form-group textarea {
     width: 100%;
