@@ -53,11 +53,6 @@
     gap: 15px;
 }
 
-.card-title {
-    font-size: 1.5rem;
-    color: var(--text);
-}
-
 .filter-input, .search-container input {
     padding: 10px 15px;
     border-radius: 6px;

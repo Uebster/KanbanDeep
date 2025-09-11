@@ -13,6 +13,8 @@
     --border-light: #666;
     --primary: #4cd4e6; /* Verde Água Padrão */
     --header: #333;
+    --primary-rgb: 76,212,230;
+
 
     /* Cores de Feedback */
     --success: #2ecc71;
@@ -36,6 +38,26 @@ body.light-mode {
     --border: #cccccc;
     --border-light: #d1d1d1;
     --header: #d4d4d4;
+}
+
+/* ===== TÍTULOS (HEADINGS) ===== */
+h2, h3, h4 {
+    color: var(--primary);
+    font-weight: 500;
+    margin-top: 0;
+}
+
+h2 {
+    font-size: 1.5rem; /* Tamanho para títulos de seção principal */
+    padding-bottom: 10px;
+}
+
+h3 {
+    font-size: 1.3rem; /* Tamanho para títulos de diálogos ou sub-seções */
+}
+
+h4 {
+    font-size: 1.1rem; /* Tamanho para títulos de itens menores */
 }
 
 /* ===== RESET E ESTILOS GLOBAIS ===== */
@@ -68,16 +90,17 @@ input, textarea, select, button {
 /* ===== CABEÇALHO PRINCIPAL ===== */
 #main-header {
     display: flex;
-    margin: 20px 20px 0 20px;
+    margin: 20px 20px 30px 20px; /* Adiciona margem em todos os lados, incluindo a inferior */
     border-radius: 8px;
     justify-content: space-between;
     align-items: center;
     padding: 0 25px;
     height: var(--header-height);
-    background-color: var(--header);
-    color: white;
+    background-color: var(--bg-header);
     flex-shrink: 0;
     z-index: 1000;
+    border: 1px solid var(--primary);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
 }
 
 #main-header .btn {
@@ -109,6 +132,77 @@ input, textarea, select, button {
     border: 2px solid rgba(255, 255, 255, 0.5);
 }
 
+.avatar-btn:hover {
+            box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+            color: var(--primary);
+}
+
+.avatar-btn:active {
+    transform: scale(1.08);
+    box-shadow: 0 0 6px rgba(var(--primary-rgb)), 0 0 8px rgba(var(--primary-rgb));
+    color: var(--primary);
+    border: 1px solid rgba(var(--primary-rgb), 0.8);;
+}
+
+        /* ===== 8. NOVO: ESTILOS PARA SELECT CUSTOMIZADO ===== */
+        .custom-select {
+            position: relative;
+            margin-top: 12px;
+        }
+
+        /* Esconde o select original, pois vamos usar a versão customizada */
+        .custom-select select {
+            display: none;
+        }
+
+        .select-selected {
+            background-color: transparent;
+            color: var(--text);
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.3s;
+        }
+
+        .select-selected:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+            color: var(--primary);
+        }
+
+        .select-items {
+            position: absolute;
+            top: calc(100% + 10px); /* Ajusta o espaçamento do topo */
+            left: 0;
+            right: 0;
+            background-color: var(--bg-card);
+            border: 1px solid var(--primary);
+            border-radius: 8px; /* Arredondamento completo */
+            padding: 8px; /* Adiciona padding interno */
+            z-index: 1001; /* Garante que fique sobre outros elementos */
+            box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+        }
+
+        .select-hide { display: none; }
+
+        .select-item {
+            display: block;
+            padding: 10px 12px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+
+        .select-item:hover, .same-as-selected {
+            color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.2);
+            box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+        }
+
 /* ===== MENUS SUSPENSOS (DROPDOWNS) ===== */
 .menu-container {
     position: relative;
@@ -119,13 +213,12 @@ input, textarea, select, button {
     position: absolute;
     top: calc(100% + 10px);
     background-color: var(--bg-card);
-    border: 1px solid var(--border);
+    border: 1px solid var(--primary);
     border-radius: 8px;
     padding: 8px;
     min-width: 240px;
     z-index: 1001;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-    animation: fadeInDropdown 0.2s ease-out;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
 }
 
 @keyframes fadeInDropdown {
@@ -141,25 +234,22 @@ input, textarea, select, button {
 .menu-container:last-child .dropdown { right: 0; }
 
 .dropdown button {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    text-align: left;
-    padding: 10px 12px;
-    margin-bottom: 4px;
-    background: transparent;
-    border: none;
-    color: var(--text);
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    border-radius: 6px;
+            display: block;
+            padding: 10px 12px;
+            color: var(--text) !important; /* Garante que o texto do botão seja o correto */
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+            backdrop-filter: blur(3px);
+            width: 100%; /* Faz o botão ocupar todo o espaço */
+            border: none; /* Remove a borda padrão do .btn */
+            background: transparent; /* Garante fundo transparente */
 }
 
 .dropdown button:hover {
-    background-color: var(--primary);
-    color: white;
+    background-color: rgba(var(--primary-rgb), 0.4);
+    box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+    color: var(--primary);
 }
 
 .dropdown hr {
@@ -171,34 +261,64 @@ input, textarea, select, button {
 /* ===== BOTÕES PADRÃO ===== */
 .btn {
     padding: 10px 20px;
-    border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     text-decoration: none;
+    /* Novo Padrão Neon */
+    background-color: transparent;
+    border: 1px solid var(--border);
     color: var(--text);
 }
 
 .btn:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+    color: var(--primary);
+    border-color: var(--primary);
 }
 
-.btn:active {
-    transform: translateY(0);
+/* Variações de Cor no Hover */
+.btn.confirm:hover {
+    box-shadow: 0 0 15px rgba(74, 255, 98), 0 0 25px rgba(74, 255, 98);
+    color:rgb(74, 255, 98);
+    border-color: rgb(74, 255, 98);
 }
-
-.btn-primary { background-color: var(--primary); color: white; }
-.btn-secondary { background-color: var(--border-light); color: var(--text); }
-.btn-danger { background-color: var(--error); color: white; }
-.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+.btn.danger:hover {
+    box-shadow: 0 0 15px rgba(255, 0, 0), 0 0 25px rgba(255, 0, 0);
+    color: rgb(255, 0, 0);
+    border-color: rgb(255, 0, 0);
+}
+.btn.cancel:hover { /* Laranja trocado por Amarelo */
+    box-shadow: 0 0 15px rgb(255, 215, 0), 0 0 25px rgb(255, 215, 0);
+    color:rgb(255, 215, 0);
+    border-color: rgb(255, 215, 0);
+}
+.btn.alternative1:hover {
+    box-shadow: 0 0 15px rgba(203, 248, 40), 0 0 25px rgba(203, 248, 40);
+    color: rgb(203, 248, 40);
+    border-color: rgb(203, 248, 40);
+}
+.btn.alternative2:hover {
+    box-shadow: 0 0 15px rgba(116, 30, 255), 0 0 25px rgba(116, 30, 255);
+    color:rgba(149, 86, 250);
+    border-color: rgba(149, 86, 250);
+}
+.btn.alternative3:hover {
+    box-shadow: 0 0 15px rgba(245, 82, 237), 0 0 25px rgba(245, 82, 237);
+    color:rgba(245, 82, 237);
+    border-color: rgba(245, 82, 237);
+}
+.btn.alternative4:hover {
+    box-shadow: 0 0 15px rgba(30, 71, 255), 0 0 25px rgba(30, 71, 255);
+    color: rgba(30, 71, 255);
+    border-color: rgba(30, 71, 255);
+}
 
 
 /* ===== DIÁLOGOS (MODAIS) ===== */
@@ -210,7 +330,7 @@ dialog {
     color: var(--text);
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
     margin: auto;
 }
 
@@ -226,13 +346,6 @@ dialog[open] {
 dialog::backdrop {
     background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(3px);
-}
-
-dialog h3 {
-    margin-top: 0;
-    margin-bottom: 25px;
-    color: var(--primary);
-    font-size: 1.4rem;
 }
 
 .modal-actions {
@@ -335,12 +448,52 @@ dialog h3 {
 
 .checkbox-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
 .checkmark { position: absolute; top: 0; left: 0; height: 22px; width: 22px; background-color: var(--bg-page); border: 2px solid var(--border); border-radius: 5px; transition: all 0.2s ease; }
-.checkbox-container:hover input ~ .checkmark { border-color: var(--primary); }
+.checkbox-container:hover input ~ .checkmark { border-color: var(--primary); box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb)); }
 .checkbox-container input:checked ~ .checkmark { background-color: var(--primary); border-color: var(--primary); }
 .checkmark:after { content: ""; position: absolute; display: none; }
 .checkbox-container input:checked ~ .checkmark:after { display: block; }
 .checkbox-container .checkmark:after { left: 7px; top: 3px; width: 5px; height: 10px; border: solid white; border-width: 0 3px 3px 0; transform: rotate(45deg); }
 .checkbox-container input:focus ~ .checkmark { box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3); }
+
+/* ===== NAVBAR CUSTOM ==== */
+
+        .showcase-navbar {
+            display: flex;
+            gap: 8px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+            margin-top: 15px;
+        }
+
+        .nav-item {
+            padding: 10px 15px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            flex: 1; /* Faz os botões ocuparem o espaço igualmente */
+        }
+
+        .nav-item:hover {
+            background-color: rgba(var(--primary-rgb), 0.2);
+            box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background-color: rgba(var(--primary-rgb), 0.2);
+            box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+            color: var(--primary);
+            border: 1px solid rgba(var(--primary-rgb), 0.8);;
+        }
+
 
 /* ===== UTILITÁRIOS ===== */
 .hidden {

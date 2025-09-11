@@ -372,15 +372,6 @@
   border-radius: 8px;
   padding: 20px;
 }
-
-.section-title {
-  font-size: 1.2rem;
-  color: var(--primary);
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--border);
-}
-
 .stats-sections {
   display: flex;
   flex-direction: column;
