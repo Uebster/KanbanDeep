@@ -583,8 +583,8 @@ function changePassword() {
         <div class="feedback"></div>
 
         <div class="modal-actions">
-            <button id="cancel-change-password" class="btn btn-secondary">Cancelar</button>
-            <button id="confirm-change-password" class="btn btn-primary">Alterar Senha</button>
+            <button id="cancel-change-password" class="btn btn-neon cancel">Cancelar</button>
+            <button id="confirm-change-password" class="btn btn-neon confirm">Alterar Senha</button>
         </div>
     `;
     
@@ -674,8 +674,8 @@ function confirmDeleteAccount() {
         <div class="feedback"></div>
 
         <div class="modal-actions">
-            <button id="cancel-delete-btn" class="btn btn-secondary">Cancelar</button>
-            <button id="confirm-delete-btn" class="btn btn-primary">Excluir Permanentemente</button>
+            <button id="cancel-delete-btn" class="btn btn-neon cancel">Cancelar</button>
+            <button id="confirm-delete-btn" class="btn btn-neon danger">Excluir Permanentemente</button>
         </div>
     `;
 

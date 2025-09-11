@@ -27,10 +27,11 @@
 .container {
     width: 100%;
     max-width: 900px;
-    background-color: var(--bg-card);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    background-color: var(--bg-card); 
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
     padding: 30px;
+    border: 1px solid var(--primary);
 }
 
 /* ===== CABEÇALHO ===== */
@@ -89,8 +90,9 @@ header div {
     background-color: var(--bg-page);
     font-weight: 600;
     color: var(--primary);
-    font-size: 1rem;
+    font-size: 1.1rem;
     text-align: center; /* <<< Centraliza o texto do cabeçalho */
+    border-bottom: 2px solid var(--primary);
 }
 
 .users-table td {
@@ -141,33 +143,6 @@ header div {
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-
-/* ===== BOTÕES ESPECÍFICOS ===== */
-.btn-primary {
-    background-color: var(--primary);
-    color: white;
-}
-
-.btn-secondary, #toggleTheme {
-    background-color: var(--border-light);
-    color: var(--text);
-}
-
-/* Botões da tabela */
-.btn-login {
-    background-color: var(--primary); /* Azul para ação principal */
-    color: white;
-}
-
-.btn-edit {
-    background-color: var(--border-light); /* Cinza para ação secundária */
-    color: var(--text);
-}
-
-.btn-delete {
-    background-color: var(--error); /* Vermelho para ação de perigo */
-    color: white;
 }
 
 .form-group {

@@ -101,8 +101,10 @@ function setupKeyboardShortcuts() {
             // ...e houver um diálogo (<dialog>) aberto na tela...
             const openDialog = document.querySelector('dialog[open]');
             if (openDialog) {
-                // ...procuramos pelo botão de ação principal (nossa convenção é usar a classe .btn-primary).
-                const primaryButton = openDialog.querySelector('.btn-primary');
+                // ...procuramos pelo botão de ação principal.
+                // A nova convenção é '.btn.confirm', mas mantemos '.btn-primary' para compatibilidade.
+                // O seletor agora busca por um botão que tenha a classe 'confirm' OU a classe 'btn-primary'.
+                const primaryButton = openDialog.querySelector('.btn.confirm, .btn-primary');
                 
                 // Se o botão existir e não estiver desabilitado...
                 if (primaryButton && !primaryButton.disabled) {
@@ -278,16 +280,16 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         <p>${message}</p>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary">${cancelText}</button>
-            <button class="btn btn-primary">${confirmText}</button>
+            <button class="btn cancel">${cancelText}</button>
+            <button class="btn confirm">${confirmText}</button>
         </div>
     `;
     document.body.appendChild(dialog);
     initDraggableElements();
     dialog.showModal();
 
-    const confirmBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
+    const confirmBtn = dialog.querySelector('.btn.confirm');
+    const cancelBtn = dialog.querySelector('.btn.cancel');
 
     const closeAndCleanup = () => {
         dialog.close();

@@ -294,30 +294,30 @@ input, textarea, select, button {
     color: rgb(255, 0, 0);
     border-color: rgb(255, 0, 0);
 }
-.btn.cancel:hover { /* Laranja trocado por Amarelo */
-    box-shadow: 0 0 15px rgb(255, 215, 0), 0 0 25px rgb(255, 215, 0);
-    color:rgb(255, 215, 0);
-    border-color: rgb(255, 215, 0);
-}
-.btn.alternative1:hover {
+.btn.cancel:hover { 
     box-shadow: 0 0 15px rgba(203, 248, 40), 0 0 25px rgba(203, 248, 40);
     color: rgb(203, 248, 40);
     border-color: rgb(203, 248, 40);
 }
-.btn.alternative2:hover {
+.btn.edit:hover {
     box-shadow: 0 0 15px rgba(116, 30, 255), 0 0 25px rgba(116, 30, 255);
     color:rgba(149, 86, 250);
     border-color: rgba(149, 86, 250);
+}
+.btn.alternative1:hover {
+    box-shadow: 0 0 15px rgb(255, 215, 0), 0 0 25px rgb(255, 215, 0);
+    color:rgb(255, 215, 0);
+    border-color: rgb(255, 215, 0);
 }
 .btn.alternative3:hover {
     box-shadow: 0 0 15px rgba(245, 82, 237), 0 0 25px rgba(245, 82, 237);
     color:rgba(245, 82, 237);
     border-color: rgba(245, 82, 237);
 }
-.btn.alternative4:hover {
-    box-shadow: 0 0 15px rgba(30, 71, 255), 0 0 25px rgba(30, 71, 255);
-    color: rgba(30, 71, 255);
-    border-color: rgba(30, 71, 255);
+.btn.login:hover {
+    box-shadow: 0 0 15px rgb(48, 86, 255), 0 0 25px rgba(48, 86, 255);
+    color: rgba(48, 86, 255);
+    border-color: rgba(48, 86, 255)
 }
 
 

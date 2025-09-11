@@ -94,9 +94,9 @@ function renderUsersTable() {
             <td>${user.name}</td>
             <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Nunca'}</td>
             <td class="actions">
-                <button class="btn btn-primary btn-login">🔑 Login</button>
-                <button class="btn btn-secondary btn-edit">✏️ Editar</button>
-                <button class="btn btn-danger btn-delete">🗑️ Excluir</button>
+                <button class="btn login btn-login">🔑 Login</button>
+                <button class="btn edit btn-edit">✏️ Editar</button>
+                <button class="btn danger btn-delete">🗑️ Excluir</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -177,8 +177,8 @@ function openDeleteConfirmDialog(userId) {
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary">Cancelar</button>
-            <button class="btn btn-danger">Excluir Permanentemente</button>
+             <button class="btn btn-neon danger">Excluir Permanentemente</button>
+            <button class="btn btn-neon cancel">Cancelar</button>
         </div>
     `;
 
@@ -186,8 +186,8 @@ function openDeleteConfirmDialog(userId) {
     initDraggableElements(); // Garante que o novo diálogo seja arrastável
 
     const passwordInput = dialog.querySelector('#dynamic-confirm-password');
-    const confirmBtn = dialog.querySelector('.btn-danger');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
+    const confirmBtn = dialog.querySelector('.btn-neon.danger');
+    const cancelBtn = dialog.querySelector('.btn-neon.cancel');
 
     const closeDialog = () => {
         dialog.close();

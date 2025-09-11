@@ -1784,8 +1784,8 @@ function deleteGroup() {
                 </div>
                 <div class="feedback"></div>
                 <div class="modal-actions">
-                    <button class="btn btn-secondary" id="cancel-password-btn">Cancelar</button>
-                    <button class="btn btn-primary" id="confirm-password-btn">Excluir Grupo</button>
+                    <button class="btn btn-neon cancel" id="cancel-password-btn">Cancelar</button>
+                    <button class="btn btn-neon danger" id="confirm-password-btn">Excluir Grupo</button>
                 </div>
             `;
             
@@ -1891,8 +1891,8 @@ function leaveGroup() {
                 </div>
                 <div class="feedback"></div>
                 <div class="modal-actions">
-                    <button class="btn btn-secondary" id="cancel-password-btn">Cancelar</button>
-                    <button class="btn btn-primary" id="confirm-password-btn">Confirmar</button>
+                    <button class="btn btn-neon cancel" id="cancel-password-btn">Cancelar</button>
+                    <button class="btn btn-neon confirm" id="confirm-password-btn">Confirmar</button>
                 </div>
             `;
             
@@ -2235,8 +2235,8 @@ function sendMessageToAllMembers() {
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary">Cancelar</button>
-            <button class="btn btn-primary">Enviar para Todos</button>
+            <button class="btn btn-neon cancel">Cancelar</button>
+            <button class="btn btn-neon confirm">Enviar para Todos</button>
         </div>
     `;
 
@@ -2245,8 +2245,8 @@ function sendMessageToAllMembers() {
     dialog.showModal();
 
     const textarea = dialog.querySelector('#group-broadcast-message-textarea');
-    const sendBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
+    const sendBtn = dialog.querySelector('.btn-neon.confirm');
+    const cancelBtn = dialog.querySelector('.btn-neon.cancel');
 
     const closeDialog = () => { dialog.close(); dialog.remove(); };
     cancelBtn.addEventListener('click', closeDialog);
@@ -2278,8 +2278,8 @@ function sendMessageToMember(memberId) {
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary">Cancelar</button>
-            <button class="btn btn-primary">Enviar</button>
+            <button class="btn btn-neon cancel">Cancelar</button>
+            <button class="btn btn-neon confirm">Enviar Convite</button>
         </div>
     `;
 
@@ -2288,8 +2288,8 @@ function sendMessageToMember(memberId) {
     dialog.showModal();
 
     const textarea = dialog.querySelector('#group-private-message-textarea');
-    const sendBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
+    const sendBtn = dialog.querySelector('.btn-neon.confirm');
+    const cancelBtn = dialog.querySelector('.btn-neon.cancel');
 
     const closeDialog = () => { dialog.close(); dialog.remove(); };
     cancelBtn.addEventListener('click', closeDialog);
