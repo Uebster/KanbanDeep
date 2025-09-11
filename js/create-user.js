@@ -1,11 +1,12 @@
 // js/create-user.js
 
 import { registerUser, getAllUsers } from './auth.js';
-import { showFloatingMessage, initDraggableElements } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, initCustomSelects } from './ui-controls.js';
 
 // Função de inicialização exportada para ser chamada pelo main.js
 export function initCreateUserPage() {
     initApp();
+    initCustomSelects(); // Inicializa os selects customizados
     setupEventListeners();
     initDraggableElements();
 }

@@ -90,7 +90,7 @@ input, textarea, select, button {
 /* ===== CABEÇALHO PRINCIPAL ===== */
 #main-header {
     display: flex;
-    margin: 20px 20px 30px 20px; /* Adiciona margem em todos os lados, incluindo a inferior */
+    margin: 20px; /* Adiciona margem em todos os lados, incluindo a inferior */
     border-radius: 8px;
     justify-content: space-between;
     align-items: center;

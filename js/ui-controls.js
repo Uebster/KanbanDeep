@@ -18,6 +18,7 @@ export function initUIControls() {
     setupGlobalCloseListeners();
     setupKeyboardShortcuts();
     initDraggableElements(); // Inicializa o arrastar de elementos com a classe .draggable
+    initCustomSelects(); // Inicializa os selects customizados
 }
 
 /**
@@ -497,4 +498,85 @@ export function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+/**
+ * Inicializa todos os elementos .custom-select da página, transformando-os
+ * em dropdowns estilizados e funcionais.
+ */
+export function initCustomSelects() {
+    // Função para fechar todos os selects abertos, exceto o atual
+    function closeAllSelect(elmnt) {
+        const selectItems = document.getElementsByClassName("select-items");
+        const selectSelected = document.getElementsByClassName("select-selected");
+        const arrNo = [];
+        for (let i = 0; i < selectSelected.length; i++) {
+            if (elmnt == selectSelected[i]) {
+                arrNo.push(i);
+            }
+        }
+        for (let i = 0; i < selectItems.length; i++) {
+            if (arrNo.indexOf(i)) {
+                selectItems[i].classList.add("select-hide");
+            }
+        }
+    }
+
+    // Adiciona o listener para fechar ao clicar fora
+    document.addEventListener("click", () => closeAllSelect(null));
+
+    const customSelects = document.getElementsByClassName("custom-select");
+
+    for (let i = 0; i < customSelects.length; i++) {
+        const selElmnt = customSelects[i].getElementsByTagName("select")[0];
+        if (!selElmnt) continue;
+
+        // Evita reinicializar um select que já foi processado
+        if (customSelects[i].querySelector('.select-selected')) {
+            continue;
+        }
+
+        // Cria o elemento que mostrará a opção selecionada
+        const selectedDiv = document.createElement("DIV");
+        selectedDiv.setAttribute("class", "select-selected");
+        selectedDiv.innerHTML = selElmnt.options[selElmnt.selectedIndex].innerHTML;
+        customSelects[i].appendChild(selectedDiv);
+
+        // Cria o container para as opções
+        const optionsDiv = document.createElement("DIV");
+        optionsDiv.setAttribute("class", "select-items select-hide");
+
+        // Cria cada item de opção
+        for (let j = 0; j < selElmnt.length; j++) {
+            const optionItem = document.createElement("DIV");
+            optionItem.setAttribute("class", "select-item");
+            optionItem.innerHTML = selElmnt.options[j].innerHTML;
+
+            // Adiciona o listener de clique para cada opção
+            optionItem.addEventListener("click", function(e) {
+                const select = this.parentNode.parentNode.getElementsByTagName("select")[0];
+                const selectedDisplay = this.parentNode.previousSibling;
+
+                for (let k = 0; k < select.length; k++) {
+                    if (select.options[k].innerHTML == this.innerHTML) {
+                        select.selectedIndex = k;
+                        selectedDisplay.innerHTML = this.innerHTML;
+                        
+                        // Dispara o evento 'change' no select original para que outros scripts possam reagir
+                        select.dispatchEvent(new Event('change'));
+                        break;
+                    }
+                }
+                selectedDisplay.click(); // Fecha o menu
+            });
+            optionsDiv.appendChild(optionItem);
+        }
+        customSelects[i].appendChild(optionsDiv);
+
+        selectedDiv.addEventListener("click", function(e) {
+            e.stopPropagation();
+            closeAllSelect(this);
+            this.nextSibling.classList.toggle("select-hide");
+        });
+    }
 }

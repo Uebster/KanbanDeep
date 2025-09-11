@@ -5,22 +5,22 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
     overflow-y: auto;
 }
     .card {
       background-color: var(--bg-card);
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
       padding: 30px;
       width: 100%;
-      max-width: 800px;
+      max-width: 1400px; /* Aumentado para acomodar 3 colunas */
+      margin: 20px; /* Margem de 20px em todos os lados */
+      border: 1px solid var(--primary);
     }
 
     /* ===== CABEÇALHO ===== */
     header {
       width: 100%;
-      max-width: 800px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -30,16 +30,41 @@ body {
 
     h1 { font-size: 1.8rem; color: var(--text); }
 
-    /* ===== FORMULÁRIO ===== */
-    .form-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
-      margin-top: 20px;
+    /* ===== NOVO LAYOUT DE FORMULÁRIO ===== */
+    .form-layout-3col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 25px;
+        margin-top: 20px;
+    }
+
+    .form-column {
+        display: flex;
+        flex-direction: column;
+        gap: 25px; /* Espaçamento entre as seções na mesma coluna */
+    }
+
+    @media (max-width: 1200px) {
+        .form-layout-3col {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .form-layout-3col {
+            grid-template-columns: 1fr;
+        }
     }
 
     .form-section {
-      margin-bottom: 25px;
+        border-radius: 6px;
+        border: 1px solid var(--primary);
+        padding: 25px;
+        /* O espaçamento entre seções na mesma coluna é controlado pelo 'gap' do .form-column */
+    }
+
+    .privacy-full-width {
+        margin-top: 25px; /* Adiciona espaço acima da seção de privacidade */
     }
 
     .form-row {
@@ -59,7 +84,7 @@ body {
 
     .privacy-option {
       background-color: var(--bg-page);
-      border: 1px solid var(--border-light);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px;
       cursor: pointer;
@@ -69,12 +94,12 @@ body {
 
     .privacy-option:hover {
       border-color: var(--primary);
-      background-color: rgba(52, 152, 219, 0.1);
+      background-color: rgba(var(--primary-rgb), 0.1);
     }
 
     .privacy-option.selected {
       border-color: var(--primary);
-      background-color: rgba(52, 152, 219, 0.2);
+      background-color: rgba(var(--primary-rgb), 0.2);
     }
 
     .privacy-option h4 {
@@ -97,11 +122,11 @@ body {
     }
 
     .avatar-preview {
-      width: 120px;
-      height: 120px;
+      width: 180px;
+      height: 180px;
       border-radius: 50%;
       background-color: var(--bg-page);
-      border: 2px solid var(--border-light);
+      border: 2px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -124,9 +149,14 @@ body {
       display: flex;
       gap: 15px;
       justify-content: flex-end;
+      margin-top: 20px; /* Adiciona espaço acima dos botões */
     }
     footer {
       margin-top: 32px;
       color: transparent
     }
     
+    .form-group textarea {
+    min-height: 165px;
+    resize: vertical;
+}
