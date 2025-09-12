@@ -1,13 +1,13 @@
 // js/kanban.js - VERSÃO REFATORADA E FINAL
 
-import { getCurrentUser, updateUser } from './auth.js';
+import { getCurrentUser, updateUser, getAllUsers as authGetAllUsers } from './auth.js';
 import { 
     getUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
     getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme } from './ui-controls.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
 // ===== ESTADO GLOBAL DO MÓDULO =====
@@ -20,6 +20,7 @@ let currentBoardFilter = 'personal'; // 'personal' ou 'group'
 let undoStack = [];
 let redoStack = [];
 let clipboard = null; // Para copiar/colar
+let originalPreferences = {}; // Para restaurar ao cancelar
 let tagColorMap = new Map();
 let originalKanbanTheme = null;
 let originalKanbanFont = null;
@@ -63,7 +64,7 @@ export async function initKanbanPage() {
     renderBoardSelector();
     renderCurrentBoard();
     saveState(); // Salva o estado inicial para o Desfazer
-    applyUserPreferences();
+    applyUserTheme();
 }
 
 /**
@@ -142,6 +143,7 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('my-groups-btn')?.addEventListener('click', () => window.location.href = 'groups.html');
     document.getElementById('notifications-btn')?.addEventListener('click', () => window.location.href = 'notifications.html');
     document.getElementById('templates-btn')?.addEventListener('click', () => window.location.href = 'templates.html');
+    document.getElementById('preferences-btn')?.addEventListener('click', showPreferencesDialog);
     document.getElementById('friends-btn')?.addEventListener('click', () => window.location.href = 'friends.html');
     // --- Diálogos (Modais) ---
     document.getElementById('board-save-btn')?.addEventListener('click', handleSaveBoard);
@@ -1192,6 +1194,88 @@ function handleSaveCard() {
     );
 }
 
+// ===== LÓGICA DE EXPORTAÇÃO E IMPRESSÃO =====
+
+function handleExportImage() {
+    showFloatingMessage('Preparando imagem para exportação...', 'info');
+    const boardArea = document.getElementById('main-area');
+    
+    // Para esta função funcionar, a biblioteca html2canvas precisa ser importada no seu HTML:
+    // <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    if (typeof html2canvas === 'undefined') {
+        showFloatingMessage('Erro: Biblioteca html2canvas não encontrada.', 'error');
+        console.error("html2canvas não está carregada. Adicione o script ao seu HTML.");
+        return;
+    }
+
+    html2canvas(boardArea, {
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        useCORS: true,
+        scale: 1.5 // Aumenta a resolução da imagem
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `${currentBoard.title.replace(/ /g, '_')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }).catch(err => {
+        console.error("Erro ao exportar imagem:", err);
+        showFloatingMessage('Falha ao exportar imagem.', 'error');
+    });
+}
+
+function handlePrintBoard() {
+    const boardTitle = currentBoard.title;
+    const userName = currentUser.name;
+    const printDate = new Date().toLocaleString('pt-BR');
+
+    // --- NOVA LÓGICA ---
+    // 1. Gerar estilos customizados para as colunas
+    let columnStyles = '';
+    currentBoard.columns.forEach(column => {
+        // O seletor de atributo é mais robusto que um ID, pois o innerHTML não copia IDs únicos
+        columnStyles += `
+            .column[data-column-id="${column.id}"] .cards-container {
+                background-color: ${column.color || '#f9f9f9'} !important;
+            }
+        `;
+    });
+
+    // 2. Clonar a área do quadro para não afetar a página principal
+    const boardAreaClone = document.getElementById('main-area').cloneNode(true);
+    // Remover botões e elementos interativos da cópia
+    boardAreaClone.querySelectorAll('.paste-card-btn, .add-card-btn, .card-hover-info').forEach(el => el.remove());
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Imprimir Quadro - ${boardTitle}</title>
+                <style>
+                    body { font-family: Segoe UI, sans-serif; background-color: white !important; color: black; -webkit-print-color-adjust: exact; color-adjust: exact; }
+                    #main-area { padding: 20px; }
+                    #kanban-title { text-align: center; font-size: 24px; margin-bottom: 20px; color: black; }
+                    #columns-container { display: flex; gap: 15px; overflow-x: auto; }
+                    .column { border: 1px solid #ccc; border-radius: 8px; width: 300px; background-color: #f0f0f0; page-break-inside: avoid; vertical-align: top; display: inline-block; }
+                    .column-header { background-color: #e0e0e0; padding: 10px; font-weight: bold; text-align: center; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; }
+                    .cards-container { padding: 10px; min-height: 50px; }
+                    .card { border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-bottom: 10px; background-color: white; page-break-inside: avoid; box-shadow: 0 1px 2px rgba(0,0,0,0.1); text-align: center; }
+                    .card-title { font-weight: bold; color: black; }
+                    .print-footer { text-align: center; font-size: 12px; color: #666; padding: 20px 0 10px 0; border-top: 1px solid #ccc; margin-top: 30px; }
+                    ${columnStyles}
+                </style>
+            </head>
+            <body>
+                <div id="main-area">${boardAreaClone.innerHTML}</div>
+                <div class="print-footer">Impresso por: ${userName} em ${printDate}</div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500); // Delay para garantir que o conteúdo seja renderizado
+}
 
 // ===== LÓGICA DE DRAG-AND-DROP =====
 
@@ -1751,165 +1835,177 @@ async function saveBoardAsTemplate() {
 
 //Preferências
 
-function showPreferencesDialog() {
+function showPreferencesDialog() { // REFEITA
     const dialog = document.getElementById('preferences-dialog');
     const user = getCurrentUser();
-    // O cloneNode é uma forma de garantir que os listeners antigos sejam removidos.
-    // É uma abordagem válida, embora a remoção manual de listeners seja mais "limpa".
-    const newDialog = dialog.cloneNode(true);
-    dialog.parentNode.replaceChild(newDialog, dialog);
+    const prefs = user.preferences || {};
 
-    // Salvar os valores originais para a função "Cancelar"
-    originalKanbanTheme = user.theme || 'auto';
-    originalKanbanFont = user.preferences?.fontFamily || 'Segoe UI';
-    originalKanbanFontSize = user.preferences?.fontSize || 'medium';
-    originalShowTitle = user.preferences?.showBoardTitle !== false;
-    originalShowIcon = user.preferences?.showBoardIcon !== false;
-    originalShowTags = user.preferences?.showTags !== false;
-    originalShowDate = user.preferences?.showDate !== false;
-    originalShowStatus = user.preferences?.showStatus !== false;
-    originalShowCardDetails = user.preferences?.showCardDetails !== false;
-    originalShowAssignment = user.preferences?.showAssignment !== false;
+    // Salva o estado original para a função "Cancelar"
+    originalPreferences = {
+        theme: user.theme || 'auto',
+        language: user.language || 'pt-BR',
+        fontFamily: prefs.fontFamily || 'Segoe UI, Inter, sans-serif',
+        fontSize: prefs.fontSize || 'medium',
+        primaryColor: prefs.primaryColor,
+        showBoardIcon: prefs.showBoardIcon !== false,
+        showBoardTitle: prefs.showBoardTitle !== false,
+        showTags: prefs.showTags !== false,
+        showDate: prefs.showDate !== false,
+        showStatus: prefs.showStatus !== false,
+        showAssignment: prefs.showAssignment !== false,
+        showCardDetails: prefs.showCardDetails !== false,
+        defaultTagTemplateId: prefs.defaultTagTemplateId || 'system-tags-prio'
+    };
 
-    // Preencher o diálogo com os valores atuais do usuário
-    newDialog.querySelector('#pref-theme').value = originalKanbanTheme;
-    newDialog.querySelector('#pref-language').value = user.language || 'pt-BR';
-    newDialog.querySelector('#pref-font-family').value = originalKanbanFont;
-    newDialog.querySelector('#pref-font-size').value = originalKanbanFontSize;
-    newDialog.querySelector('#pref-card-show-tags').checked = user.preferences?.showTags !== false;
-    newDialog.querySelector('#pref-card-show-date').checked = user.preferences?.showDate !== false;
-    newDialog.querySelector('#pref-card-show-status').checked = user.preferences?.showStatus !== false;
-    newDialog.querySelector('#pref-card-show-assignment').checked = user.preferences?.showAssignment !== false;
-    newDialog.querySelector('#pref-card-show-details').checked = user.preferences?.showCardDetails !== false;
-    newDialog.querySelector('#pref-board-show-icon').checked = user.preferences?.showBoardIcon !== false;
-    newDialog.querySelector('#pref-board-show-title').checked = user.preferences?.showBoardTitle !== false;
-    populateTagTemplatesSelect(user.preferences?.defaultTagTemplateId);
+    // Preenche os campos do diálogo com os valores atuais
+    dialog.querySelector('#pref-theme').value = originalPreferences.theme;
+    dialog.querySelector('#pref-language').value = originalPreferences.language;
+    dialog.querySelector('#pref-font-family').value = originalPreferences.fontFamily;
+    dialog.querySelector('#pref-font-size').value = originalPreferences.fontSize;
+    dialog.querySelector('#pref-board-show-icon').checked = originalPreferences.showBoardIcon;
+    dialog.querySelector('#pref-board-show-title').checked = originalPreferences.showBoardTitle;
+    dialog.querySelector('#pref-card-show-tags').checked = originalPreferences.showTags;
+    dialog.querySelector('#pref-card-show-date').checked = originalPreferences.showDate;
+    dialog.querySelector('#pref-card-show-status').checked = originalPreferences.showStatus;
+    dialog.querySelector('#pref-card-show-assignment').checked = originalPreferences.showAssignment;
+    dialog.querySelector('#pref-card-show-details').checked = originalPreferences.showCardDetails;
+
+    // Popula e seleciona o template de tags
+    populateTagTemplatesSelect(originalPreferences.defaultTagTemplateId);
+
+    // Popula e seleciona a cor primária
+    const paletteContainer = dialog.querySelector('#color-palette-container');
+    paletteContainer.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+    if (originalPreferences.primaryColor === 'none') {
+        paletteContainer.querySelector('[data-action="remove-primary"]')?.classList.add('active');
+    } else if (originalPreferences.primaryColor?.hex) {
+        paletteContainer.querySelector(`[data-hex="${originalPreferences.primaryColor.hex}"]`)?.classList.add('active');
+    } else {
+        paletteContainer.querySelector('[data-hex="#4cd4e6"]')?.classList.add('active'); // Padrão
+    }
+
+    // Inicializa os selects customizados APÓS popular os dados
+    initCustomSelects();
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
 
-    // --- Lógica de Cancelamento Centralizada ---
-    const handleCancel = () => {
-        if (!kanbanIsSaved) {
-            showConfirmationDialog(
-                'Descartar alterações não salvas?',
-                (confirmDialog) => { // onConfirm (Descartar)
-                    restoreKanbanOriginalSettings();
-                    showDialogMessage(confirmDialog, 'Alterações descartadas.', 'info');
-                    newDialog.close();
-                    return true; // Fecha o diálogo de confirmação
-                },
-                (confirmDialog) => { // onCancel (Continuar editando)
-                    showDialogMessage(confirmDialog, 'Continue editando...', 'info');
-                    return true; // Fecha apenas a confirmação
-                },
-                'Sim, Descartar',
-                'Não'
-            );
-        } else {
-            newDialog.close(); // Fecha sem perguntar se nada mudou
-        }
-    };
+    // Anexa os listeners aos controles
+    setupPreferencesListeners(dialog);
 
-    // --- Anexar Eventos ---
+    dialog.showModal();
+}
 
-    // Botão Salvar
-    newDialog.querySelector('#pref-save-btn').addEventListener('click', () => {
-        showConfirmationDialog(
-            'Deseja salvar as alterações feitas nas preferências?',
-            (confirmDialog) => { // onConfirm (Salvar)
-                if (savePreferences()) {
-                    showDialogMessage(confirmDialog, 'Preferências salvas com sucesso!', 'success');
-                    newDialog.close();
-                    return true;
-                } else {
-                    showDialogMessage(confirmDialog, 'Erro ao salvar as preferências.', 'error');
-                    return false; // Mantém o diálogo de confirmação aberto
-                }
-            },
-            (confirmDialog) => { // onCancel (Não salvar ainda)
-                showDialogMessage(confirmDialog, 'Continue editando...', 'info');
-                return true; // Fecha apenas a confirmação
-            },
-            'Sim, Salvar',
-            'Não'
-        );
-    });
-
-    // Botão Cancelar
-    newDialog.querySelector('#pref-cancel-btn').addEventListener('click', handleCancel);
-
-    // Evento 'cancel' (disparado pela tecla ESC)
-    newDialog.addEventListener('cancel', (e) => {
-        e.preventDefault(); // Impede o fechamento automático do diálogo
-        handleCancel();     // Executa nossa lógica de confirmação
-    });
-
-    // Evento de clique no backdrop (fundo)
-    newDialog.addEventListener('click', (e) => {
-        if (e.target === newDialog) {
-            handleCancel();
-        }
-    });
-
-    // Listeners que marcam o estado como "não salvo" e aplicam preview
+function setupPreferencesListeners(dialog) {
     const fieldsToTrack = [
         { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
         { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
         { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) },
         { id: 'pref-language', action: null },
         { id: 'pref-default-tag-template', action: null },
-        { id: 'pref-card-show-tags', action: () => applyCardPreview() },
-        { id: 'pref-card-show-date', action: () => applyCardPreview() },
-        { id: 'pref-card-show-status', action: () => applyCardPreview() },
-        { id: 'pref-card-show-details', action: () => applyCardPreview() },
-        { id: 'pref-card-show-assignment', action: () => applyCardPreview() },
-        { id: 'pref-board-show-title', action: () => applyTitlePreview() },
-        { id: 'pref-board-show-icon', action: () => applyTitlePreview() }
+        { id: 'pref-card-show-tags', action: applyCardPreview },
+        { id: 'pref-card-show-date', action: applyCardPreview },
+        { id: 'pref-card-show-status', action: applyCardPreview },
+        { id: 'pref-card-show-details', action: applyCardPreview },
+        { id: 'pref-card-show-assignment', action: applyCardPreview },
+        { id: 'pref-board-show-title', action: applyTitlePreview },
+        { id: 'pref-board-show-icon', action: applyTitlePreview }
     ];
 
     fieldsToTrack.forEach(field => {
-        const element = newDialog.querySelector(`#${field.id}`);
+        const element = dialog.querySelector(`#${field.id}`);
         if (element) {
             element.addEventListener('change', (e) => {
                 kanbanIsSaved = false;
-                if (field.action) {
-                    field.action(e);
-                }
+                if (field.action) field.action(e);
             });
         }
     });
 
-    newDialog.showModal();
+    dialog.querySelector('#color-palette-container').addEventListener('click', (e) => {
+        const swatch = e.target.closest('.color-swatch');
+        if (!swatch) return;
+        kanbanIsSaved = false;
+        // Lógica de preview da cor
+        dialog.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+        swatch.classList.add('active');
+        if (swatch.dataset.action === 'remove-primary') {
+            document.body.classList.add('no-primary-effects');
+        } else {
+            document.body.classList.remove('no-primary-effects');
+            document.documentElement.style.setProperty('--primary', swatch.dataset.hex);
+            document.documentElement.style.setProperty('--primary-rgb', swatch.dataset.rgb);
+        }
+    });
+
+    const handleCancel = () => {
+        if (kanbanIsSaved) {
+            dialog.close();
+        } else {
+            showConfirmationDialog(
+                'Descartar alterações não salvas?', 
+                () => { // onConfirm
+                    restoreKanbanOriginalSettings();
+                    dialog.close();
+                    return true; // Fecha o diálogo de confirmação
+                },
+                (confirmationDialog) => { // onCancel
+                    showDialogMessage(confirmationDialog, 'Continue editando.', 'info');
+                    return true; // Fecha apenas o diálogo de confirmação
+                },
+                'Sim, Descartar'
+            );
+        }
+    };
+
+    dialog.querySelector('#pref-save-btn').onclick = () => {
+        showConfirmationDialog(
+            'Deseja salvar as alterações nas preferências?',
+            (confirmationDialog) => { // onConfirm
+                if (savePreferences()) {
+                    showDialogMessage(confirmationDialog, 'Preferências salvas com sucesso!', 'success');
+                    return true;
+                }
+                showDialogMessage(confirmationDialog, 'Erro ao salvar as preferências.', 'error');
+                return false;
+            }
+        );
+    };
+
+    dialog.querySelector('#pref-cancel-btn').onclick = handleCancel;
+
+    // Impede que o diálogo feche com ESC ou clique fora se houver alterações
+    dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        handleCancel();
+    });
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            handleCancel();
+        }
+    });
 }
 
 function restoreKanbanOriginalSettings() {
-    applyThemeFromSelect(originalKanbanTheme);
-    applyFontFamily(originalKanbanFont);
-    applyFontSize(originalKanbanFontSize, true);
-
-    // Restaura as preferências de visualização dos cartões
-    currentUser.preferences.showTags = originalShowTags;
-    currentUser.preferences.showDate = originalShowDate;
-    currentUser.preferences.showStatus = originalShowStatus;
-    currentUser.preferences.showCardDetails = originalShowCardDetails;
-    currentUser.preferences.showAssignment = originalShowAssignment;
-    renderCurrentBoard(); // Redesenha para aplicar
-
-    // Restaura a visibilidade original do título e do ícone
-    const titleElement = document.getElementById('kanban-title');
-    if (!titleElement || !currentBoard) return;
-
-    const iconHtml = originalShowIcon ? `<span class="board-icon">${currentBoard.icon || '📋'}</span>` : '';
-    const titleHtml = originalShowTitle ? `<span class="board-title-text">${currentBoard.title}</span>` : '';
-
-    titleElement.innerHTML = `${iconHtml}${titleHtml}`.trim();
-    titleElement.style.display = (originalShowTitle || originalShowIcon) ? 'block' : 'none';
+    // Restaura o estado visual usando a função global e os dados originais
+    const user = getCurrentUser();
+    user.theme = originalPreferences.theme;
+    user.preferences = { ...user.preferences, ...originalPreferences };
+    applyUserTheme();
+    renderCurrentBoard(); // Redesenha o quadro com as prefs visuais originais
 }
 
 function savePreferences() {
     const dialog = document.getElementById('preferences-dialog');
     const user = getCurrentUser();
     
+    const activeSwatch = dialog.querySelector('#color-palette-container .color-swatch.active');
+    let primaryColor = null;
+    if (activeSwatch) {
+        primaryColor = activeSwatch.dataset.action === 'remove-primary' 
+            ? 'none' 
+            : { hex: activeSwatch.dataset.hex, rgb: activeSwatch.dataset.rgb };
+    }
+
     const updatedUser = {
         ...user,
         theme: document.getElementById('pref-theme').value,
@@ -1925,7 +2021,8 @@ function savePreferences() {
             defaultTagTemplateId: document.getElementById('pref-default-tag-template').value,
             showBoardIcon: document.getElementById('pref-board-show-icon').checked,
             showBoardTitle: document.getElementById('pref-board-show-title').checked,
-            showCardDetails: document.getElementById('pref-card-show-details').checked
+            showCardDetails: document.getElementById('pref-card-show-details').checked,
+            primaryColor: primaryColor
         }
     };
 
@@ -1933,12 +2030,15 @@ function savePreferences() {
         // Atualizar os valores originais
         originalKanbanTheme = updatedUser.theme;
         originalKanbanFont = updatedUser.preferences.fontFamily;
-        originalKanbanFontSize = updatedUser.preferences.fontSize;
         
         kanbanIsSaved = true;
-        applyUserPreferences();
+        applyUserTheme(); // Aplica globalmente
+        renderCurrentBoard(); // Renderiza o quadro com as novas prefs
+        showFloatingMessage('Preferências salvas com sucesso!', 'success');
+        dialog.close();
         return true;
     } else {
+        showFloatingMessage('Erro ao salvar preferências.', 'error');
         return false;
     }
 }
@@ -1947,7 +2047,7 @@ function populateTagTemplatesSelect(selectedId = null) {
     const select = document.getElementById('pref-default-tag-template');
     if (!select) return;
     
-    select.innerHTML = '<option value="">Nenhum (usar padrão do sistema)</option>';
+    select.innerHTML = '<option value="">Nenhum (padrão do sistema)</option>';
     
     const userTagTemplates = getUserTagTemplates(currentUser.id);
     const systemTagTemplates = getSystemTagTemplates();
@@ -1979,31 +2079,6 @@ function populateTagTemplatesSelect(selectedId = null) {
         });
         select.appendChild(optgroupSystem);
     }
-}
-
-function applyUserPreferences() {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    // Aplicar tema
-    applyUserTheme();
-
-    // Aplicar fonte
-    applyFontFamily(user.preferences?.fontFamily || 'Segoe UI');
-    
-    // Aplicar tamanho da fonte
-    applyFontSize(user.preferences?.fontSize || 'medium');
-
-    // Aplicar opções de exibição (podem ser usadas ao renderizar os cartões)
-    // Nota: A renderização dos cartões pode precisar ser atualizada
-    renderCurrentBoard();
-
-    // Aplica a preferência de esconder o título
-    const titleElement = document.getElementById('kanban-title');
-    const iconSpan = titleElement.querySelector('.board-icon');
-    const titleSpan = titleElement.querySelector('.board-title-text');
-    if (iconSpan) iconSpan.style.display = user.preferences?.showBoardIcon === false ? 'none' : 'inline';
-    if (titleSpan) titleSpan.style.display = user.preferences?.showBoardTitle === false ? 'none' : 'inline';
 }
 
 function applyFontFamily(fontFamily) {
@@ -2041,305 +2116,10 @@ function applyFontFamily(fontFamily) {
     document.head.appendChild(style);
 }
 
-function applyFontSize(size, isPreview = false) { // Parâmetro isPreview adicionado
-    let fontSizeValue;
-    switch (size) {
-        case 'small': fontSizeValue = '12px'; break;
-        case 'medium': fontSizeValue = '14px'; break;
-        case 'large': fontSizeValue = '16px'; break;
-        case 'x-large': fontSizeValue = '18px'; break;
-        default: fontSizeValue = '14px'; // Padrão para 'medium'
-    }
-    // Aplica ao documento inteiro
+function applyFontSize(size, isPreview = false) {
+    const sizeMap = { small: '0.85rem', medium: '1rem', large: '1.15rem', 'x-large': '1.3rem' };
+    const fontSizeValue = sizeMap[size] || '1rem';
     document.documentElement.style.fontSize = fontSizeValue;
-    
-    // Salva a preferência apenas se não for uma pré-visualização
-    if (!isPreview) {
-        const currentUser = getCurrentUser();
-        if (currentUser) {
-            updateUser(currentUser.id, { 
-                preferences: {
-                    ...(currentUser.preferences || {}),
-                    fontSize: size
-                }
-            });
-        }
-    }
-}
-
-function handleCutColumn(columnId) {
-    const column = findColumn(columnId);
-    if (column) {
-        saveState(); // Salva o estado antes de recortar
-        clipboard = {
-            type: 'cut_column',
-            data: JSON.parse(JSON.stringify(column)) // Guarda uma cópia dos dados
-        };
-
-        // Remove a coluna do quadro atual
-        currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
-        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-        saveBoard(currentBoard);
-        renderCurrentBoard();
-        showFloatingMessage('Coluna recortada!', 'info');
-    }
-}
-
-function handleCutCard(cardId) {
-    const { card, column } = findCardAndColumn(cardId);
-    if (card && column) {
-        saveState(); // Salva o estado antes de recortar
-        clipboard = {
-            type: 'cut_card',
-            data: JSON.parse(JSON.stringify(card)), // Guarda uma cópia dos dados
-            sourceColumnId: column.id
-        };
-
-        // Remove o cartão da coluna de origem
-        const cardIndex = column.cardIds.indexOf(cardId);
-        if (cardIndex > -1) {
-            column.cardIds.splice(cardIndex, 1);
-            column.cards.splice(cardIndex, 1);
-        }
-        
-        saveColumn(column);
-        renderCurrentBoard();
-        showFloatingMessage('Cartão recortado!', 'info');
-        updatePasteCardButtons(true);
-    }
-}
-
-// ===== LÓGICA DE COPIAR E COLAR =====
-
-function handleCopyCard(cardId) {
-    const { card, column } = findCardAndColumn(cardId);
-    if (card && column) {
-        clipboard = {
-            type: 'card',
-            data: JSON.parse(JSON.stringify(card)), // Deep copy
-            sourceColumnId: column.id
-        };
-        showFloatingMessage('Cartão copiado!', 'info');
-        updatePasteCardButtons(true);
-    }
-}
-
-function handleCopyColumn(columnId) {
-    const column = findColumn(columnId);
-    if (column) {
-        clipboard = {
-            type: 'column',
-            data: JSON.parse(JSON.stringify(column)) // Deep copy
-        };
-        showFloatingMessage('Coluna copiada!', 'info');
-        updatePasteCardButtons(false); // Esconde botões de colar cartão
-    }
-}
-
-function handlePaste() {
-    if (!clipboard) return;
-
-    if (clipboard.type === 'card' || clipboard.type === 'cut_card') {
-        // Cola o cartão na mesma coluna de onde foi copiado
-        handlePasteCard(clipboard.sourceColumnId);
-    } else if (clipboard.type === 'column' || clipboard.type === 'cut_column') {
-        handlePasteColumn();
-    }
-}
-
-function handlePasteCard(targetColumnId) {
-    if (!clipboard || (clipboard.type !== 'card' && clipboard.type !== 'cut_card')) return;
-
-    saveState();
-    const targetColumn = currentBoard.columns.find(c => c.id === targetColumnId);
-    if (!targetColumn) return;
-
-    let newCardData;
-    let message;
-
-    if (clipboard.type === 'card') {
-        newCardData = { ...clipboard.data, id: `card-${Date.now()}` };
-        newCardData.title = `${newCardData.title} (Cópia)`;
-        message = 'Cartão colado!';
-    } else { // 'cut_card'
-        newCardData = { ...clipboard.data }; // Usa os dados originais
-        message = 'Cartão movido!';
-    }
-    
-    const savedCard = saveCard(newCardData);
-    targetColumn.cards.push(savedCard);
-    targetColumn.cardIds.push(savedCard.id);
-    saveColumn(targetColumn);
-
-    clipboard = null; // Limpa a área de transferência
-    updatePasteCardButtons(false); // Esconde os botões de colar
-
-    renderCurrentBoard();
-    showFloatingMessage(message, 'success');
-}
-
-function handlePasteColumn() {
-    if (!clipboard || (clipboard.type !== 'column' && clipboard.type !== 'cut_column')) return;
-
-    saveState();
-    const newColumnData = JSON.parse(JSON.stringify(clipboard.data)); // Deep copy
-    let message;
-
-    // Copia os cartões, criando novos IDs para cada um
-    if (clipboard.type === 'column') {
-        newColumnData.id = `column-${Date.now()}`;
-        newColumnData.title = `${newColumnData.title} (Cópia)`;
-        message = 'Coluna copiada!';
-
-        const newCards = newColumnData.cards.map(card => {
-            const newCard = { ...card, id: `card-${Date.now()}-${Math.random()}` };
-            saveCard(newCard);
-            return newCard;
-        });
-        newColumnData.cards = newCards;
-        newColumnData.cardIds = newCards.map(c => c.id);
-    } else { // 'cut_column'
-        // Não precisa mudar ID nem título. Os cartões já existem.
-        message = 'Coluna movida!';
-    }
-
-    clipboard = null; // Limpa a área de transferência
-    updatePasteCardButtons(false);
-
-    const savedColumn = saveColumn(newColumnData);
-    currentBoard.columns.push(savedColumn);
-    currentBoard.columnIds.push(savedColumn.id);
-    saveBoard(currentBoard);
-
-    renderCurrentBoard();
-    showFloatingMessage(message, 'success');
-}
-
-function updatePasteCardButtons(show) {
-    document.querySelectorAll('.paste-card-btn').forEach(btn => {
-        btn.style.display = show ? 'inline-block' : 'none';
-    });
-}
-
-// ===== LÓGICA DE EXPORTAÇÃO E IMPRESSÃO =====
-
-function handleExportImage() {
-    showFloatingMessage('Preparando imagem para exportação...', 'info');
-    const boardArea = document.getElementById('main-area');
-    
-    // Para esta função funcionar, a biblioteca html2canvas precisa ser importada no seu HTML:
-    // <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    if (typeof html2canvas === 'undefined') {
-        showFloatingMessage('Erro: Biblioteca html2canvas não encontrada.', 'error');
-        console.error("html2canvas não está carregada. Adicione o script ao seu HTML.");
-        return;
-    }
-
-    html2canvas(boardArea, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        useCORS: true,
-        scale: 1.5 // Aumenta a resolução da imagem
-    }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `${currentBoard.title.replace(/ /g, '_')}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    }).catch(err => {
-        console.error("Erro ao exportar imagem:", err);
-        showFloatingMessage('Falha ao exportar imagem.', 'error');
-    });
-}
-
-function handlePrintBoard() {
-    const boardTitle = currentBoard.title;
-    const userName = currentUser.name;
-    const printDate = new Date().toLocaleString('pt-BR');
-
-    // --- NOVA LÓGICA ---
-    // 1. Gerar estilos customizados para as colunas
-    let columnStyles = '';
-    currentBoard.columns.forEach(column => {
-        // O seletor de atributo é mais robusto que um ID, pois o innerHTML não copia IDs únicos
-        columnStyles += `
-            .column[data-column-id="${column.id}"] .cards-container {
-                background-color: ${column.color || '#f9f9f9'} !important;
-            }
-        `;
-    });
-
-    // 2. Clonar a área do quadro para não afetar a página principal
-    const boardAreaClone = document.getElementById('main-area').cloneNode(true);
-    // Remover botões e elementos interativos da cópia
-    boardAreaClone.querySelectorAll('.paste-card-btn, .add-card-btn, .card-hover-info').forEach(el => el.remove());
-
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>Imprimir Quadro - ${boardTitle}</title>
-                <style>
-                    body { 
-                        font-family: Segoe UI, sans-serif; 
-                        background-color: white !important; /* Força fundo branco */
-                        color: black; 
-                        -webkit-print-color-adjust: exact; /* Força impressão de cores de fundo */
-                        color-adjust: exact; /* Padrão */
-                    }
-                    #main-area { padding: 20px; }
-                    #kanban-title { text-align: center; font-size: 24px; margin-bottom: 20px; color: black; }
-                    #columns-container { display: flex; gap: 15px; overflow-x: auto; }
-                    .column { 
-                        border: 1px solid #ccc; 
-                        border-radius: 8px; 
-                        width: 300px; 
-                        background-color: #f0f0f0; /* Fundo base da coluna, caso a cor não seja aplicada */
-                        page-break-inside: avoid; 
-                        vertical-align: top;
-                        display: inline-block;
-                    }
-                    .column-header { background-color: #e0e0e0; padding: 10px; font-weight: bold; text-align: center; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; }
-                    .cards-container { padding: 10px; min-height: 50px; }
-                    .card { border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-bottom: 10px; background-color: white; page-break-inside: avoid; box-shadow: 0 1px 2px rgba(0,0,0,0.1); text-align: center; }
-                    .card-title { font-weight: bold; color: black; }
-                    .print-footer { text-align: center; font-size: 12px; color: #666; padding: 20px 0 10px 0; border-top: 1px solid #ccc; margin-top: 30px; }
-                    ${columnStyles}
-                </style>
-            </head>
-            <body>
-                <div id="main-area">${boardAreaClone.innerHTML}</div>
-                <div class="print-footer">Impresso por: ${userName} em ${printDate}</div>
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
-    setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-    }, 500); // Delay para garantir que o conteúdo seja renderizado
-}
-
-// Modifique a função applyUserTheme para aplicar o tema imediatamente
-function applyUserTheme() {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    const theme = user.theme || 'auto';
-    const systemTheme = localStorage.getItem('appTheme') || 'dark';
-    
-    document.body.classList.remove('light-mode', 'dark-mode');
-
-    if (theme === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (theme === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else {
-        // Modo automático
-        if (systemTheme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.add('dark-mode');
-        }
-    }
 }
 
 function applyTitlePreview() {

@@ -347,6 +347,22 @@ body {
     color: var(--text);
 }
 
+#preferences-dialog {
+    max-width: 850px;
+}
+
+/* Layout do diálogo de preferências */
+.preferences-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.preferences-column {
+    display: flex;
+    flex-direction: column;
+}
+
 fieldset.form-group {
     border: 1px solid var(--border);
     padding: 15px;

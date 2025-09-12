@@ -307,110 +307,132 @@
 <dialog id="preferences-dialog" class="draggable">
     <h3 class="drag-handle">Preferências</h3>
     
-    <div class="form-group">
-        <label for="pref-theme">Tema:</label>
-        <select id="pref-theme">
-            <option value="auto">Automático (Sistema)</option>
-            <option value="light">Claro</option>
-            <option value="dark">Escuro</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="pref-language">Idioma:</label>
-        <select id="pref-language">
-            <option value="pt-BR">Português (Brasil)</option>
-            <option value="en-US">English (EUA)</option>
-            <option value="es-ES">Español (España)</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="pref-font-family">Fonte:</label>
-        <select id="pref-font-family">
-                                <option value="Segoe UI">Segoe UI</option>
-                                <option value="Arial">Arial</option>
-                                <option value="Helvetica">Helvetica</option>
-                                <option value="Times New Roman">Times New Roman</option>
-                                <option value="Courier New">Courier New</option>
-                                <option value="Verdana">Verdana</option>
-                                <option value="Georgia">Georgia</option>
-                                <option value="Palatino">Palatino</option>
-                                <option value="Garamond">Garamond</option>
-                                <option value="Comic Sans MS">Comic Sans MS</option>
-                                <option value="Impact">Impact</option>
-                                <option value="Tahoma">Tahoma</option>
-                                <option value="Trebuchet MS">Trebuchet MS</option>
-                                <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
-                                <option value="Lucida Console">Lucida Console</option>
-                                <option value="Lucida Sans">Lucida Sans</option>
-                                <option value="Inter">Inter</option>
-                                <option value="Roboto">Roboto</option>
-                                <option value="Montserrat">Montserrat</option>
-                                <option value="Lato">Lato</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="pref-font-size">Tamanho da Fonte:</label>
-                            <select id="pref-font-size">
-                                <option value="small">Pequeno</option>
-                                <option value="medium" selected>Médio</option>
-                                <option value="large">Grande</option>
-                                <option value="x-large">Extra Grande</option>
-                            </select>
-    </div>
-
-    <fieldset class="form-group">
-        <legend>Exibir no Cartão:</legend>
-            <div class="checkbox-group">
-                <label class="checkbox-container">
-                    Exibir etiquetas
-                    <input type="checkbox" id="pref-card-show-tags" checked>
-                    <span class="checkmark"></span>
-                </label>
-                
-                <label class="checkbox-container">
-                    Exibir datas
-                    <input type="checkbox" id="pref-card-show-date" checked>
-                    <span class="checkmark"></span>
-                </label>
-                
-                <label class="checkbox-container">
-                    Exibir status
-                    <input type="checkbox" id="pref-card-show-status" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <label class="checkbox-container">
-                    Exibir atribuição (avatar)
-                    <input type="checkbox" id="pref-card-show-assignment" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <label class="checkbox-container">
-                    Exibir detalhes (descrição, criador, etc.)
-                    <input type="checkbox" id="pref-card-show-details" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <!-- Checkbox Adicionado -->
-                <label class="checkbox-container">
-                    Exibir título do quadro
+    <div class="preferences-layout">
+        <!-- Coluna Esquerda: Preferências Gerais -->
+        <div class="preferences-column">
+            <div class="form-group">
+                <label for="pref-theme">Tema:</label>
+                <div class="custom-select">
+                    <select id="pref-theme">
+                        <option value="auto">Padrão do Sistema</option>
+                        <option value="dark">Escuro (Preto)</option>
+                        <option value="dark-gray">Cinza Escuro</option>
+                        <option value="light-gray">Cinza Claro</option>
+                        <option value="light">Claro (Branco)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="pref-language">Idioma:</label>
+                <div class="custom-select">
+                    <select id="pref-language">
+                        <option value="pt-BR">Português (Brasil)</option>
+                        <option value="en-US">English (EUA)</option>
+                        <option value="es-ES">Español (España)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="pref-font-family">Fonte:</label>
+                <div class="custom-select">
+                    <select id="pref-font-family">
+                        <option value="Segoe UI, Inter, sans-serif">Padrão (Segoe/Inter)</option>
+                        <option value="Roboto, sans-serif">Roboto</option>
+                        <option value="Open Sans, sans-serif">Open Sans</option>
+                        <option value="Lato, sans-serif">Lato</option>
+                        <option value="Montserrat, sans-serif">Montserrat</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="Helvetica, sans-serif">Helvetica</option>
+                        <option value="Times New Roman, serif">Times New Roman</option>
+                        <option value="Courier New, monospace">Courier New</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="Palatino, serif">Palatino</option>
+                        <option value="Garamond, serif">Garamond</option>
+                        <option value="Comic Sans MS, cursive">Comic Sans MS</option>
+                        <option value="Impact, fantasy">Impact</option>
+                        <option value="Tahoma, sans-serif">Tahoma</option>
+                        <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+                        <option value="Lucida Sans Unicode, sans-serif">Lucida Sans Unicode</option>
+                        <option value="Lucida Console, monospace">Lucida Console</option>
+                        <option value="Lucida Sans, sans-serif">Lucida Sans</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="pref-font-size">Tamanho da Fonte:</label>
+                <div class="custom-select">
+                    <select id="pref-font-size">
+                        <option value="small">Pequeno</option>
+                        <option value="medium">Médio</option>
+                        <option value="large">Grande</option>
+                        <option value="x-large">Extra Grande</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Cor Primária:</label>
+                <div id="color-palette-container" class="color-palette">
+                    <div class="color-swatch special" data-action="remove-primary" title="Nenhuma">🚫</div>
+                    <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão"></div>
+                    <div class="color-swatch" style="background-color: #9a1eff;" data-hex="#9a1eff" data-rgb="154, 30, 255"></div>
+                    <div class="color-swatch" style="background-color: #1eff1e;" data-hex="#1eff1e" data-rgb="30, 255, 30"></div>
+                    <div class="color-swatch" style="background-color: #f552ed;" data-hex="#f552ed" data-rgb="245, 82, 237"></div>
+                    <div class="color-swatch" style="background-color: #ff831e;" data-hex="#ff831e" data-rgb="255, 131, 30"></div>
+                    <div class="color-swatch" style="background-color: #1e47ff;" data-hex="#1e47ff" data-rgb="30, 71, 255"></div>
+                    <div class="color-swatch" style="background-color: #ff1e1e;" data-hex="#ff1e1e" data-rgb="255, 30, 30"></div>
+                    <div class="color-swatch" style="background-color: #c3ff1e;" data-hex="#c3ff1e" data-rgb="195, 255, 30"></div>
+                    <div class="color-swatch" style="background-color: #ffd700;" data-hex="#ffd700" data-rgb="255, 215, 0"></div>
+                    <div class="color-swatch" style="background-color: #ffffff;" data-hex="#ffffff" data-rgb="255, 255, 255"></div>
+                    <div class="color-swatch" style="background-color: #000000;" data-hex="#000000" data-rgb="0, 0, 0"></div>
+                </div>
+            </div>
+        </div>
+        <!-- Coluna Direita: Preferências de Exibição -->
+        <div class="preferences-column">
+            <fieldset class="form-group">
+                <legend>Exibir no Quadro:</legend>
+                <label class="checkbox-container"> Título do Quadro
                     <input type="checkbox" id="pref-board-show-title" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container">
-                    Exibir ícone do quadro
+                <label class="checkbox-container"> Ícone do Quadro
                     <input type="checkbox" id="pref-board-show-icon" checked>
                     <span class="checkmark"></span>
                 </label>
-
+            </fieldset>
+            <fieldset class="form-group">
+                <legend>Exibir no Cartão:</legend>
+                <label class="checkbox-container"> Etiquetas
+                    <input type="checkbox" id="pref-card-show-tags" checked>
+                    <span class="checkmark"></span>
+                </label>
+                <label class="checkbox-container"> Data de Vencimento
+                    <input type="checkbox" id="pref-card-show-date" checked>
+                    <span class="checkmark"></span>
+                </label>
+                <label class="checkbox-container"> Status (Concluído)
+                    <input type="checkbox" id="pref-card-show-status" checked>
+                    <span class="checkmark"></span>
+                </label>
+                <label class="checkbox-container"> Usuário Atribuído
+                    <input type="checkbox" id="pref-card-show-assignment" checked>
+                    <span class="checkmark"></span>
+                </label>
+                <label class="checkbox-container"> Detalhes ao Passar o Mouse
+                    <input type="checkbox" id="pref-card-show-details" checked>
+                    <span class="checkmark"></span>
+                </label>
+            </fieldset>
+            <div class="form-group">
+                <label for="pref-default-tag-template">Conjunto de Etiquetas Padrão:</label>
+                <div class="custom-select">
+                    <select id="pref-default-tag-template"></select>
+                </div>
             </div>
-    </fieldset>
-
+        </div>
+    </div>
         <div class="form-group">
-        <label for="pref-default-tag-template">Conjunto de Etiquetas Padrão:</label>
-        <select id="pref-default-tag-template">
-            <!-- Opções preenchidas pelo JS -->
-        </select>
     </div>
 
     <div class="feedback"></div>

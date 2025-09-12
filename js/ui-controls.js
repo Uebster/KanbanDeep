@@ -565,17 +565,16 @@ export function initCustomSelects() {
         optionsDiv.setAttribute("class", "select-items select-hide");
 
         // Cria cada item de opção
-        for (let j = 0; j < selElmnt.length; j++) {
-            const optionItem = document.createElement("DIV");
-            optionItem.setAttribute("class", "select-item");
-            optionItem.innerHTML = selElmnt.options[j].innerHTML;
+        const createOptionItem = (optionEl) => {
+            const itemDiv = document.createElement("DIV");
+            itemDiv.setAttribute("class", "select-item");
+            itemDiv.innerHTML = optionEl.innerHTML;
 
-            // Adiciona o listener de clique para cada opção
-            optionItem.addEventListener("click", function(e) {
-                const select = this.parentNode.parentNode.getElementsByTagName("select")[0];
-                const selectedDisplay = this.parentNode.previousSibling;
+            itemDiv.addEventListener("click", function(e) {
+                const select = this.closest('.custom-select').getElementsByTagName("select")[0];
+                const selectedDisplay = this.closest('.custom-select').querySelector('.select-selected');
 
-                for (let k = 0; k < select.length; k++) {
+                for (let k = 0; k < select.options.length; k++) {
                     if (select.options[k].innerHTML == this.innerHTML) {
                         select.selectedIndex = k;
                         selectedDisplay.innerHTML = this.innerHTML;
@@ -585,9 +584,28 @@ export function initCustomSelects() {
                         break;
                     }
                 }
-                selectedDisplay.click(); // Fecha o menu
+                selectedDisplay.click();
             });
-            optionsDiv.appendChild(optionItem);
+            return itemDiv;
+        };
+
+        // Itera sobre os filhos diretos (pode ser OPTION ou OPTGROUP)
+        for (let j = 0; j < selElmnt.children.length; j++) {
+            const child = selElmnt.children[j];
+
+            if (child.tagName === 'OPTGROUP') {
+                const groupLabel = document.createElement("DIV");
+                groupLabel.setAttribute("class", "select-group-label");
+                groupLabel.innerHTML = child.label;
+                optionsDiv.appendChild(groupLabel);
+
+                for (let k = 0; k < child.children.length; k++) {
+                    const groupOption = child.children[k];
+                    optionsDiv.appendChild(createOptionItem(groupOption));
+                }
+            } else if (child.tagName === 'OPTION') {
+                optionsDiv.appendChild(createOptionItem(child));
+            }
         }
         customSelects[i].appendChild(optionsDiv);
 

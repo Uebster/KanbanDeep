@@ -209,6 +209,14 @@ input, textarea, select, button {
             box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
         }
 
+        .select-group-label {
+            padding: 10px 12px 5px 12px;
+            font-weight: bold;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
 /* ===== MENUS SUSPENSOS (DROPDOWNS) ===== */
 .menu-container {
     position: relative;
@@ -468,6 +476,21 @@ dialog::backdrop {
 .checkbox-container input:focus ~ .checkmark { box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3); }
 
 /* ===== NAVBAR CUSTOM ==== */
+
+/* ===== FIELDSET PARA GRUPOS DE FORMULÁRIO ===== */
+fieldset.form-group {
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 15px;
+}
+
+fieldset.form-group legend {
+    padding: 0 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
 
         .showcase-navbar {
             display: flex;

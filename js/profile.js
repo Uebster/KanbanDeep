@@ -110,8 +110,8 @@ if (systemTagTemplates.length > 0) {
 // --- LÓGICA DE SELEÇÃO PADRÃO ---
 const prefs = userData.preferences || {};
 // 1. Tenta usar a preferência salva do usuário.
-// 2. Se não houver, seleciona a opção padrão (nenhum)
-tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
+// 2. Se não houver, seleciona o "Padrão 1" do sistema.
+tagTemplateSelect.value = prefs.defaultTagTemplateId || 'system-tags-prio';
         
         // Configuração de privacidade
         const privacyValue = userData.privacy || 'private';
