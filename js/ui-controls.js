@@ -42,43 +42,55 @@ function getTopmostLayer() {
 }
 
 /**
- * Fecha o elemento de UI que está na camada superior.
+ * Tenta fechar o elemento de UI que está na camada superior.
+ * Para diálogos, dispara um evento 'cancel' que pode ser prevenido.
  */
 function closeTopLayer() {
     const topLayer = getTopmostLayer();
     if (!topLayer) return;
 
     if (topLayer.tagName === 'DIALOG') {
-        topLayer.close();
+        // Dispara um evento 'cancel' no diálogo.
+        // Se o evento não for cancelado (ou seja, se dispatchEvent retornar true),
+        // então o diálogo será fechado.
+        const cancelEvent = new Event('cancel', { cancelable: true });
+        if (topLayer.dispatchEvent(cancelEvent)) {
+            topLayer.close();
+        }
     } else if (topLayer.classList.contains('dropdown')) {
         topLayer.classList.remove('show');
     }
 }
 
 /**
- * Configura os listeners globais para fechar elementos.
+ * Configura os listeners globais para fechar elementos de forma controlada.
  */
 function setupGlobalCloseListeners() {
-    // Fecha com a tecla ESC
+    // Lida com a tecla ESC de forma inteligente.
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") {
-            e.preventDefault();
-            closeTopLayer();
+            const topLayer = getTopmostLayer();
+            // Se a camada superior for um dropdown, nós a fechamos.
+            // Se for um diálogo, deixamos o navegador disparar o evento 'cancel' nativo,
+            // que será interceptado pelo listener do próprio diálogo (ex: em kanban.js).
+            if (topLayer && topLayer.tagName !== 'DIALOG') {
+                closeTopLayer();
+            }
         }
     });
 
-    // Fecha ao clicar fora
+    // Fecha ao clicar fora (no backdrop de um modal ou fora de um dropdown)
     document.addEventListener('click', (e) => {
         const topLayer = getTopmostLayer();
         if (!topLayer) return;
 
-        // Se a camada superior for um diálogo, fecha apenas se o clique for no backdrop.
+        // Se a camada superior for um diálogo, tenta fechar apenas se o clique for no backdrop.
         if (topLayer.tagName === 'DIALOG' && e.target === topLayer) {
             closeTopLayer();
         } 
         // Se for um dropdown, fecha se o clique for fora do seu container.
-        else if (topLayer.classList.contains('dropdown') && !e.target.closest('.menu-container')) {
-            closeTopLayer();
+        else if (topLayer.classList.contains('dropdown') && !e.target.closest('.menu-container')) { // Dropdowns fecham direto
+            topLayer.classList.remove('show');
         }
     });
 }
@@ -541,10 +553,12 @@ export function initCustomSelects() {
         const selElmnt = customSelects[i].getElementsByTagName("select")[0];
         if (!selElmnt) continue;
 
-        // Evita reinicializar um select que já foi processado
-        if (customSelects[i].querySelector('.select-selected')) {
-            continue;
-        }
+        // --- CORREÇÃO: Lida com a reinicialização de selects dinâmicos ---
+        // Remove elementos customizados existentes para evitar duplicação ao atualizar a UI.
+        const existingSelected = customSelects[i].querySelector('.select-selected');
+        if (existingSelected) existingSelected.remove();
+        const existingItems = customSelects[i].querySelector('.select-items');
+        if (existingItems) existingItems.remove();
 
         // Se o select não tiver opções (pode ser preenchido dinamicamente mais tarde), pule.
         // Se não houver opção selecionada (selectedIndex === -1), também pula. Isso acontece

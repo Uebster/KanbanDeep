@@ -7,7 +7,7 @@ import {
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY } from './ui-controls.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
 // ===== ESTADO GLOBAL DO MÓDULO =====
@@ -63,6 +63,7 @@ export async function initKanbanPage() {
     initUIControls();
     renderBoardSelector();
     renderCurrentBoard();
+    initCustomSelects(); // Aplica o estilo customizado ao select principal de quadros
     saveState(); // Salva o estado inicial para o Desfazer
     applyUserTheme();
 }
@@ -151,7 +152,11 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('column-delete-btn')?.addEventListener('click', () => handleDeleteColumn(document.getElementById('column-dialog').dataset.editingId));
     document.getElementById('card-save-btn')?.addEventListener('click', handleSaveCard);
     document.querySelectorAll('dialog .btn-secondary').forEach(btn => {
-        btn.addEventListener('click', () => btn.closest('dialog').close());
+        // Adiciona um listener genérico para fechar diálogos, mas ignora o botão de cancelar das preferências,
+        // que tem sua própria lógica customizada.
+        if (btn.id !== 'pref-cancel-btn') {
+            btn.addEventListener('click', () => btn.closest('dialog').close());
+        }
     });
 
     // --- Atalhos e Contexto ---
@@ -162,6 +167,35 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => handleFilterChange(e.currentTarget.dataset.filter));
     });
+
+    // --- LISTENERS PARA O DIÁLOGO DE PREFERÊNCIAS (ANEXADOS UMA ÚNICA VEZ) ---
+    const preferencesDialog = document.getElementById('preferences-dialog');
+    if (preferencesDialog) {
+        // Listener para fechar com ESC ou clique no backdrop, disparado por ui-controls.js
+        preferencesDialog.addEventListener('cancel', (e) => {
+            if (!kanbanIsSaved) {
+                e.preventDefault(); // Impede o fechamento se houver alterações não salvas
+                handlePreferencesCancel();
+            }
+        });
+
+        // Listener para a paleta de cores
+        preferencesDialog.querySelector('#color-palette-container').addEventListener('click', (e) => {
+            const swatch = e.target.closest('.color-swatch');
+            if (!swatch) return;
+            kanbanIsSaved = false;
+            // Lógica de preview da cor
+            preferencesDialog.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+            swatch.classList.add('active');
+            if (swatch.dataset.action === 'remove-primary') {
+                document.body.classList.add('no-primary-effects');
+            } else {
+                document.body.classList.remove('no-primary-effects');
+                document.documentElement.style.setProperty('--primary', swatch.dataset.hex);
+                document.documentElement.style.setProperty('--primary-rgb', swatch.dataset.rgb);
+            }
+        });
+    }
 }
 
 function showSearchDialog() {
@@ -341,6 +375,7 @@ function handleFilterChange(filterType) {
 
     // Renderiza o seletor com os quadros filtrados
     renderBoardSelector();
+    initCustomSelects(); // Garante que o novo seletor seja estilizado
 
     // Após filtrar, seleciona e renderiza o primeiro quadro da nova lista
     const selector = document.getElementById('board-select');
@@ -1036,7 +1071,7 @@ function showCardDialog(cardId = null, columnId) {
 
     // O select só aparece se houver mais de uma coluna, ou se estivermos criando
     // um cartão a partir do menu principal (quando cardId é nulo).
-    columnSelectGroup.style.display = (currentBoard.columns.length > 1 || !cardId) ? 'flex' : 'none';
+    columnSelectGroup.style.display = (currentBoard.columns.length > 1 || !cardId) ? 'block' : 'none';
 
     // Popula o select de etiquetas (COM LÓGICA CORRIGIDA)
     const tagSelect = document.getElementById('card-tags');
@@ -1082,7 +1117,7 @@ function showCardDialog(cardId = null, columnId) {
     
     // Popula o select "Atribuir a:" com nomes de usuários
     const assigneeSelect = document.getElementById('card-assigned-to');
-    assigneeSelect.innerHTML = '<option value="">-- Ninguém --</option>';
+    assigneeSelect.innerHTML = '<option value="">Ninguém</option>';
 
     let assignableUsers = new Map();
     assignableUsers.set(currentUser.id, currentUser); // Sempre pode atribuir a si mesmo
@@ -1125,6 +1160,9 @@ function showCardDialog(cardId = null, columnId) {
             assigneeSelect.appendChild(option);
         }
     });
+
+    // Inicializa os selects customizados APÓS popular os dados
+    initCustomSelects();
 
     dialog.showModal();
 }
@@ -1833,6 +1871,26 @@ async function saveBoardAsTemplate() {
     });
 }
 
+function handlePreferencesCancel() {
+    const dialog = document.getElementById('preferences-dialog');
+    if (kanbanIsSaved) {
+        dialog.close();
+    } else {
+        showConfirmationDialog(
+            'Descartar alterações não salvas?',
+            (confirmationDialog) => { // onConfirm
+                restoreKanbanOriginalSettings();
+                dialog.close();
+                showDialogMessage(confirmationDialog, 'Alterações descartadas.', 'info');
+                return true; // Fecha o diálogo de confirmação
+            },
+            null, // onCancel: Usa o comportamento padrão do ui-controls, que fecha a confirmação e retorna.
+            'Sim, Descartar',
+            'Não'
+        );
+    }
+}
+
 //Preferências
 
 function showPreferencesDialog() { // REFEITA
@@ -1885,17 +1943,19 @@ function showPreferencesDialog() { // REFEITA
     }
 
     // Inicializa os selects customizados APÓS popular os dados
+    // Isso garante que o seletor de template de tags seja estilizado.
+    // A função initCustomSelects agora lida com a reinicialização.
     initCustomSelects();
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
 
-    // Anexa os listeners aos controles
-    setupPreferencesListeners(dialog);
+    // Anexa os listeners aos controles INTERNOS do diálogo
+    setupPreferencesControlsListeners(dialog);
 
     dialog.showModal();
 }
 
-function setupPreferencesListeners(dialog) {
+function setupPreferencesControlsListeners(dialog) {
     const fieldsToTrack = [
         { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
         { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
@@ -1921,68 +1981,8 @@ function setupPreferencesListeners(dialog) {
         }
     });
 
-    dialog.querySelector('#color-palette-container').addEventListener('click', (e) => {
-        const swatch = e.target.closest('.color-swatch');
-        if (!swatch) return;
-        kanbanIsSaved = false;
-        // Lógica de preview da cor
-        dialog.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
-        swatch.classList.add('active');
-        if (swatch.dataset.action === 'remove-primary') {
-            document.body.classList.add('no-primary-effects');
-        } else {
-            document.body.classList.remove('no-primary-effects');
-            document.documentElement.style.setProperty('--primary', swatch.dataset.hex);
-            document.documentElement.style.setProperty('--primary-rgb', swatch.dataset.rgb);
-        }
-    });
-
-    const handleCancel = () => {
-        if (kanbanIsSaved) {
-            dialog.close();
-        } else {
-            showConfirmationDialog(
-                'Descartar alterações não salvas?', 
-                () => { // onConfirm
-                    restoreKanbanOriginalSettings();
-                    dialog.close();
-                    return true; // Fecha o diálogo de confirmação
-                },
-                (confirmationDialog) => { // onCancel
-                    showDialogMessage(confirmationDialog, 'Continue editando.', 'info');
-                    return true; // Fecha apenas o diálogo de confirmação
-                },
-                'Sim, Descartar'
-            );
-        }
-    };
-
-    dialog.querySelector('#pref-save-btn').onclick = () => {
-        showConfirmationDialog(
-            'Deseja salvar as alterações nas preferências?',
-            (confirmationDialog) => { // onConfirm
-                if (savePreferences()) {
-                    showDialogMessage(confirmationDialog, 'Preferências salvas com sucesso!', 'success');
-                    return true;
-                }
-                showDialogMessage(confirmationDialog, 'Erro ao salvar as preferências.', 'error');
-                return false;
-            }
-        );
-    };
-
-    dialog.querySelector('#pref-cancel-btn').onclick = handleCancel;
-
-    // Impede que o diálogo feche com ESC ou clique fora se houver alterações
-    dialog.addEventListener('cancel', (e) => {
-        e.preventDefault();
-        handleCancel();
-    });
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            handleCancel();
-        }
-    });
+    dialog.querySelector('#pref-save-btn').onclick = () => handleSavePreferences(dialog);
+    dialog.querySelector('#pref-cancel-btn').onclick = handlePreferencesCancel;
 }
 
 function restoreKanbanOriginalSettings() {
@@ -1994,7 +1994,23 @@ function restoreKanbanOriginalSettings() {
     renderCurrentBoard(); // Redesenha o quadro com as prefs visuais originais
 }
 
-function savePreferences() {
+function handleSavePreferences(preferencesDialog) {
+    showConfirmationDialog(
+        'Deseja salvar as alterações nas preferências?',
+        (confirmationDialog) => { // onConfirm
+            if (savePreferencesData()) {
+                showDialogMessage(confirmationDialog, 'Preferências salvas com sucesso!', 'success');
+                preferencesDialog.close(); // Fecha o diálogo de preferências
+                return true; // Fecha o diálogo de confirmação
+            } else {
+                showDialogMessage(confirmationDialog, 'Erro ao salvar as preferências.', 'error');
+                return false; // Mantém o diálogo de confirmação aberto
+            }
+        }
+    );
+}
+
+function savePreferencesData() {
     const dialog = document.getElementById('preferences-dialog');
     const user = getCurrentUser();
     
@@ -2028,17 +2044,11 @@ function savePreferences() {
 
     if (updateUser(user.id, updatedUser)) {
         // Atualizar os valores originais
-        originalKanbanTheme = updatedUser.theme;
-        originalKanbanFont = updatedUser.preferences.fontFamily;
-        
         kanbanIsSaved = true;
         applyUserTheme(); // Aplica globalmente
         renderCurrentBoard(); // Renderiza o quadro com as novas prefs
-        showFloatingMessage('Preferências salvas com sucesso!', 'success');
-        dialog.close();
         return true;
     } else {
-        showFloatingMessage('Erro ao salvar preferências.', 'error');
         return false;
     }
 }
@@ -2154,32 +2164,6 @@ function applyCardPreview() {
     // Simplesmente redesenha o quadro. A função createCardElement já
     // contém a lógica para mostrar/esconder os elementos com base nessas preferências.
     renderCurrentBoard();
-}
-
-function showIconPickerDialog(callback) {
-    const dialog = document.getElementById('icon-picker-dialog');
-    if (!dialog) return;
-
-    // Garante que o diálogo está limpo de listeners antigos
-    const newDialog = dialog.cloneNode(true);
-    dialog.parentNode.replaceChild(newDialog, dialog);
-
-    const iconGrid = newDialog.querySelector('#icon-grid');
-    iconGrid.innerHTML = '';
-
-    ICON_LIBRARY.forEach(icon => {
-        const iconBtn = document.createElement('button');
-        iconBtn.className = 'icon-picker-btn';
-        iconBtn.textContent = icon;
-        iconBtn.onclick = () => {
-            callback(icon);
-            newDialog.close();
-        };
-        iconGrid.appendChild(iconBtn);
-    });
-
-    newDialog.showModal();
-    newDialog.querySelector('#close-icon-picker-btn').onclick = () => newDialog.close();
 }
 
 function applyThemeFromSelect(themeValue) {

@@ -10,7 +10,7 @@ import {
     saveColumn
 } from './storage.js';
 import { getCurrentUser, updateUser } from './auth.js';
-import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage, showIconPickerDialog, ICON_LIBRARY } from './ui-controls.js';
 
 let currentUser;
 let untitledColumnCounter = 1;
@@ -775,24 +775,4 @@ function loadAndRenderAllTemplates() {
     // Renderiza os templates do sistema
     renderBoardTemplates(getSystemBoardTemplates(), document.getElementById('system-board-templates-grid'), false);
     renderTagTemplates(getSystemTagTemplates(), document.getElementById('system-tag-templates-grid'), false);
-}
-
-function showIconPickerDialog(callback) {
-    const dialog = document.getElementById('icon-picker-dialog');
-    const iconGrid = document.getElementById('icon-grid');
-    iconGrid.innerHTML = ''; // Limpa ícones anteriores
-
-    ICON_LIBRARY.forEach(icon => {
-        const iconBtn = document.createElement('button');
-        iconBtn.className = 'icon-picker-btn';
-        iconBtn.textContent = icon;
-        iconBtn.onclick = () => {
-            callback(icon);
-            dialog.close();
-        };
-        iconGrid.appendChild(iconBtn);
-    });
-
-    dialog.showModal();
-    dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
 }
