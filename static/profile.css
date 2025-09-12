@@ -8,7 +8,6 @@ html {
 body {
     display: flex;
     flex-direction: column;
-    align-items: center;
     overflow-y: auto;
 }
 
@@ -19,7 +18,7 @@ body {
     padding: 30px;
     width: 100%;
     max-width: 1400px; /* Alinhado com create-user.css */
-    margin: 0 20px 20px 20px;
+    margin: 20px auto; /* Centraliza o card horizontalmente e adiciona margem superior */
     border: 1px solid var(--primary);
 }
 
@@ -80,6 +79,8 @@ body {
     margin-bottom: 20px;
 }
 .avatar-preview {
+    width: 190px;
+    height: 190px;
     width: 150px;
     height: 150px;
     border-radius: 50%;

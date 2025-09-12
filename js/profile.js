@@ -247,6 +247,32 @@ function setupEventListeners() {
         option.addEventListener('click', () => { isSaved = false; });
     });
 
+    // --- INTERCEPTADOR DE NAVEGAÇÃO ---
+    // Adiciona listeners aos botões de navegação para usar a função de verificação.
+    // O 'true' no final faz com que este listener capture o evento ANTES dos listeners do main.js,
+    // permitindo que a navegação seja cancelada se necessário.
+    const navActions = {
+        'kanban-btn': 'kanban.html',
+        'my-groups-btn': 'groups.html',
+        'templates-btn': 'templates.html',
+        'friends-btn': 'friends.html',
+        'notifications-btn': 'notifications.html',
+        'switch-user-btn': 'list-users.html'
+    };
+
+    Object.keys(navActions).forEach(id => {
+        const button = document.getElementById(id);
+        if (button) {
+            button.addEventListener('click', (e) => {
+                // CORREÇÃO: Sempre previne a ação padrão e chama o handleNavigation.
+                // A função handleNavigation decidirá se navega ou mostra o diálogo.
+                e.preventDefault();
+                e.stopImmediatePropagation(); // Impede que outros listeners (do main.js) sejam executados.
+                handleNavigation(navActions[id]);
+            }, true); // Captura o evento na fase de "capturing".
+        }
+    });
+
     // Listener para os botões de estatísticas dos grupos (usando delegação)
     document.getElementById('groups-container')?.addEventListener('click', (e) => {
         const statsButton = e.target.closest('.view-group-stats');
@@ -294,22 +320,27 @@ function setupColorPicker() {
  * @param {Object} [state] - Um objeto com chaves e valores para salvar no localStorage antes de navegar.
  */
 function handleNavigation(destination, state = {}) {
-    // Converte o estado em parâmetros de URL para uma navegação mais limpa e confiável
-    const params = new URLSearchParams(state).toString();
-    const finalDestination = params ? `${destination}?${params}` : destination;
+    // Limpa o estado de navegação anterior se não houver um novo.
+    if (Object.keys(state).length === 0) {
+        localStorage.removeItem('openTab');
+        localStorage.removeItem('groupId');
+    }
 
     if (isSaved) {
-        window.location.href = finalDestination;
+        Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
+        window.location.href = destination;
     } else {
         // Mostra o diálogo de confirmação
         showConfirmationDialog(
             'Você tem alterações não salvas. Deseja sair mesmo assim?',
-            () => { // onConfirm (Sim, sair)
-                showFloatingMessage('Redirecionando...', 'info');
+            (dialog) => { // onConfirm (Sim, sair) - CORRIGIDO
+                Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
+                showDialogMessage(dialog, 'Redirecionando...', 'info');
                 setTimeout(() => {
                     isSaved = true; // Libera a trava antes de sair da página
-                    window.location.href = finalDestination;
-                }, 500);
+                    window.location.href = destination;
+                }, 1500);
+                return false; // Mantém o diálogo aberto enquanto redireciona
             },
             (dialog) => { showDialogMessage(dialog, 'Continue editando.', 'info'); return true; }, // onCancel
             'Sim, Sair', 'Não'
@@ -492,6 +523,27 @@ async function processProfileUpdate() {
     }
     
     return completeProfileUpdate(updatedUser);
+}
+
+/**
+ * Atualiza o medidor de força da senha na interface.
+ * @param {string} password - A senha que está sendo digitada.
+ * @param {HTMLElement} strengthMeter - O elemento que exibe a força.
+ */
+function updatePasswordStrength(password, strengthMeter) {
+    if (!strengthMeter) return;
+
+    let strength = 0;
+    if (password.length >= 4) strength++;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+    strength = Math.min(strength, 4); 
+
+    strengthMeter.className = 'password-strength-meter';
+    strengthMeter.classList.add(`strength-${strength}`);
 }
 
 function completeProfileUpdate(updatedUser) {
@@ -709,7 +761,7 @@ function loadUserGroups() {
                 <div class="group-role">${isAdmin ? 'Administrador' : 'Membro'}</div>
             </div>
             <div class="group-actions">
-                <button class="btn btn-sm view-group-stats" data-group-id="${group.id}">
+                <button type="button" class="btn btn-sm view-group-stats" data-group-id="${group.id}">
                     📊 Estatísticas
                 </button>
             </div>

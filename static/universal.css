@@ -50,7 +50,6 @@ h1, h2, h3, h4 {
 h1 {
     font-size: 1.8rem; /* Tamanho padrão para títulos principais de página */
     color: var(--text); /* Cor padrão para h1, que é diferente dos outros */
-    margin-bottom: 15px;
 }
 
 h2 {

@@ -317,8 +317,12 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         if (success) {
             setTimeout(closeAndCleanup, 1500);
         } else {
-            confirmBtn.disabled = false;
-            cancelBtn.disabled = false;
+            // Se o retorno for explicitamente false, não faz nada (mantém o diálogo aberto e botões desabilitados).
+            // Se for undefined ou null, reabilita os botões.
+            if (success !== false) {
+                confirmBtn.disabled = false;
+                cancelBtn.disabled = false;
+            }
         }
     });
 }
@@ -544,8 +548,8 @@ export function initCustomSelects() {
 
         // Se o select não tiver opções (pode ser preenchido dinamicamente mais tarde), pule.
         // Se não houver opção selecionada (selectedIndex === -1), também pula. Isso acontece
-        // quando o valor salvo no storage não corresponde a nenhuma opção disponível.
-        // Esta é a correção definitiva para o erro 'Cannot read properties of undefined'.
+        // quando o valor salvo no storage não corresponde a nenhuma opção disponível ou o select está vazio.
+        // Esta é a correção definitiva para o erro 'Cannot read properties of undefined (reading 'innerHTML')'.
         if (selElmnt.options.length === 0 || selElmnt.selectedIndex === -1) {
             continue;
         }

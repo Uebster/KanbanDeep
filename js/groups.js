@@ -56,9 +56,8 @@ export function initGroupsPage() {
     loadGroups();
 
     // LER PARÂMETROS DA URL para abrir uma aba específica
-    const urlParams = new URLSearchParams(window.location.search);
-    const openTab = urlParams.get('openTab');
-    const groupId = urlParams.get('groupId');
+    const openTab = localStorage.getItem('openTab');
+    const groupId = localStorage.getItem('groupId');
     
     // VERIFICAÇÃO PARA ABRIR A ABA DE CRIAÇÃO DE GRUPO
     const openCreateGroup = localStorage.getItem('openCreateGroup');
@@ -82,6 +81,8 @@ export function initGroupsPage() {
 
     // Lógica para abrir aba específica a partir da URL
     if (openTab) {
+        localStorage.removeItem('openTab');
+        localStorage.removeItem('groupId');
         switchTab(openTab, { groupId: groupId });
     }
 }
