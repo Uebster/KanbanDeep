@@ -41,10 +41,16 @@ body.light-mode {
 }
 
 /* ===== TÍTULOS (HEADINGS) ===== */
-h2, h3, h4 {
+h1, h2, h3, h4 {
     color: var(--primary);
     font-weight: 500;
     margin-top: 0;
+}
+
+h1 {
+    font-size: 1.8rem; /* Tamanho padrão para títulos principais de página */
+    color: var(--text); /* Cor padrão para h1, que é diferente dos outros */
+    margin-bottom: 15px;
 }
 
 h2 {
@@ -109,8 +115,9 @@ input, textarea, select, button {
 }
 
 #page-title {
-    font-size: 1.5rem;
-    font-weight: 500;
+    /* O tamanho e peso agora são herdados do h1 padrão */
+    flex-grow: 1; /* Faz o título ocupar o espaço disponível */
+    text-align: center; /* Centraliza o texto dentro do seu espaço */
 }
 
 /* Avatar no cabeçalho */
@@ -523,3 +530,68 @@ dialog::backdrop {
 .strength-2 { width: 50%; background-color: #f39c12; }
 .strength-3 { width: 75%; background-color: #f1c40f; }
 .strength-4 { width: 100%; background-color: #2ecc71; }
+
+/* ===== CONTROLE DA COR PRIMÁRIA (NOVO) ===== */
+
+/* 
+  Quando esta classe está no body, ela desativa os efeitos da cor primária,
+  revertendo para bordas e sombras padrão.
+*/
+body.no-primary-effects .card,
+body.no-primary-effects #main-header,
+body.no-primary-effects dialog,
+body.no-primary-effects .form-section,
+body.no-primary-effects .btn:hover,
+body.no-primary-effects .select-selected:hover,
+body.no-primary-effects .select-items,
+body.no-primary-effects .nav-item.active {
+    border-color: var(--border);
+    box-shadow: none !important; /* !important para sobrescrever os :hover */
+}
+
+
+/* ===== PALETA DE CORES (Adicionado) ===== */
+.color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around; /* Distribui melhor os itens */
+    margin-top: 10px;
+}
+
+.color-swatch {
+  margin-top: 3px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.color-swatch:hover, .color-swatch.active {
+    transform: scale(1.1);
+    border-color: var(--primary);
+    /* A sombra da cor selecionada será da própria cor */
+    box-shadow: 0 0 10px 3px currentColor; 
+}
+
+/* Estilo para as opções especiais (Nenhum, Padrão) */
+/* Agora, apenas a opção "Nenhum" usa esta classe */
+.color-swatch.special {
+    width: 45px; /* Garante a mesma largura */
+    height: 45px; /* Garante a mesma altura */
+    background-color: transparent;
+    border: 2px solid transparent; /* Borda transparente para manter o alinhamento */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.0rem; /* Ajusta o tamanho do ícone para um melhor encaixe */
+    color: var(--text-muted);
+    line-height: 1; /* Melhora o alinhamento vertical do emoji */
+}
+.color-swatch.special:hover {
+    color: var(--primary); /* O ícone fica da cor primária no hover */
+    box-shadow: none !important; /* Garante que nenhuma sombra apareça no hover */
+    background-color: transparent;
+}

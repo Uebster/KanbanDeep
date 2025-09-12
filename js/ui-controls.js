@@ -281,8 +281,8 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         <p>${message}</p>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn cancel">${cancelText}</button>
             <button class="btn confirm">${confirmText}</button>
+            <button class="btn cancel">${cancelText}</button>
         </div>
     `;
     document.body.appendChild(dialog);

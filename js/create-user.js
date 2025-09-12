@@ -1,7 +1,7 @@
 // js/create-user.js
 
 import { registerUser, getAllUsers } from './auth.js';
-import { showFloatingMessage, initDraggableElements, initCustomSelects } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, initCustomSelects, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
 
 // Função de inicialização exportada para ser chamada pelo main.js
 export function initCreateUserPage() {
@@ -36,24 +36,16 @@ function setupEventListeners() {
     document.getElementById('password')?.addEventListener('input', updatePasswordStrength);
     
 // Função de cancelamento corrigida
-document.getElementById('btn-cancel')?.addEventListener('click', () => {
-    showConfirmationDialog(
-        'Tem certeza que deseja cancelar? Todas as alterações não salvas serão perdidas.',
-        (dialog) => { 
-            const form = document.getElementById('create-user-form');
-            if (form) {
-                form.reset();
+    document.getElementById('btn-cancel')?.addEventListener('click', () => {
+        showConfirmationDialog(
+            'Tem certeza que deseja cancelar? Todas as alterações não salvas serão perdidas.',
+            (dialog) => { // onConfirm
+                showDialogMessage(dialog, 'Criação cancelada. Redirecionando...', 'info');
+                setTimeout(() => window.location.href = 'list-users.html', 1500);
+                return true; // Sinaliza para fechar o diálogo de confirmação
             }
-
-            // Retorna um objeto com a mensagem de info
-            return {
-                success: true,
-                message: 'Criação de usuário cancelada.',
-                type: 'info'
-            };
-        }
-    );
-});
+        );
+    });
 
 
     // Formulário de envio
@@ -184,112 +176,19 @@ function applyTheme() {
     }
 }
 
-// Função para mostrar mensagens dentro de diálogos
-function showDialogMessage(dialog, message, type) {
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (!feedbackEl) return;
-    
-    feedbackEl.textContent = message;
-    feedbackEl.className = `feedback ${type} show`;
-    
-    // Não esconde a mensagem de erro, apenas as outras
-    if (type !== 'error') {
-        setTimeout(() => {
-            feedbackEl.classList.remove('show');
-        }, 1500);
-    }
-}
-
-/*
- * Cria e exibe um diálogo de confirmação genérico e estilizado.
- * @param {string} message - A pergunta a ser exibida (ex: "Salvar alterações?").
- * @param {function} onConfirm - A função a ser executada se o usuário clicar em "Confirmar".
- */
-function showConfirmationDialog(message, onConfirm) {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">Confirmação</h3>
-        <p>${message}</p>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary">Não</button>
-            <button class="btn btn-primary">Sim</button>
-        </div>
-    `;
-    document.body.appendChild(dialog);
-    
-    dialog.showModal();
-
-    const confirmBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
-    const feedbackEl = dialog.querySelector('.feedback');
-
-    const closeDialog = () => { 
-        dialog.close(); 
-        setTimeout(() => dialog.remove(), 300);
-    };
-    
-    cancelBtn.addEventListener('click', closeDialog);
-
-    confirmBtn.addEventListener('click', async () => {
-        confirmBtn.disabled = true;
-        cancelBtn.disabled = true;
-
-        const result = await onConfirm(dialog);
-
-        // Se for um objeto com informações de resultado
-        if (result && typeof result === 'object') {
-            if (result.success) {
-                showDialogMessage(dialog, result.message, result.type || 'success');
-                
-                // Se houver um redirecionamento configurado, executá-lo após o delay
-                if (result.redirect) {
-                    setTimeout(() => {
-                        closeDialog();
-                        window.location.href = result.redirect;
-                    }, 1500);
-                } else {
-                    setTimeout(closeDialog, 1500);
-                }
-            } else if (result.error) {
-                showDialogMessage(dialog, result.message, 'error');
-                setTimeout(closeDialog, 1500);
-            }
-        } 
-        // Se for true, fecha o diálogo
-        else if (result === true) {
-            closeDialog();
-        }
-        // Se for false, mantém aberto (reabilita os botões)
-        else if (result === false) {
-            confirmBtn.disabled = false;
-            cancelBtn.disabled = false;
-        }
-        // Padrão: fecha o diálogo
-        else {
-            closeDialog();
-        }
-    });
-}
-
 function showSaveConfirmationDialog() {
-    showConfirmationDialog(
+    showConfirmationDialog( // Agora usa a função global de ui-controls.js
         'Deseja registrar este usuário?',
         async (dialog) => {
             const result = processUserCreation();
             
             if (result.success) {
-                return {
-                    success: true,
-                    message: 'Usuário registrado com sucesso! Redirecionando...',
-                    redirect: 'list-users.html'
-                };
+                showDialogMessage(dialog, 'Usuário registrado com sucesso! Redirecionando...', 'success');
+                setTimeout(() => window.location.href = 'list-users.html', 1500);
+                return true; // Sinaliza para fechar o diálogo
             } else {
-                return {
-                    error: true,
-                    message: result.message
-                };
+                showDialogMessage(dialog, result.message, 'error');
+                return false; // Mantém o diálogo aberto para correção
             }
         }
     );

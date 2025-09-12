@@ -22,13 +22,10 @@ body {
     header {
       width: 100%;
       display: flex;
-      justify-content: space-between;
+      justify-content: center; /* Centraliza o conteúdo do cabeçalho */
       align-items: center;
       padding: 20px;
-      margin-bottom: 20px;
     }
-
-    h1 { font-size: 1.8rem; color: var(--text); }
 
     /* ===== NOVO LAYOUT DE FORMULÁRIO ===== */
     .form-layout-3col {
