@@ -1,500 +1,166 @@
-    /* ===== CARTÃO PRINCIPAL ===== */
-    .card {
-      background-color: var(--bg-card);
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      padding: 30px;
-      width: 100%;
-      max-width: 800px;
-      margin: 20px auto; /* Centraliza o cartão na página */
-    }
+/* static/profile.css */
 
-    /* ===== FORMULÁRIO ===== */
-    .form-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
-      margin-top: 20px;
-    }
-
-    .form-section {
-      margin-bottom: 25px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 15px;
-    }
-
-    .form-row .form-group {
-      flex: 1;
-    }
-
-    .privacy-options {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-    }
-
-    .privacy-option {
-      background-color: var(--bg-page);
-      border: 1px solid var(--border-light);
-      border-radius: 6px;
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-bottom: 5px;
-    }
-
-    .privacy-option:hover {
-      border-color: var(--primary);
-      background-color: rgba(52, 152, 219, 0.1);
-    }
-
-    .privacy-option.selected {
-      border-color: var(--primary);
-      background-color: rgba(52, 152, 219, 0.2);
-    }
-
-    .privacy-option h4 {
-      margin-bottom: 5px;
-      color: var(--primary);
-    }
-
-    .privacy-option p {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-bottom: 3px;
-    }
-
-    /* ===== AVATAR PREVIEW ===== */
-    .avatar-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .avatar-preview {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background-color: var(--bg-page);
-      border: 2px solid var(--border-light);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 15px;
-      overflow: hidden;
-    }
-
-    .avatar-preview img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .avatar-preview-text {
-      font-size: 3rem;
-      font-weight: bold;
-    }
-
-    .actions {
-      display: flex;
-      gap: 15px;
-      justify-content: flex-end;
-    }
-
-    footer {
-      margin-top: 32px;
-      color: transparent
-    }
-    
-            .profile-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .stat-item {
-            text-align: center;
-            padding: 10px;
-            background-color: var(--bg-page);
-            border-radius: 6px;
-        }
-        
-        .stat-number {
-            font-size: 1.2rem;
-            font-weight: bold;
-            display: block;
-        }
-        
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        /* Estilos para templates */
-.templates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 10px;
-    margin-bottom: 15px;
+html {
+    /* Garante que a fonte base seja 14px, alinhando com o resto do app */
+    font-size: 14px;
 }
 
-.template-card {
-    background-color: var(--bg-page);
-    border: 1px solid var(--border-light);
-    border-radius: 6px;
-    padding: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.template-card:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-}
-
-.template-icon {
-    font-size: 1.5rem;
-    margin-bottom: 5px;
-}
-
-.template-name {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-/* Estilos para grupos */
-.groups-container {
+body {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.group-card {
-    background-color: var(--bg-page);
-    border: 1px solid var(--border-light);
-    border-radius: 6px;
-    padding: 12px;
-    display: flex;
     align-items: center;
-    gap: 10px;
-}
-
-.group-icon {
-    font-size: 1.5rem;
-}
-
-.group-info {
-    flex: 1;
-}
-
-.group-name {
-    font-weight: bold;
-    margin-bottom: 3px;
-}
-
-.group-role {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-.group-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.btn-sm {
-    padding: 6px 10px;
-    font-size: 0.8rem;
-}
-
-/* Estilos para o seletor de cor */
-input[type="color"] {
-    height: 40px;
-    width: 100%;
-    border: 1px solid var(--border-light);
-    border-radius: 6px;
-    background-color: var(--bg-page);
-    cursor: pointer;
-}
-        
-        .tag-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: var(--bg-page);
-            border-radius: 6px;
-        }
-        
-        .tag-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-right: 15px;
-        }
-        
-        .tag-name {
-            flex: 1;
-            font-weight: bold;
-        }
-        
-        .tag-actions {
-            display: flex;
-            gap: 5px;
-        }
-        
-        /* Estilos para templates e grupos */
-        .templates-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .template-card {
-            background-color: var(--bg-page);
-            border: 1px solid var(--border-light);
-            border-radius: 6px;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .template-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
-        
-        .template-icon {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-        }
-        
-        .template-name {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-        
-        .groups-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .group-card {
-            background-color: var(--bg-page);
-            border: 1px solid var(--border-light);
-            border-radius: 6px;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .group-icon {
-            font-size: 1.5rem;
-        }
-        
-        .group-info {
-            flex: 1;
-        }
-        
-        .group-name {
-            font-weight: bold;
-            margin-bottom: 3px;
-        }
-        
-        .group-role {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-        
-        .stat-number {
-            font-size: 1.2rem;
-            font-weight: bold;
-            display: block;
-        }
-        
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-        
-        /* Layout de duas colunas */
-        .profile-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        @media (max-width: 900px) {
-            .profile-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-
-
-/* Estilos para o botão de upload de avatar */
-.avatar-edit-overlay {
-    cursor: pointer;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.3s;
-    border-radius: 50%;
-}
-
-.avatar-container:hover .avatar-edit-overlay {
-    opacity: 1;
-}
-
-.avatar-edit-overlay span {
-    color: white;
-    font-size: 16px;
-}
-
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        /* Mostra o indicador quando estiver marcado */
-        .checkbox-container input:checked ~ .checkmark:after {
-            display: block;
-        }
-
-        /* Estilo do indicador de check */
-        .checkbox-container .checkmark:after {
-            left: 7px;
-            top: 3px;
-            width: 5px;
-            height: 10px;
-            border: solid white;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
-        }
-
-        /* Efeito de foco */
-        .checkbox-container input:focus ~ .checkmark {
-            box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3);
-        }
-
-        /* Efeito hover */
-        .checkbox-container:hover input ~ .checkmark {
-            border-color: var(--primary);
-        }
-
-        /* Estilos para a seção de grupos */
-.groups-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 15px;
-    max-height: 300px;
     overflow-y: auto;
 }
 
-.group-card {
+.card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
+    width: 100%;
+    max-width: 1400px; /* Alinhado com create-user.css */
+    margin: 0 20px 20px 20px;
+    border: 1px solid var(--primary);
+}
+
+/* NOVO: Cabeçalho do Card */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ===== LAYOUT DO FORMULÁRIO ===== */
+.form-layout-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+@media (max-width: 1200px) {
+    .form-layout-3col {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .form-layout-3col {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-section {
+    border-radius: 6px;
+    border: 1px solid var(--primary);
+    padding: 25px;
+}
+
+.privacy-full-width, .groups-full-width {
+    margin-top: 25px;
+}
+
+/* ===== COMPONENTES ESPECÍFICOS ===== */
+
+/* Avatar */
+.avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.avatar-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
     background-color: var(--bg-page);
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-preview-text { font-size: 4rem; font-weight: bold; color: var(--primary); }
+
+/* Ações da Conta */
+.account-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centraliza os botões */
+    gap: 15px;
+}
+
+/* Preferências de Exibição */
+.checkbox-container {
+    margin-top: 15px;
+}
+
+/* Privacidade */
+.privacy-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+.privacy-option {
+    background-color: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 6px;
     padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.privacy-option:hover { border-color: var(--primary); background-color: rgba(var(--primary-rgb), 0.1); }
+.privacy-option.selected { border-color: var(--primary); background-color: rgba(var(--primary-rgb), 0.2); }
+.privacy-option h4 { margin-bottom: 5px; color: var(--primary); }
+.privacy-option p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+
+/* Grupos */
+.groups-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.group-card {
     display: flex;
     align-items: center;
     gap: 15px;
-    transition: all 0.3s ease;
+    background-color: var(--bg-page);
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
 }
+.group-icon { font-size: 1.5rem; }
+.group-name { font-weight: 500; }
+.group-role { font-size: 0.85rem; color: var(--text-muted); }
+.group-actions { margin-left: auto; }
+.no-groups-message { color: var(--text-muted); font-style: italic; }
 
-.group-card:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.group-icon {
-    font-size: 1.8rem;
-    flex-shrink: 0;
-}
-
-.group-info {
-    flex: 1;
-}
-
-.group-name {
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: var(--text);
-}
-
-.group-role {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
-
-.group-actions {
+.group-section-actions {
     display: flex;
-    gap: 8px;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
 }
 
-/* Estilos para os resultados da busca de grupos */
-.group-result-item {
-    transition: background-color 0.2s;
-}
-
-.group-result-item:hover {
-    background-color: rgba(76, 212, 230, 0.1);
-}
-
-.join-group-btn {
-    background-color: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.join-group-btn:hover {
-    opacity: 0.9;
-}
-
-.group-result-empty {
-    text-align: center;
-    padding: 30px;
-    color: var(--text-muted);
-}
-
-.group-result-empty-icon {
-    font-size: 3rem;
-    margin-bottom: 15px;
-    opacity: 0.5;
-}
-
-.group-result-empty-text {
-    font-style: italic;
-    margin: 0;
-}
-
-.group-result-empty-subtext {
-    font-size: 0.9rem;
-    margin-top: 10px;
+/* Botões de Ação (Salvar/Cancelar) */
+.actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
 }

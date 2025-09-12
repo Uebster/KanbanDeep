@@ -254,7 +254,7 @@ input, textarea, select, button {
 }
 
 .dropdown button:hover {
-    background-color: rgba(var(--primary-rgb), 0.4);
+    background-color: rgba(var(--primary-rgb), 0.2);
     box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
     color: var(--primary);
 }
@@ -325,6 +325,12 @@ input, textarea, select, button {
     box-shadow: 0 0 15px rgb(48, 86, 255), 0 0 25px rgba(48, 86, 255);
     color: rgba(48, 86, 255);
     border-color: rgba(48, 86, 255)
+}
+
+/* Variação de Tamanho */
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
 }
 
 
@@ -586,9 +592,9 @@ body.no-primary-effects .nav-item.active {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3.0rem; /* Ajusta o tamanho do ícone para um melhor encaixe */
+    font-size: 45px; /* Tamanho fixo em pixels para não ser afetado pela mudança de fonte global */
     color: var(--text-muted);
-    line-height: 1; /* Melhora o alinhamento vertical do emoji */
+    line-height: 0; /* Melhora o alinhamento vertical do emoji */
 }
 .color-swatch.special:hover {
     color: var(--primary); /* O ícone fica da cor primária no hover */

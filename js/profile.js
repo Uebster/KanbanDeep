@@ -3,9 +3,9 @@
 import { getCurrentUser, updateUser, logout, validateMasterPassword } from './auth.js';
 import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTemplates, getAllGroups, getGroup,
       getNotifications,   // <-- Adicione esta
-  saveNotifications   // <-- Adicione esta
+  saveNotifications, saveUserProfile
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage, debounce } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage, debounce, initCustomSelects, applyUserTheme } from './ui-controls.js';
 import { addGroupRequestNotification } from './notifications.js';
 
 // Variável para armazenar dados originais do usuário
@@ -25,15 +25,17 @@ export function initProfilePage() {
     }
    
     document.getElementById('page-title').textContent = "Perfil do Usuário";
-
-        if (currentUser) {
+    
+    if (currentUser) {
         updateUserAvatar(currentUser);
     }
 
+    loadUserData(); // 1. Carrega os dados e popula os selects
     setupEventListeners();
-    loadUserData();
+    setupColorPicker();
     setupPrivacyOptions();
     initDraggableElements();
+    // initCustomSelects() foi movido para o final de loadUserData() para garantir que os selects estejam prontos.
 }
 function loadUserData() {
     const currentUser = getCurrentUser();
@@ -49,8 +51,8 @@ function loadUserData() {
         // Salvar os dados originais para restauração
         originalUserData = {...userData};
         originalTheme = userData.theme || 'auto';
-        originalFont = userData.preferences?.fontFamily || 'Segoe UI';
         originalFontSize = userData.preferences?.fontSize || 'medium';
+        originalFont = userData.preferences?.fontFamily || 'Segoe UI, Inter, sans-serif';
             
         // Preencher dados na interface
         document.getElementById('name').value = userData.name || '';
@@ -122,7 +124,7 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
         
         // Preferências de visualização
         if (userData.preferences) {
-            document.getElementById('font-family').value = userData.preferences.fontFamily || 'Segoe UI';
+            document.getElementById('font-family').value = userData.preferences.fontFamily || 'Segoe UI, Inter, sans-serif';
             document.getElementById('font-size').value = userData.preferences.fontSize || 'medium'; // <-- CORREÇÃO: fontSizeValue -> fontSize
             document.getElementById('pref-show-tags').checked = userData.preferences.showTags !== false;
             document.getElementById('pref-show-date').checked = userData.preferences.showDate !== false;
@@ -133,6 +135,23 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
             document.getElementById('pref-show-card-details').checked = userData.preferences.showCardDetails !== false;
         }
         
+        // --- LÓGICA DE COR PRIMÁRIA ---
+        const primaryColor = userData.preferences?.primaryColor;
+        const paletteContainer = document.getElementById('color-palette-container');
+        paletteContainer.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+
+        if (primaryColor === 'none') {
+            paletteContainer.querySelector('[data-action="remove-primary"]')?.classList.add('active');
+        } else if (primaryColor && primaryColor.hex) {
+            const activeSwatch = paletteContainer.querySelector(`[data-hex="${primaryColor.hex}"]`);
+            if (activeSwatch) {
+                activeSwatch.classList.add('active');
+            }
+        } else {
+            // Se não houver cor salva, marca a padrão do sistema
+            paletteContainer.querySelector('[data-hex="#4cd4e6"]')?.classList.add('active');
+        }
+
         // Avatar
         updateAvatarPreview(userData);
         
@@ -142,6 +161,7 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || '';
         showFloatingMessage('Erro ao carregar dados do usuário', 'error');
     }
     loadUserGroups();
+    initCustomSelects(); // Chamado aqui, no final, para garantir que todos os selects estão populados
 }
 
 
@@ -167,7 +187,7 @@ function setupEventListeners() {
     });
     document.getElementById('avatar-upload')?.addEventListener('change', handleAvatarUpload);
     
-    document.getElementById('btn-save')?.addEventListener('click', (e) => {
+    document.querySelector('#profile-form .actions #btn-save')?.addEventListener('click', (e) => {
         e.preventDefault();
         handleSaveClick();
     });
@@ -175,6 +195,8 @@ function setupEventListeners() {
     document.getElementById('btn-cancel')?.addEventListener('click', handleCancelClick);
     document.getElementById('change-password-account')?.addEventListener('click', changePassword);
     document.getElementById('btn-delete-account')?.addEventListener('click', confirmDeleteAccount);
+    document.getElementById('manage-groups-btn')?.addEventListener('click', () => handleNavigation('groups.html'));
+    document.getElementById('manage-templates-btn')?.addEventListener('click', () => handleNavigation('templates.html'));
     document.getElementById('btn-join-group')?.addEventListener('click', showGroupSearchDialog);
     
     // Opções de privacidade
@@ -185,97 +207,84 @@ function setupEventListeners() {
         });
     });
 
-    // --- INTERCEPTADOR DE NAVEGAÇÃO GLOBAL (PARA ESTA PÁGINA) ---
-    // Este listener intercepta cliques em botões de navegação ANTES que outros scripts (como main.js) possam agir.
-    document.body.addEventListener('click', (e) => {
-        const button = e.target.closest('button');
-        if (!button) return;
-
-        // Mapeia os IDs dos botões de navegação para suas ações.
-        const navActions = {
-            'kanban-btn': { dest: 'kanban.html' },
-            'my-groups-btn': { dest: 'groups.html' },
-            'templates-btn': { dest: 'templates.html' },
-            'manage-board-templates-btn': { dest: 'templates.html' },
-            'notifications-btn': { dest: 'notifications.html' },
-            'switch-user-btn': { dest: 'list-users.html' },
-            'btn-create-group': { dest: 'groups.html', state: { openCreateGroup: 'true' } }
-        };
-
-        const action = navActions[button.id];
-        const isStatsButton = button.classList.contains('view-group-stats');
-
-        // Se o botão clicado não for um dos botões de navegação mapeados, nem o de estatísticas, não faz nada.
-        if (!action && !isStatsButton) return;
-
-        // Impede a execução de outros listeners (como os do main.js) e a navegação padrão.
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation(); // Essencial para parar os listeners do main.js
-
-        if (isStatsButton) {
-            handleNavigation('groups.html', {
-                selectedGroupId: button.dataset.groupId,
-                openStatistics: 'true'
-            });
-        } else if (action) {
-            // Chama a nossa função de navegação segura.
-            handleNavigation(action.dest, action.state);
-        }
-    }, true); // O 'true' no final ativa a fase de captura, que é crucial.
-    
-// Aplicação instantânea para pré-visualização
-    document.getElementById('theme')?.addEventListener('change', (e) => { // <-- BUG CORRIGIDO AQUI
-        applyThemeFromSelect(e.target.value);
-        isSaved = false;
-    });
-    
-    document.getElementById('font-family')?.addEventListener('change', (e) => {
-        applyFontFamily(e.target.value, true);
-        isSaved = false;
-    });
-
-    document.getElementById('font-size')?.addEventListener('change', (e) => {
-        applyFontSize(e.target.value, true); // O 'true' indica que é uma pré-visualização
-        isSaved = false;
-    });
-
-    // Marca o estado como "não salvo" quando qualquer campo do formulário muda
+    // Listeners que marcam o estado como "não salvo"
     const formFields = [
         'name', 'username', 'bio', 'birthdate', 'gender', 
         'location', 'email', 'whatsapp', 'linkedin', 'language',
-        'theme', 'font-family', 'font-size',
-        'pref-show-date', 'pref-show-status', 'default-tag-template'
+        'default-tag-template'
     ];
-    
     formFields.forEach(field => {
         const element = document.getElementById(field);
         if (element) {
-            element.addEventListener('change', () => {
+            element.addEventListener('input', () => { isSaved = false; });
+            element.addEventListener('change', () => { isSaved = false; });
+        }
+    });
+
+    // Listeners com pré-visualização
+    const previewFields = [
+        { id: 'theme', action: (e) => applyThemeFromSelect(e.target.value) },
+        { id: 'font-family', action: (e) => applyFontFamily(e.target.value, true) },
+        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) }
+    ];
+    previewFields.forEach(field => {
+        const element = document.getElementById(field.id);
+        if (element) {
+            element.addEventListener('change', (e) => {
+                if (field.action) field.action(e);
                 isSaved = false;
             });
         }
     });
 
     // Para checkboxes
-    const checkboxes = [
+    [
         'pref-show-tags', 'pref-show-date', 'pref-show-status', 'pref-show-assignment', 'pref-show-title', 'pref-show-icon', 'pref-show-card-details'
-    ];
-    
-    checkboxes.forEach(checkbox => {
-        const element = document.getElementById(checkbox);
-        if (element) {
-            element.addEventListener('change', () => {
-                isSaved = false;
-            });
-        }
-    });
+    ].forEach(id => document.getElementById(id)?.addEventListener('change', () => { isSaved = false; }));
     
     // Para opções de privacidade
     document.querySelectorAll('.privacy-option').forEach(option => {
-        option.addEventListener('click', () => {
-            isSaved = false;
-        });
+        option.addEventListener('click', () => { isSaved = false; });
+    });
+
+    // Listener para os botões de estatísticas dos grupos (usando delegação)
+    document.getElementById('groups-container')?.addEventListener('click', (e) => {
+        const statsButton = e.target.closest('.view-group-stats');
+        if (statsButton) {
+            const groupId = statsButton.dataset.groupId;
+            if (groupId) {
+                handleNavigation('groups.html', { openTab: 'statistics', groupId: groupId });
+            }
+        }
+    });
+}
+
+function setupColorPicker() {
+    const paletteContainer = document.getElementById('color-palette-container');
+    if (!paletteContainer) return;
+
+    paletteContainer.addEventListener('click', (e) => {
+        const swatch = e.target.closest('.color-swatch');
+        if (!swatch) return;
+
+        isSaved = false; // Marca como não salvo
+
+        paletteContainer.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+        swatch.classList.add('active');
+
+        const action = swatch.dataset.action;
+        
+        if (action === 'remove-primary') {
+            document.body.classList.add('no-primary-effects');
+        } else {
+            const hex = swatch.dataset.hex;
+            const rgb = swatch.dataset.rgb;
+            if (hex && rgb) {
+                document.body.classList.remove('no-primary-effects');
+                document.documentElement.style.setProperty('--primary', hex);
+                document.documentElement.style.setProperty('--primary-rgb', rgb);
+            }
+        }
     });
 }
 
@@ -285,19 +294,22 @@ function setupEventListeners() {
  * @param {Object} [state] - Um objeto com chaves e valores para salvar no localStorage antes de navegar.
  */
 function handleNavigation(destination, state = {}) {
+    // Converte o estado em parâmetros de URL para uma navegação mais limpa e confiável
+    const params = new URLSearchParams(state).toString();
+    const finalDestination = params ? `${destination}?${params}` : destination;
+
     if (isSaved) {
-        // Salva o estado e navega diretamente
-        Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
-        window.location.href = destination;
+        window.location.href = finalDestination;
     } else {
         // Mostra o diálogo de confirmação
         showConfirmationDialog(
             'Você tem alterações não salvas. Deseja sair mesmo assim?',
             () => { // onConfirm (Sim, sair)
-                isSaved = true; // Libera a trava
-                Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
                 showFloatingMessage('Redirecionando...', 'info');
-                window.location.href = destination;
+                setTimeout(() => {
+                    isSaved = true; // Libera a trava antes de sair da página
+                    window.location.href = finalDestination;
+                }, 500);
             },
             (dialog) => { showDialogMessage(dialog, 'Continue editando.', 'info'); return true; }, // onCancel
             'Sim, Sair', 'Não'
@@ -323,23 +335,12 @@ function handleAvatarUpload(e) {
     }
 }
 
-function restoreOriginalSettings() {
-    applyThemeFromSelect(originalTheme, true);
-    applyFontFamily(originalFont, true);
-    applyFontSize(originalFontSize, true); // <-- CORREÇÃO: Adicionado o 'true' para preview
-}
-
 function applyFontSize(size, isPreview = false) {
-    let fontSizeValue;
-    switch (size) {
-        case 'small': fontSizeValue = '12px'; break;
-        case 'medium': fontSizeValue = '14px'; break;
-        case 'large': fontSizeValue = '16px'; break;
-        case 'x-large': fontSizeValue = '18px'; break;
-        default: fontSizeValue = '14px';
-    }
+    // Usa os mesmos valores em 'rem' do ui-controls.js para consistência.
+    const sizeMap = { small: '0.75rem', medium: '1rem', large: '1.3rem', 'x-large': '1.6rem' };
+    const fontSizeValue = sizeMap[size] || '1rem'; // Padrão para 'medium'
 
-    document.documentElement.style.fontSize = fontSizeValue; // <-- CORREÇÃO: Aplicar diretamente ao font-size
+    document.documentElement.style.fontSize = fontSizeValue;
     
     if (!isPreview) {
         const currentUser = getCurrentUser();
@@ -368,8 +369,7 @@ function handleSaveClick() {
                 // Atualiza os dados originais para refletir o que foi salvo
                 originalUserData = {...result.userData};
                 originalTheme = result.userData.theme || 'auto';
-                originalFont = result.userData.preferences?.fontFamily || 'Segoe UI';
-                originalFontSize = result.userData.preferences?.fontSize || 'medium';
+                applyUserTheme(); // <-- CHAMA A FUNÇÃO GLOBAL PARA APLICAR TUDO
                 return true;
             } else {
                 showDialogMessage(dialog, result.message, 'error');
@@ -384,8 +384,7 @@ function handleCancelClick() {
         'Tem certeza que deseja descartar todas as alterações?',
         // onConfirm (Sim, descartar)
         (dialog) => {
-            // Restaurar os valores originais
-            restoreOriginalSettings();
+            // Restaura os dados do formulário e aplica o tema/fonte originais
             restoreOriginalData();
             
             isSaved = true;
@@ -398,53 +397,6 @@ function handleCancelClick() {
             return true;
         }
     );
-}
-
-function restoreOriginalData() {
-    if (!originalUserData) return;
-    
-    document.getElementById('name').value = originalUserData.name || '';
-    document.getElementById('username').value = originalUserData.username || '';
-    document.getElementById('bio').value = originalUserData.bio || '';
-    document.getElementById('birthdate').value = originalUserData.birthdate || '';
-    document.getElementById('gender').value = originalUserData.gender || '';
-    document.getElementById('location').value = originalUserData.location || '';
-    document.getElementById('email').value = originalUserData.email || '';
-    document.getElementById('whatsapp').value = originalUserData.whatsapp || '';
-    document.getElementById('linkedin').value = originalUserData.linkedin || '';
-    document.getElementById('language').value = originalUserData.language || 'pt-BR';
-    document.getElementById('theme').value = originalUserData.theme || 'auto';
-    
-    // Configuração de privacidade
-    const privacyValue = originalUserData.privacy || 'private';
-    document.querySelectorAll('.privacy-option').forEach(option => {
-        option.classList.remove('selected');
-        if (option.dataset.value === privacyValue) {
-            option.classList.add('selected');
-        }
-    });
-    
-    // Preferências de visualização
-    if (originalUserData.preferences) {
-        document.getElementById('font-family').value = originalUserData.preferences.fontFamily || 'Segoe UI';
-        document.getElementById('font-size').value = originalUserData.preferences.fontSize || 'medium';
-        document.getElementById('pref-show-tags').checked = originalUserData.preferences.showTags !== false;
-        document.getElementById('pref-show-date').checked = originalUserData.preferences.showDate !== false;
-        document.getElementById('pref-show-status').checked = originalUserData.preferences.showStatus !== false;
-        document.getElementById('pref-show-assignment').checked = originalUserData.preferences.showAssignment !== false;
-        document.getElementById('pref-show-icon').checked = originalUserData.preferences.showBoardIcon !== false;
-        document.getElementById('pref-show-title').checked = originalUserData.preferences.showBoardTitle !== false;
-        document.getElementById('pref-show-card-details').checked = originalUserData.preferences.showCardDetails !== false;
-        document.getElementById('default-tag-template').value = originalUserData.preferences.defaultTagTemplateId || '';
-    }
-    
-    // Avatar
-    updateAvatarPreview(originalUserData);
-    
-    // Restaura tema e fonte
-    applyThemeFromSelect(originalUserData.theme || 'auto');
-    applyFontFamily(originalUserData.preferences?.fontFamily || 'Segoe UI');
-    applyFontSize(originalUserData.preferences.fontSize || 'medium'); // <-- CORREÇÃO: Usar dados originais
 }
 
 function setupPrivacyOptions() {
@@ -479,6 +431,20 @@ async function processProfileUpdate() {
     const privacyOption = document.querySelector('.privacy-option.selected');
     const privacy = privacyOption ? privacyOption.dataset.value : 'private';
     
+    // Coletar cor primária
+    const activeSwatch = document.querySelector('#color-palette-container .color-swatch.active');
+    let primaryColor = null;
+    if (activeSwatch) {
+        if (activeSwatch.dataset.action === 'remove-primary') {
+            primaryColor = 'none';
+        } else {
+            primaryColor = {
+                hex: activeSwatch.dataset.hex,
+                rgb: activeSwatch.dataset.rgb
+            };
+        }
+    }
+
     // Coletar todos os dados do formulário
     const updatedUser = {
         name: name,
@@ -503,7 +469,8 @@ async function processProfileUpdate() {
             showBoardIcon: document.getElementById('pref-show-icon').checked,
             showBoardTitle: document.getElementById('pref-show-title').checked,
             showCardDetails: document.getElementById('pref-show-card-details').checked,
-            defaultTagTemplateId: document.getElementById('default-tag-template').value
+            defaultTagTemplateId: document.getElementById('default-tag-template').value,
+            primaryColor: primaryColor // Salva a nova preferência de cor
         }
     };
     
@@ -535,7 +502,7 @@ function completeProfileUpdate(updatedUser) {
     
     // Combina os dados atualizados com os dados existentes
     const fullUserData = {
-        ...currentUser,
+        ...getUserProfile(currentUser.id), // Pega a versão mais recente do storage
         ...updatedUser,
         // Mantém campos que não são editáveis no formulário
         id: currentUser.id,
@@ -544,7 +511,7 @@ function completeProfileUpdate(updatedUser) {
         boards: currentUser.boards || [],
         groups: currentUser.groups || []
     };
-    
+
     if (updateUser(currentUser.id, fullUserData)) {
         // Atualiza os dados originais para o próximo cancelamento
         originalUserData = {...fullUserData};
@@ -641,23 +608,6 @@ function changePassword() {
     });
 }
 
-// Função para atualizar o medidor de força da senha (similar à do create-user.js)
-function updatePasswordStrength(password, strengthMeter) {
-    if (!strengthMeter) return;
-
-    let strength = 0;
-    if (password.length >= 4) strength++;
-    if (password.length >= 8) strength++;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-
-    strength = Math.min(strength, 4); 
-
-    strengthMeter.className = 'password-strength-meter';
-    strengthMeter.classList.add(`strength-${strength}`);
-}
-
 // Diálogo de excluir conta (mantido do create-user)
 function confirmDeleteAccount() {
     const dialog = document.createElement('dialog');
@@ -715,73 +665,6 @@ function confirmDeleteAccount() {
             dialog.querySelector('#delete-confirm-password').focus();
         }
     });
-}
-
-// Funções de tema e fonte
-function applyThemeFromSelect(themeValue) {
-    document.body.classList.remove('light-mode', 'dark-mode');
-    
-    if (themeValue === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (themeValue === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else {
-        const systemTheme = localStorage.getItem('appTheme') || 'dark';
-        if (systemTheme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.add('dark-mode');
-        }
-    }
-}
-
-// Aplica a família de fontes universalmente
-function applyFontFamily(fontFamily, isPreview = false) {
-    // Aplica a fonte a todos os elementos
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    
-    // Remove estilos anteriores de placeholder se existirem
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) {
-        existingStyle.remove();
-    }
-    
-    // Aplica a fonte também aos placeholders
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        :-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        ::-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        
-        /* Força a fonte em elementos específicos que podem resistir */
-        input, textarea, select, button {
-            font-family: ${fontFamily} !important;
-        }
-    `;
-    document.head.appendChild(style);
-
-    // Salva a preferência no perfil do usuário se NÃO for uma pré-visualização
-    if (!isPreview) {
-        const currentUser = getCurrentUser();
-        if (currentUser) {
-            updateUser(currentUser.id, {
-                preferences: {
-                    ...(currentUser.preferences || {}),
-                    fontFamily: fontFamily
-                }
-            });
-        }
-    }
 }
 
 // profile.js - Adicione estas funções
@@ -882,7 +765,7 @@ function showGroupSearchDialog() {
     // Implementar busca de grupos
     searchInput.addEventListener('input', debounce(function() {
         const query = this.value.trim();
-        searchGroups(query);
+        searchAndDisplayGroups(query);
     }, 300));
     
     // Função para buscar grupos
@@ -892,7 +775,7 @@ function showGroupSearchDialog() {
      * @param {string} [query=''] - O termo de busca para filtrar os grupos.
      */
     function searchAndDisplayGroups(query = '') {
-        const allGroups = getAllGroups();
+        const allGroups = getAllGroups() || [];
         const currentUser = getCurrentUser();
 
         // Filtrar grupos públicos que o usuário não é membro
@@ -1010,4 +893,121 @@ function showGroupSearchDialog() {
     setTimeout(() => {
         dialog.querySelector('#group-search-input').focus();
     }, 100);
+}
+
+/**
+ * Restaura todos os dados do formulário e o estado visual da página para os valores originais.
+ */
+function restoreOriginalData() {
+    if (!originalUserData) return;
+
+    /**
+     * Helper para atualizar o valor de um select e sua exibição customizada.
+     * @param {string} id - O ID do elemento select.
+     * @param {string} value - O valor a ser definido.
+     */
+    const updateSelectDisplay = (id, value) => {
+        const selectEl = document.getElementById(id);
+        if (!selectEl) return;
+        selectEl.value = value;
+        const displayEl = selectEl.closest('.custom-select')?.querySelector('.select-selected');
+        if (displayEl && selectEl.selectedIndex > -1) displayEl.innerHTML = selectEl.options[selectEl.selectedIndex].innerHTML;
+    };
+
+    // --- 1. RESTAURA OS VALORES DOS CAMPOS DO FORMULÁRIO ---
+    const prefs = originalUserData.preferences || {};
+    
+    // Campos de texto e data
+    document.getElementById('name').value = originalUserData.name || '';
+    document.getElementById('username').value = originalUserData.username || '';
+    document.getElementById('bio').value = originalUserData.bio || '';
+    document.getElementById('birthdate').value = originalUserData.birthdate || '';
+    document.getElementById('location').value = originalUserData.location || '';
+    document.getElementById('email').value = originalUserData.email || '';
+    document.getElementById('whatsapp').value = originalUserData.whatsapp || '';
+    document.getElementById('linkedin').value = originalUserData.linkedin || '';
+
+    // Selects
+    updateSelectDisplay('gender', originalUserData.gender || '');
+    updateSelectDisplay('language', originalUserData.language || 'pt-BR');
+    updateSelectDisplay('theme', originalUserData.theme || 'auto');
+    updateSelectDisplay('font-family', prefs.fontFamily || 'Segoe UI, Inter, sans-serif');
+    updateSelectDisplay('font-size', prefs.fontSize || 'medium');
+    updateSelectDisplay('default-tag-template', prefs.defaultTagTemplateId || '');
+
+    // Checkboxes
+    document.getElementById('pref-show-tags').checked = prefs.showTags !== false;
+    document.getElementById('pref-show-date').checked = prefs.showDate !== false;
+    document.getElementById('pref-show-status').checked = prefs.showStatus !== false;
+    document.getElementById('pref-show-assignment').checked = prefs.showAssignment !== false;
+    document.getElementById('pref-show-icon').checked = prefs.showBoardIcon !== false;
+    document.getElementById('pref-show-title').checked = prefs.showBoardTitle !== false;
+    document.getElementById('pref-show-card-details').checked = prefs.showCardDetails !== false;
+
+    // Opção de privacidade
+    const privacyValue = originalUserData.privacy || 'private';
+    document.querySelectorAll('.privacy-option').forEach(option => {
+        option.classList.toggle('selected', option.dataset.value === privacyValue);
+    });
+
+    // --- 2. RESTAURA O ESTADO VISUAL DA PÁGINA ---
+
+    // Restaura o tema
+    applyThemeFromSelect(originalUserData.theme || 'auto');
+
+    // Restaura a fonte
+    applyFontFamily(prefs.fontFamily || 'Segoe UI, Inter, sans-serif');
+    applyFontSize(prefs.fontSize || 'medium', true);
+
+    // Restaura a cor primária
+    const primaryColor = prefs.primaryColor;
+    const paletteContainer = document.getElementById('color-palette-container');
+    paletteContainer.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+
+    if (primaryColor === 'none') {
+        paletteContainer.querySelector('[data-action="remove-primary"]')?.classList.add('active');
+        document.body.classList.add('no-primary-effects');
+    } else if (primaryColor && primaryColor.hex) {
+        const activeSwatch = paletteContainer.querySelector(`[data-hex="${primaryColor.hex}"]`);
+        if (activeSwatch) activeSwatch.classList.add('active');
+        document.body.classList.remove('no-primary-effects');
+        document.documentElement.style.setProperty('--primary', primaryColor.hex);
+        document.documentElement.style.setProperty('--primary-rgb', primaryColor.rgb);
+    } else {
+        // Se não houver cor salva, restaura a padrão do sistema
+        paletteContainer.querySelector('[data-hex="#4cd4e6"]')?.classList.add('active');
+        document.body.classList.remove('no-primary-effects');
+        document.documentElement.style.setProperty('--primary', '#4cd4e6');
+        document.documentElement.style.setProperty('--primary-rgb', '76, 212, 230');
+    }
+
+    // Restaura o avatar
+    updateAvatarPreview(originalUserData);
+}
+
+/**
+ * Aplica um tema visualmente para pré-visualização.
+ * @param {string} themeValue - O valor do tema ('light', 'dark', etc.).
+ */
+function applyThemeFromSelect(themeValue) {
+    document.body.className = ''; // Limpa todas as classes de tema
+    switch (themeValue) {
+        case 'light': document.body.classList.add('light-mode'); break;
+        case 'dark-gray': document.body.classList.add('dark-gray-mode'); break;
+        case 'light-gray': document.body.classList.add('light-gray-mode'); break;
+        case 'dark': break; // O padrão (preto) não precisa de classe
+        case 'auto':
+        default:
+            const systemTheme = localStorage.getItem('appTheme') || 'dark';
+            if (systemTheme === 'light') document.body.classList.add('light-mode');
+            break;
+    }
+}
+
+/**
+ * Aplica uma família de fontes visualmente para pré-visualização.
+ * @param {string} fontFamily - A string da família de fontes.
+ */
+function applyFontFamily(fontFamily, isPreview = false) {
+    document.documentElement.style.setProperty('--app-font-family', fontFamily);
 }

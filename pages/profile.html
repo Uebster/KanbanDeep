@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Perfil</title>
-    <link rel="stylesheet" href="../static/universal.css">
-    <link rel="stylesheet" href="../static/profile.css">
-    <style>
-
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil do Usuário</title>
+  <link rel="stylesheet" href="../static/universal.css">
+  <link rel="stylesheet" href="../static/profile.css">
 </head>
-        <!-- ===== INÍCIO DO CABEÇALHO GLOBAL ===== -->
-<header id="main-header">
-    <!-- Menu de Perfil (Esquerda) -->
-    <div class="menu-container">
-        <button id="user-avatar-btn" class="avatar-btn">
-            <img id="user-avatar" src="" alt="Avatar do Usuário">
-        </button>
+<body>
+    <div id="message-container"></div>
+    
+    <!-- Header corrigido seguindo o padrão do kanban.html -->
+    <header id="main-header">
+        <!-- Menu de Perfil (Esquerda) -->
+        <div class="menu-container">
+            <button id="user-avatar-btn" class="avatar-btn">
+                <img id="user-avatar" src="" alt="Avatar do Usuário">
+            </button>
             <div id="profile-dropdown" class="dropdown">            
                 <button id="switch-user-btn">🔁 Trocar Perfil</button>
                 <button id="kanban-btn">📋 Meus Quadros</button>
@@ -27,320 +27,251 @@
                 <hr>
                 <button id="exit-btn">🚪 Sair</button>
             </div>
-    </div>
-
-    <!-- Título da Página -->
-    <h1 id="page-title"></h1>
-
-    <!-- Menu de Ações (Direita) -->
-    <div class="menu-container">
-        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
-        <div id="actions-dropdown" class="dropdown">
-            <button id="undo-btn">↩️ Desfazer</button>
-            <button id="redo-btn">↪️ Refazer</button>
         </div>
-    </div>
-</header>
-<!-- ===== FIM DO CABEÇALHO GLOBAL ===== -->
-<body>
-    <div id="message-container"></div>
-    
 
+        <!-- Título Centralizado (substituindo o menu de quadros) -->
+        <h1 id="page-title" style="flex-grow: 1; text-align: center;">Perfil do Usuário</h1>
 
+        <!-- Espaço vazio na direita para manter a estrutura (sem menu de ações) -->
+        <div class="menu-container" style="visibility: hidden;"><button class="avatar-btn"></button></div>
     </header>
     
     <main class="card">
+        <!-- O cabeçalho do card foi removido para simplificar e alinhar com create-user.html -->
         <form id="profile-form">
-            <div class="profile-layout">
-                <!-- Coluna Esquerda -->
-                <div>
-                    <!-- Informações Básicas -->
-                    <div class="form-section">
-                        <h3>Informações Básicas</h3>
-                        <div class="avatar-container">
-                            <div class="avatar-preview">
-                                <img id="avatar-image" src="" alt="Avatar">
-                                <span id="avatar-text" class="avatar-preview-text"></span>
-                            </div>
-                            <button type="button" id="btn-upload-avatar" class="btn btn-secondary">
-                                <span>📷</span> Alterar Avatar
-                            </button>
-                            <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="name" class="required">Nome Completo</label>
-                            <input type="text" id="name" name="name" required placeholder="Digite seu nome completo">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="username" class="required">Nome de Usuário</label>
-                            <input type="text" id="username" name="username" required placeholder="Seu nome de usuário único">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="bio">Biografia</label>
-                            <textarea id="bio" name="bio" placeholder="Conte um pouco sobre você..."></textarea>
-                        </div>
-                        
-                        <!-- Estatísticas do usuário -->
-                        <div class="profile-stats">
-                            <div class="stat-item"><span id="stats-boards" class="stat-number">0</span><span class="stat-label">Quadros</span></div>
-                            <div class="stat-item"><span id="stats-followers" class="stat-number">0</span><span class="stat-label">Seguidores</span></div>
-                            <div class="stat-item"><span id="stats-following" class="stat-number">0</span><span class="stat-label">Seguindo</span></div>
-                            <div class="stat-item"><span id="stats-groups" class="stat-number">0</span><span class="stat-label">Grupos</span></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Informações Pessoais -->
-                    <div class="form-section">
-                        <h3>Informações Pessoais</h3>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="birthdate">Data de Nascimento</label>
-                                <input type="date" id="birthdate" name="birthdate">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="gender">Gênero</label>
-                                <select id="gender" name="gender">
-                                    <option value="">Selecionar</option>
-                                    <option value="male">Masculino</option>
-                                    <option value="female">Feminino</option>
-                                    <option value="non-binary">Não-binário</option>
-                                    <option value="other">Outro</option>
-                                    <option value="prefer-not-to-say">Prefiro não informar</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="location">Localização</label>
-                            <input type="text" id="location" name="location" placeholder="Cidade, Estado, País">
-                        </div>
-                    </div>
-                    
-                    <!-- Contatos -->
-                    <div class="form-section">
-                        <h3>Contatos</h3>
-                        
-                        <div class="form-group">
-                            <label for="email">E-mail</label>
-                            <input type="email" id="email" name="email" placeholder="seu.email@exemplo.com">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="whatsapp">WhatsApp</label>
-                            <input type="tel" id="whatsapp" name="whatsapp" placeholder="(00) 00000-0000">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="linkedin">LinkedIn</label>
-                            <input type="url" id="linkedin" name="linkedin" placeholder="https://linkedin.com/in/seu-perfil">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Coluna Direita -->
-                <div>
-                    <!-- Configurações de Conta -->
-                    <div class="form-section">
-                        <h3>Configurações de Conta</h3>
-                        
-                        <div class="form-group">
-                            <div class="feedback"></div>
-                            <button type="button" id="btn-delete-account" class="btn btn-danger">
-                                <span>🗑️</span> Excluir Perfil
-                            </button>
-                             <button type="button" id="change-password-account" class="btn btn-danger">
-                                <span>🔒</span> Alterar Senha
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Configurações de Privacidade -->
-                    <div class="form-section">
-                        <h3>Configurações de Privacidade</h3>
-                        <p>Quem pode ver suas informações pessoais?</p>
-                        
-                        <div class="privacy-options">
-                            <div class="privacy-option selected" data-value="public">
-                                <h4>Público</h4>
-                                <p>Visível para todos os usuários</p>
-                            </div>
-                            <div class="privacy-option" data-value="friends">
-                                <h4>Amigos</h4>
-                                <p>Visível apenas para seus amigos</p>
-                            </div>
-                            <div class="privacy-option" data-value="private">
-                                <h4>Privado</h4>
-                                <p>Visível apenas para você</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Preferências -->
-                    <div class="form-section">
-                        <h3>Preferências</h3>
-                        
-                        <div class="form-group">
-                            <label for="language">Idioma</label>
-                            <select id="language" name="language">
-                                <option value="pt-BR">Português (Brasil)</option>
-                                <option value="en-US">Inglês (EUA)</option>
-                                <option value="es-ES">Espanhol (Espanha)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="theme">Tema</label>
-                            <select id="theme" name="theme">
-                                <option value="auto">Automático</option>
-                                <option value="light">Claro</option>
-                                <option value="dark">Escuro</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="font-family">Fonte do Aplicativo</label>
-                            <select id="font-family" name="font-family">
-                                <option value="Segoe UI">Segoe UI</option>
-                                <option value="Arial">Arial</option>
-                                <option value="Helvetica">Helvetica</option>
-                                <option value="Times New Roman">Times New Roman</option>
-                                <option value="Courier New">Courier New</option>
-                                <option value="Verdana">Verdana</option>
-                                <option value="Georgia">Georgia</option>
-                                <option value="Palatino">Palatino</option>
-                                <option value="Garamond">Garamond</option>
-                                <option value="Comic Sans MS">Comic Sans MS</option>
-                                <option value="Impact">Impact</option>
-                                <option value="Tahoma">Tahoma</option>
-                                <option value="Trebuchet MS">Trebuchet MS</option>
-                                <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
-                                <option value="Lucida Console">Lucida Console</option>
-                                <option value="Lucida Sans">Lucida Sans</option>
-                                <option value="Inter">Inter</option>
-                                <option value="Roboto">Roboto</option>
-                                <option value="Montserrat">Montserrat</option>
-                                <option value="Lato">Lato</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="font-size">Tamanho da Fonte</label>
-                            <select id="font-size" name="font-size">
-                                <option value="small">Pequeno</option>
-                                <option value="medium" selected>Médio</option>
-                                <option value="large">Grande</option>
-                                <option value="x-large">Extra Grande</option>
-                            </select>
-                        </div>
-                    </div>
-    <div class="form-section">
-        <h3>Visualização dos Cartões</h3>
-        
-        <div class="form-group">
-            <label>O que deseja exibir nos cartões?</label>
-            <div class="checkbox-group">
-                <label class="checkbox-container">
-                    Exibir etiquetas
-                    <input type="checkbox" id="pref-show-tags" checked>
-                    <span class="checkmark"></span>
-                </label>
-                
-                <label class="checkbox-container">
-                    Exibir datas
-                    <input type="checkbox" id="pref-show-date" checked>
-                    <span class="checkmark"></span>
-                </label>
-                
-                <label class="checkbox-container">
-                    Exibir status
-                    <input type="checkbox" id="pref-show-status" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <label class="checkbox-container">
-                    Exibir atribuição (avatar)
-                    <input type="checkbox" id="pref-show-assignment" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <label class="checkbox-container">
-                    Exibir detalhes (escrição, criador, etc.)
-                    <input type="checkbox" id="pref-show-card-details" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <label class="checkbox-container">
-                    Exibir título do quadro
-                    <input type="checkbox" id="pref-show-title" checked>
-                    <span class="checkmark"></span>
-                </label>
-                <label class="checkbox-container">
-                    Exibir ícone do quadro
-                    <input type="checkbox" id="pref-show-icon" checked>
-                    <span class="checkmark"></span>
-                </label>
+      <div class="form-layout-3col">
+        <!-- Coluna 1: Identidade e Conta -->
+        <div class="form-column">
+          <div class="form-section">
+            <h2>Perfil</h2>
+            <div class="avatar-container">
+              <div class="avatar-preview" id="avatar-preview">
+                <span id="avatar-text" class="avatar-preview-text">?</span>
+                <img id="avatar-image" src="" alt="Avatar Preview" style="display: none;">
+              </div>
+              <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+              <button type="button" id="btn-upload-avatar" class="btn"><span>📷</span> Alterar Avatar</button>
             </div>
+            <div class="form-group">
+              <label for="name" class="required">Nome Completo</label>
+              <input type="text" id="name" required placeholder="Digite seu nome completo">
+            </div>
+            <div class="form-group">
+              <label for="username" class="required">Nome de Usuário</label>
+              <input type="text" id="username" required placeholder="Seu nome de usuário">
+            </div>
+            <div class="form-group">
+              <label for="bio">Biografia</label>
+              <textarea id="bio" rows="5" placeholder="Conte um pouco sobre você..."></textarea>
+            </div>
+          </div>
+          <div class="form-section">
+            <h2>Conta e Segurança</h2>
+            <div class="account-actions">
+              <button type="button" id="change-password-account" class="btn"><span>🔑</span> Alterar Senha</button>
+              <button type="button" id="btn-delete-account" class="btn danger"><span>🗑️</span> Excluir Conta</button>
+            </div>
+          </div>
         </div>
-                    </div>
-                    
-                    <!-- Padrão de Etiquetas -->
-<div class="form-section"> <!-- Usamos form-section para manter o estilo -->
-    <h3>Personalização</h3>
-    
-    <div class="form-group">
-        <label for="default-tag-template">Conjunto de Etiquetas Padrão:</label>
-        <select id="default-tag-template">
-            <!-- As opções serão preenchidas pelo JavaScript -->
-            <option value="">Nenhum (Usar todas as etiquetas)</option>
-        </select>
-        <small class="form-text">Este conjunto aparecerá como sugestão no Kanban.</small>
-    </div>
 
-    <div class="management-buttons">
-        <button type="button" id="manage-board-templates-btn" class="btn btn-secondary">Gerenciar Templates</button>
-    </div>
-</div>
-                    
-                    <!-- Grupos -->
-<div class="form-section">
-    <h3>Grupos</h3>
-    <div id="groups-container" class="groups-container">
-        <div class="no-groups-message" style="text-align: center; padding: 20px; color: var(--text-muted);">
-            <div style="font-size: 2rem; margin-bottom: 10px;">👥</div>
-            <p>Você não participa de nenhum grupo atualmente.</p>
-        </div>
-    </div>
-    
-    <div class="form-row" style="margin-top: 15px;">
-        <button type="button" id="btn-create-group" class="btn btn-primary">
-            <span>➕</span> Criar Grupo
-        </button>
-        <button type="button" id="btn-join-group" class="btn btn-secondary">
-            <span>🔍</span> Procurar Grupos
-        </button>
-    </div>
-</div>
-                </div>
+        <!-- Coluna 2: Detalhes e Preferências Gerais -->
+        <div class="form-column">
+          <div class="form-section">
+            <h2>Informações Pessoais</h2>
+            <div class="form-group">
+              <label for="birthdate">Data de Nascimento</label>
+              <input type="date" id="birthdate">
             </div>
-            
+            <div class="form-group">
+              <label for="gender">Gênero</label>
+              <div class="custom-select">
+                <select id="gender">
+                  <option value="">Selecionar</option>
+                  <option value="male">Masculino</option>
+                  <option value="female">Feminino</option>
+                  <option value="non-binary">Não-binário</option>
+                  <option value="other">Outro</option>
+                  <option value="prefer-not-to-say">Prefiro não informar</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="location">Localização</label>
+              <input type="text" id="location" placeholder="Cidade, Estado">
+            </div>
+          </div>
+          <div class="form-section">
+            <h2>Contatos</h2>
+            <div class="form-group">
+              <label for="email">E-mail</label>
+              <input type="email" id="email" placeholder="seu.email@exemplo.com">
+            </div>
+            <div class="form-group">
+              <label for="whatsapp">WhatsApp</label>
+              <input type="tel" id="whatsapp" placeholder="(00) 00000-0000">
+            </div>
+            <div class="form-group">
+              <label for="linkedin">LinkedIn</label>
+              <input type="url" id="linkedin" placeholder="https://linkedin.com/in/seu-perfil">
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna 3: Preferências de Visualização -->
+        <div class="form-column">
+          <div class="form-section">
+            <h2>Preferências</h2>
+            <div class="form-group">
+              <label for="language">Idioma</label>
+              <div class="custom-select">
+                <select id="language">
+                  <option value="pt-BR">Português (Brasil)</option>
+                  <option value="en-US">Inglês (EUA)</option>
+                  <option value="es-ES">Español (España)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="theme">Tema</label>
+              <div class="custom-select">
+                <select id="theme">
+                  <option value="auto">Padrão do Sistema</option>
+                  <option value="dark">Escuro (Preto)</option>
+                  <option value="dark-gray">Cinza Escuro</option>
+                  <option value="light-gray">Cinza Claro</option>
+                  <option value="light">Claro (Branco)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="font-family">Fonte da Interface</label>
+              <div class="custom-select">
+                <select id="font-family">
+                  <option value="Segoe UI, Inter, sans-serif">Padrão (Segoe/Inter)</option>
+                  <option value="Roboto, sans-serif">Roboto</option>
+                  <option value="Open Sans, sans-serif">Open Sans</option>
+                  <option value="Lato, sans-serif">Lato</option>
+                  <option value="Montserrat, sans-serif">Montserrat</option>
+                  <option value="Verdana, sans-serif">Verdana</option>
+                  <option value="Arial, sans-serif">Arial</option>
+                  <option value="Helvetica, sans-serif">Helvetica</option>
+                  <option value="Times New Roman, serif">Times New Roman</option>
+                  <option value="Courier New, monospace">Courier New</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="Palatino, serif">Palatino</option>
+                  <option value="Garamond, serif">Garamond</option>
+                  <option value="Comic Sans MS, cursive">Comic Sans MS</option>
+                  <option value="Impact, fantasy">Impact</option>
+                  <option value="Tahoma, sans-serif">Tahoma</option>
+                  <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+                  <option value="Lucida Sans Unicode, sans-serif">Lucida Sans Unicode</option>
+                  <option value="Lucida Console, monospace">Lucida Console</option>
+                  <option value="Lucida Sans, sans-serif">Lucida Sans</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="font-size">Tamanho da Fonte</label>
+              <div class="custom-select">
+                <select id="font-size">
+                  <option value="small">Pequeno</option>
+                  <option value="medium">Médio</option>
+                  <option value="large">Grande</option>
+                  <option value="x-large">Extra Grande</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Cor Primária</label>
+              <div id="color-palette-container" class="color-palette">
+                <div class="color-swatch special" data-action="remove-primary" title="Nenhuma">🚫</div>
+                <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão"></div>
+                <div class="color-swatch" style="background-color: #9a1eff;" data-hex="#9a1eff" data-rgb="154, 30, 255"></div>
+                <div class="color-swatch" style="background-color: #1eff1e;" data-hex="#1eff1e" data-rgb="30, 255, 30"></div>
+                <div class="color-swatch" style="background-color: #f552ed;" data-hex="#f552ed" data-rgb="245, 82, 237"></div>
+                <div class="color-swatch" style="background-color: #ff831e;" data-hex="#ff831e" data-rgb="255, 131, 30"></div>
+                <div class="color-swatch" style="background-color: #1e47ff;" data-hex="#1e47ff" data-rgb="30, 71, 255"></div>
+                <div class="color-swatch" style="background-color: #ff1e1e;" data-hex="#ff1e1e" data-rgb="255, 30, 30"></div>
+                <div class="color-swatch" style="background-color: #c3ff1e;" data-hex="#c3ff1e" data-rgb="195, 255, 30"></div>
+                <div class="color-swatch" style="background-color: #ffd700;" data-hex="#ffd700" data-rgb="255, 215, 0"></div>
+                <div class="color-swatch" style="background-color: #ffffff;" data-hex="#ffffff" data-rgb="255, 255, 255"></div>
+                <div class="color-swatch" style="background-color: #000000;" data-hex="#000000" data-rgb="0, 0, 0"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-section">
+            <h2>Exibição no Kanban</h2>
+            <label class="checkbox-container">Mostrar Ícone do Quadro
+              <input type="checkbox" id="pref-show-icon">
+              <span class="checkmark"></span>
+            </label>
+            <label class="checkbox-container">Mostrar Título do Quadro
+              <input type="checkbox" id="pref-show-title">
+              <span class="checkmark"></span>
+            </label>
+            <label class="checkbox-container">Mostrar Etiquetas nos Cartões
+              <input type="checkbox" id="pref-show-tags">
+              <span class="checkmark"></span>
+            </label>
+            <label class="checkbox-container">Mostrar Data de Vencimento
+              <input type="checkbox" id="pref-show-date">
+              <span class="checkmark"></span>
+            </label>
+            <label class="checkbox-container">Mostrar Status (Concluído)
+              <input type="checkbox" id="pref-show-status">
+              <span class="checkmark"></span>
+            </label>
+            <label class="checkbox-container">Mostrar Usuário Atribuído
+              <input type="checkbox" id="pref-show-assignment">
+              <span class="checkmark"></span>
+            </label>
+            <label class="checkbox-container">Mostrar Detalhes ao Passar o Mouse
+              <input type="checkbox" id="pref-show-card-details">
+              <span class="checkmark"></span>
+            </label>
+          </div>
+          <div class="form-section">
+            <h2>Conteúdo Padrão</h2>
+            <div class="form-group">
+              <label for="default-tag-template">Conjunto de Etiquetas Padrão</label>
+              <div class="custom-select">
+                <select id="default-tag-template"></select>
+              </div>
+              <button type="button" id="manage-templates-btn" class="btn" style="width: 100%; margin-top: 15px;">Gerenciar Templates</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção de Privacidade -->
+      <div class="form-section privacy-full-width">
+        <h2>Privacidade do Perfil</h2>
+        <div class="privacy-options">
+          <div class="privacy-option" data-value="public"><h4>🌍 Público</h4><p>Qualquer pessoa pode ver seu perfil.</p></div>
+          <div class="privacy-option" data-value="friends"><h4>🧑‍🤝‍🧑 Amigos</h4><p>Apenas seus amigos podem ver.</p></div>
+          <div class="privacy-option selected" data-value="private"><h4>🔒 Privado</h4><p>Apenas você pode ver seu perfil.</p></div>
+        </div>
+      </div>
+
+      <!-- Seção de Grupos -->
+      <div class="form-section groups-full-width">
+        <h2>Meus Grupos</h2>
+        <div id="groups-container" class="groups-list">
+          <p class="no-groups-message">Você não participa de nenhum grupo.</p>
+        </div>
+        <div class="group-section-actions">
+            <button type="button" id="manage-groups-btn" class="btn">Gerenciar Grupos</button>
+            <button type="button" id="btn-join-group" class="btn"><span>🔍</span> Procurar Grupos</button>
+        </div>
+      </div>
+
             <div class="actions">
-                    <div class="feedback"></div>
-                <button type="button" id="btn-cancel" class="btn btn-secondary">
-                    <span>❌</span> Cancelar
-                </button>
-                <button type="button" id="btn-save" class="btn btn-primary">
-                    <span>💾</span> Salvar Alterações
-                </button>
+        <button type="button" id="btn-cancel" class="btn cancel"><span>❌</span> Cancelar</button>
+        <button type="button" id="btn-save" class="btn confirm"><span>💾</span> Salvar Alterações</button>
             </div>
         </form>
     </main>
 
-    <script>
-    </script>
     <script type="module" src="../js/main.js"></script>
 </body>
-
-<footer class="rodape">Espaço</footer>
 </html>

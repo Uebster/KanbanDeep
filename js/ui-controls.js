@@ -17,8 +17,7 @@ export const ICON_LIBRARY = [
 export function initUIControls() {
     setupGlobalCloseListeners();
     setupKeyboardShortcuts();
-    initDraggableElements(); // Inicializa o arrastar de elementos com a classe .draggable
-    initCustomSelects(); // Inicializa os selects customizados
+    initDraggableElements();
 }
 
 /**
@@ -395,7 +394,8 @@ export function applyUserTheme() {
     const user = getCurrentUser();
     if (!user) return;
 
-    const userTheme = user.theme || 'auto';
+    // 1. Aplica o tema (claro/escuro)
+    const userTheme = user.preferences?.theme || user.theme || 'auto';
     const systemTheme = localStorage.getItem('appTheme') || 'dark';
     
     document.body.classList.remove('light-mode', 'dark-mode');
@@ -411,7 +411,26 @@ export function applyUserTheme() {
             document.body.classList.add('dark-mode');
         }
     }
+
+    // 2. Aplica a fonte
     applyUserFont();
+
+    // 3. Aplica a cor primária
+    applyPrimaryColor(user.preferences?.primaryColor);
+}
+
+/**
+ * Aplica a cor primária salva nas preferências do usuário em toda a interface.
+ * @param {object|string} colorData - O objeto de cor ({hex, rgb}) ou a string 'none'.
+ */
+function applyPrimaryColor(colorData) {
+    if (colorData && colorData.hex && colorData.rgb) {
+        document.body.classList.remove('no-primary-effects');
+        document.documentElement.style.setProperty('--primary', colorData.hex);
+        document.documentElement.style.setProperty('--primary-rgb', colorData.rgb);
+    } else {
+        document.body.classList.add('no-primary-effects');
+    }
 }
 
 function applyUserFont() {
@@ -423,26 +442,13 @@ function applyUserFont() {
 }
 
 function applyFontFamily(fontFamily) {
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) existingStyle.remove();
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder { font-family: ${fontFamily} !important; }
-        :-ms-input-placeholder { font-family: ${fontFamily} !important; }
-        ::-ms-input-placeholder { font-family: ${fontFamily} !important; }
-        input, textarea, select, button { font-family: ${fontFamily} !important; }
-    `;
-    document.head.appendChild(style);
+    // Define a variável CSS global. O universal.css cuidará de aplicar a fonte.
+    document.documentElement.style.setProperty('--app-font-family', fontFamily);
 }
 
 function applyFontSize(size) {
-    const sizeMap = { small: '12px', medium: '14px', large: '16px', 'x-large': '18px' };
-    const fontSizeValue = sizeMap[size] || '14px';
+    const sizeMap = { small: '0.75rem', medium: '1rem', large: '1.3rem', 'x-large': '1.6rem' };
+    const fontSizeValue = sizeMap[size] || '1rem'; // Padrão para 1rem (medium)
     document.documentElement.style.fontSize = fontSizeValue;
 }
 
@@ -533,6 +539,14 @@ export function initCustomSelects() {
 
         // Evita reinicializar um select que já foi processado
         if (customSelects[i].querySelector('.select-selected')) {
+            continue;
+        }
+
+        // Se o select não tiver opções (pode ser preenchido dinamicamente mais tarde), pule.
+        // Se não houver opção selecionada (selectedIndex === -1), também pula. Isso acontece
+        // quando o valor salvo no storage não corresponde a nenhuma opção disponível.
+        // Esta é a correção definitiva para o erro 'Cannot read properties of undefined'.
+        if (selElmnt.options.length === 0 || selElmnt.selectedIndex === -1) {
             continue;
         }
 

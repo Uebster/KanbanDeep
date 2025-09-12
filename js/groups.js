@@ -50,13 +50,15 @@ export function initGroupsPage() {
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
         return;
     }
+    allUsers = getAllUsers();
     
     // Carrega os grupos ANTES de qualquer outra lógica para que a variável 'groups' esteja disponível.
     loadGroups();
 
-    // Verificar se há um grupo selecionado para mostrar estatísticas
-    const selectedGroupId = localStorage.getItem('selectedGroupId');
-    const openStatistics = localStorage.getItem('openStatistics');
+    // LER PARÂMETROS DA URL para abrir uma aba específica
+    const urlParams = new URLSearchParams(window.location.search);
+    const openTab = urlParams.get('openTab');
+    const groupId = urlParams.get('groupId');
     
     // VERIFICAÇÃO PARA ABRIR A ABA DE CRIAÇÃO DE GRUPO
     const openCreateGroup = localStorage.getItem('openCreateGroup');
@@ -78,13 +80,9 @@ export function initGroupsPage() {
     loadServers();
     initDraggableElements();
 
-    // Lógica movida para o final para garantir que os grupos já foram carregados
-    if (selectedGroupId && openStatistics === 'true') {
-        localStorage.removeItem('selectedGroupId');
-        localStorage.removeItem('openStatistics');
-        const groupSelect = document.getElementById('stats-group-select');
-        if(groupSelect) groupSelect.value = selectedGroupId;
-        switchTab('statistics');
+    // Lógica para abrir aba específica a partir da URL
+    if (openTab) {
+        switchTab(openTab, { groupId: groupId });
     }
 }
 
@@ -101,7 +99,7 @@ function loadGroups() {
 function setupEventListeners() {
     document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
     // --- ABAS PRINCIPAIS ---
-    document.querySelectorAll('.tab').forEach(tab => {
+    document.querySelectorAll('.tabs .tab').forEach(tab => {
         tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
     document.getElementById('btn-create-group')?.addEventListener('click', () => switchTab('create-group'));
@@ -291,7 +289,7 @@ function setupTabs() {
     });
 }
 
-function switchTab(tabId) {
+function switchTab(tabId, options = {}) {
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
     
@@ -310,8 +308,13 @@ function switchTab(tabId) {
     } else if (tabId === 'statistics') {
         const groupSelect = document.getElementById('stats-group-select');
         populateGroupSelectorForStats(groupSelect);
-        const selectedGroupId = groupSelect.value;
-        if (selectedGroupId) loadAndRenderStatistics(selectedGroupId);
+        // Usa o ID das opções, ou o valor do select como fallback
+        const groupIdToLoad = options.groupId || groupSelect.value;
+        if (groupIdToLoad) {
+            // Garante que o select mostre o grupo correto
+            groupSelect.value = groupIdToLoad;
+            loadAndRenderStatistics(groupIdToLoad);
+        }
     } else if (tabId === 'meetings') {
         loadAndRenderMeetings();
     }
@@ -1962,15 +1965,16 @@ function populateGroupSelectorForStats(selectElement) {
     if (!selectElement) return;
     selectElement.innerHTML = '';
 
-    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
-    if (adminGroups.length === 0) {
-        selectElement.innerHTML = '<option value="">Você não administra grupos</option>';
+    // CORREÇÃO: Usa a variável 'groups', que já contém todos os grupos dos quais o usuário é membro.
+    const memberGroups = groups; 
+    if (memberGroups.length === 0) {
+        selectElement.innerHTML = '<option value="">Você não participa de nenhum grupo</option>';
         selectElement.disabled = true;
         return;
     }
 
     selectElement.disabled = false;
-    adminGroups.forEach(group => {
+    memberGroups.forEach(group => {
         const option = document.createElement('option');
         option.value = group.id;
         option.textContent = group.name;
