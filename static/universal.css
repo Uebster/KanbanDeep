@@ -318,7 +318,7 @@ input, textarea, select, button {
     color:rgba(149, 86, 250);
     border-color: rgba(149, 86, 250);
 }
-.btn.alternative1:hover {
+.btn.share:hover {
     box-shadow: 0 0 15px rgb(255, 215, 0), 0 0 25px rgb(255, 215, 0);
     color:rgb(255, 215, 0);
     border-color: rgb(255, 215, 0);
@@ -362,6 +362,12 @@ dialog[open] {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
 }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
 
 dialog::backdrop {
     background-color: rgba(0, 0, 0, 0.6);
@@ -529,6 +535,51 @@ fieldset.form-group legend {
             border: 1px solid rgba(var(--primary-rgb), 0.8);;
         }
 
+/* ===== MENU DE CONTEXTO (BOTÃO DIREITO) ===== */
+.context-menu {
+    position: fixed;
+    z-index: 2000;
+    width: 220px; /* Um pouco mais largo para acomodar ícones */
+    background-color: var(--bg-card);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeIn 0.1s ease-out;
+}
+
+.context-menu button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    background: transparent;
+    border: none; /* Sobrescreve o .btn padrão */
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-radius: 6px;
+}
+
+.context-menu button:hover {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    color: var(--primary);
+}
+
+.context-menu button.destructive:hover {
+    background-color: rgba(231, 76, 60, 0.2); /* Vermelho com transparência */
+    color: var(--error);
+}
+
+.context-menu hr {
+    margin: 4px 0; border: none; border-top: 1px solid var(--border);
+}
 
 /* ===== UTILITÁRIOS ===== */
 .hidden {

@@ -86,9 +86,11 @@
     <h3 class="drag-handle" id="board-dialog-title">Configurar Quadro</h3>
     <div class="form-group">
         <label for="board-template-select">Usar um Template (Opcional):</label>
-        <select id="board-template-select">
-            <!-- Preenchido pelo JS -->
-        </select>
+        <div class="custom-select">
+            <select id="board-template-select">
+                <!-- Preenchido pelo JS -->
+            </select>
+        </div>
     </div>
     <div class="form-group">
         <label for="board-title-input">Título:</label>
@@ -108,22 +110,25 @@
         </div>
         <div class="form-group">
             <label for="board-visibility">Visibilidade:</label>
-            <select id="board-visibility">
-                <option value="private">Privado</option>
-                <option value="public">Público</option>
-                <option value="group">Grupo</option>
-            </select>
+            <div class="custom-select">
+                <select id="board-visibility">
+                    <option value="private">Privado</option>
+                    <option value="public">Público</option>
+                    <option value="group">Grupo</option>
+                </select>
+            </div>
         </div>
         <div class="form-group" id="board-group-container" style="display:none;">
             <label for="board-group-select">Grupo:</label>
-            <select id="board-group-select"></select>
+            <div class="custom-select">
+                <select id="board-group-select"></select>
+            </div>
         </div>
             <div class="feedback"></div> <!-- <-- Adicione esta linha -->
     <div class="modal-actions">
-        <div class="modal-actions">
-            <button id="board-cancel-btn" class="btn btn-secondary">Cancelar</button>
-            <button id="board-save-btn" class="btn btn-primary">Salvar</button>
-        </div>
+        <button id="board-cancel-btn" class="btn cancel">Cancelar</button>
+        <button id="board-save-btn" class="btn confirm">Salvar</button>
+    </div>
     </dialog>
 
     <dialog id="column-dialog" class="draggable">
@@ -146,11 +151,10 @@
         </div>
             <div class="feedback"></div> <!-- <-- Adicione esta linha -->
     <div class="modal-actions">
-        <div class="modal-actions">
-            <button id="column-cancel-btn" class="btn btn-secondary">Cancelar</button>
-            <button id="column-delete-btn" class="btn btn-danger">Excluir</button>
-            <button id="column-save-btn" class="btn btn-primary">Salvar</button>
-        </div>
+        <button id="column-cancel-btn" class="btn cancel">Cancelar</button>
+        <button id="column-delete-btn" class="btn danger">Excluir</button>
+        <button id="column-save-btn" class="btn confirm">Salvar</button>
+    </div>
     </dialog>
 
     <dialog id="card-dialog" class="draggable">
@@ -202,8 +206,8 @@
     <div class="feedback"></div>
 
     <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
-        <button id="card-save-btn" class="btn btn-primary">Salvar Cartão</button>
+        <button class="btn cancel" onclick="this.closest('dialog').close()">Cancelar</button>
+        <button id="card-save-btn" class="btn confirm">Salvar Cartão</button>
     </div>
 </dialog>
 
@@ -211,8 +215,8 @@
         <h3 id="confirm-title" class="drag-handle">Confirmar Ação</h3>
         <p id="confirm-message">Você tem certeza?</p>
         <div class="modal-actions">
-            <button id="confirm-cancel-btn" class="btn btn-secondary">Cancelar</button>
-            <button id="confirm-ok-btn" class="btn btn-danger">Confirmar</button>
+            <button id="confirm-cancel-btn" class="btn cancel">Cancelar</button>
+            <button id="confirm-ok-btn" class="btn danger">Confirmar</button>
         </div>
     </dialog>
 
@@ -237,9 +241,9 @@
     <p class="edit-info">Selecione um item para habilitar as ações.</p>
     
     <div class="modal-actions">
-        <button id="edit-dialog-cancel-btn" class="btn btn-secondary">Cancelar</button>
-        <button id="edit-dialog-delete-btn" class="btn btn-danger" disabled>Excluir Selecionado</button>
-        <button id="edit-dialog-edit-btn" class="btn btn-primary" disabled>Editar Selecionado</button>
+        <button id="edit-dialog-cancel-btn" class="btn cancel">Cancelar</button>
+        <button id="edit-dialog-delete-btn" class="btn danger" disabled>Excluir Selecionado</button>
+        <button id="edit-dialog-edit-btn" class="btn edit" disabled>Editar Selecionado</button>
     </div>
 </dialog>
 
@@ -294,9 +298,9 @@
     </div>
     
     <div class="modal-actions">
-        <button id="search-cancel-btn" class="btn btn-secondary">Fechar</button>
-        <button id="search-reset-btn" class="btn">Limpar Filtros</button>
-        <button id="search-apply-btn" class="btn btn-primary">Aplicar Filtros</button>
+        <button id="search-cancel-btn" class="btn cancel">Fechar</button>
+        <button id="search-reset-btn" class="btn alternative1">Limpar Filtros</button>
+        <button id="search-apply-btn" class="btn confirm">Aplicar Filtros</button>
     </div>
 </dialog>
 
@@ -306,7 +310,7 @@
         <!-- O conteúdo será preenchido pelo JavaScript -->
     </div>
     <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Fechar</button>
+        <button class="btn cancel" onclick="this.closest('dialog').close()">Fechar</button>
     </div>
 </dialog>
     <!-- Diálogo de Preferências -->
@@ -398,11 +402,11 @@
         <div class="preferences-column">
             <fieldset class="form-group">
                 <legend>Exibir no Quadro:</legend>
-                <label class="checkbox-container"> Título do Quadro
+                <label class="checkbox-container"> Mostrar Título do Quadro
                     <input type="checkbox" id="pref-board-show-title" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Ícone do Quadro
+                <label class="checkbox-container"> Mostrar Ícone do Quadro
                     <input type="checkbox" id="pref-board-show-icon" checked>
                     <span class="checkmark"></span>
                 </label>
@@ -444,8 +448,8 @@
     <div class="feedback"></div>
 
     <div class="modal-actions">
-        <button id="pref-cancel-btn" class="btn btn-secondary">Cancelar</button>
-        <button id="pref-save-btn" class="btn btn-primary">Salvar</button>
+        <button id="pref-cancel-btn" class="btn cancel">Cancelar</button>
+        <button id="pref-save-btn" class="btn confirm">Salvar</button>
     </div>
 </dialog>
 
@@ -456,7 +460,7 @@
         <!-- Ícones serão inseridos aqui pelo JavaScript -->
     </div>
     <div class="modal-actions">
-        <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
+        <button id="close-icon-picker-btn" class="btn cancel">Fechar</button>
     </div>
 </dialog>
 

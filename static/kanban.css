@@ -34,6 +34,10 @@ body {
 .horizontal-menu .custom-select select {
     display: none; /* Garante que o select original seja sempre escondido */
 }
+        .custom-select select {
+            display: none;
+        }
+
 
 /* Estilos para o filtro de quadros Pessoal/Grupo */
 #board-filter-toggle {
@@ -149,13 +153,31 @@ body {
 /* --- NOVO ESTILO DE CARTÃO DETALHADO E CORRETO --- */
 .card {
     background-color: var(--bg-card);
-    border: 1px solid var(--border-light);
+    border: 2px solid var(--border); /* Borda mais grossa para combinar com a coluna */
     border-radius: 6px;
     cursor: grab;
     color: var(--text);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2); /* Sombra mais pronunciada */
     position: relative; /* Essencial para o posicionamento absoluto dos filhos */
     padding-bottom: 30px; /* Espaço para o avatar no rodapé */
+}
+
+/* --- EFEITOS DE ARRASTAR E SOLTAR --- */
+
+/* Estilo para o "fantasma" customizado que segue o mouse */
+.drag-ghost {
+    position: fixed;
+    pointer-events: none; /* Impede que o fantasma interfira com os eventos de drop */
+    z-index: 9999;
+    opacity: 0.9; /* Levemente transparente, mas ainda bem visível */
+    box-shadow: 0 0 25px 5px rgba(var(--primary-rgb)); /* Sombra neon forte */
+}
+
+/* Estilo para o item original que fica para trás (o "marcador de origem") */
+.dragging-source {
+    opacity: 0.4;
+    border-style: dashed;
+    box-shadow: none; /* Remove a sombra do item original */
 }
 
 /* O conteúdo agora tem seu próprio padding e posicionamento */
@@ -243,54 +265,6 @@ body {
 .form-group input[type="color"] { padding: 5px; height: 45px; }
 
 /* Em kanban.css */
-
-/* --- Estilos para o Menu de Contexto (Botão Direito) --- */
-.context-menu {
-    position: fixed; /* Fixo na tela para não ser cortado por overflow */
-    z-index: 2000;
-    width: 200px;
-    background-color: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    animation: fadeIn 0.1s ease-out;
-}
-
-.context-menu button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    text-align: left;
-    padding: 10px 12px;
-    background: transparent;
-    border: none;
-    color: var(--text);
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    border-radius: 6px;
-}
-
-.context-menu button:hover {
-    background-color: var(--primary);
-    color: white;
-}
-
-.context-menu button.destructive:hover {
-    background-color: #e74c3c;
-    color: white;
-}
-
-.context-menu hr {
-    margin: 4px 0;
-    border: none;
-    border-top: 1px solid var(--border);
-}
 
 /* Estilos para a busca de usuários */
 #user-search-dialog {

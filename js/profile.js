@@ -126,13 +126,13 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || 'system-tags-prio';
         if (userData.preferences) {
             document.getElementById('font-family').value = userData.preferences.fontFamily || 'Segoe UI, Inter, sans-serif';
             document.getElementById('font-size').value = userData.preferences.fontSize || 'medium'; // <-- CORREÇÃO: fontSizeValue -> fontSize
-            document.getElementById('pref-show-tags').checked = userData.preferences.showTags !== false;
-            document.getElementById('pref-show-date').checked = userData.preferences.showDate !== false;
-            document.getElementById('pref-show-status').checked = userData.preferences.showStatus !== false;
-            document.getElementById('pref-show-assignment').checked = userData.preferences.showAssignment !== false;
-            document.getElementById('pref-show-icon').checked = userData.preferences.showBoardIcon !== false;
-            document.getElementById('pref-show-title').checked = userData.preferences.showBoardTitle !== false;
-            document.getElementById('pref-show-card-details').checked = userData.preferences.showCardDetails !== false;
+            document.getElementById('pref-card-show-tags').checked = userData.preferences.showTags !== false;
+            document.getElementById('pref-card-show-date').checked = userData.preferences.showDate !== false;
+            document.getElementById('pref-card-show-status').checked = userData.preferences.showStatus !== false;
+            document.getElementById('pref-card-show-assignment').checked = userData.preferences.showAssignment !== false;
+            document.getElementById('pref-board-show-icon').checked = userData.preferences.showBoardIcon !== false;
+            document.getElementById('pref-board-show-title').checked = userData.preferences.showBoardTitle !== false;
+            document.getElementById('pref-card-show-details').checked = userData.preferences.showCardDetails !== false;
         }
         
         // --- LÓGICA DE COR PRIMÁRIA ---
@@ -239,7 +239,7 @@ function setupEventListeners() {
 
     // Para checkboxes
     [
-        'pref-show-tags', 'pref-show-date', 'pref-show-status', 'pref-show-assignment', 'pref-show-title', 'pref-show-icon', 'pref-show-card-details'
+        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details'
     ].forEach(id => document.getElementById(id)?.addEventListener('change', () => { isSaved = false; }));
     
     // Para opções de privacidade
@@ -493,13 +493,13 @@ async function processProfileUpdate() {
         preferences: {
             fontFamily: document.getElementById('font-family').value,
             fontSize: document.getElementById('font-size').value,
-            showTags: document.getElementById('pref-show-tags').checked,
-            showDate: document.getElementById('pref-show-date').checked,
-            showStatus: document.getElementById('pref-show-status').checked,
-            showAssignment: document.getElementById('pref-show-assignment').checked,
-            showBoardIcon: document.getElementById('pref-show-icon').checked,
-            showBoardTitle: document.getElementById('pref-show-title').checked,
-            showCardDetails: document.getElementById('pref-show-card-details').checked,
+            showTags: document.getElementById('pref-card-show-tags').checked,
+            showDate: document.getElementById('pref-card-show-date').checked,
+            showStatus: document.getElementById('pref-card-show-status').checked,
+            showAssignment: document.getElementById('pref-card-show-assignment').checked,
+            showBoardIcon: document.getElementById('pref-board-show-icon').checked,
+            showBoardTitle: document.getElementById('pref-board-show-title').checked,
+            showCardDetails: document.getElementById('pref-card-show-details').checked,
             defaultTagTemplateId: document.getElementById('default-tag-template').value,
             primaryColor: primaryColor // Salva a nova preferência de cor
         }
@@ -988,13 +988,13 @@ function restoreOriginalData() {
     updateSelectDisplay('default-tag-template', prefs.defaultTagTemplateId || '');
 
     // Checkboxes
-    document.getElementById('pref-show-tags').checked = prefs.showTags !== false;
-    document.getElementById('pref-show-date').checked = prefs.showDate !== false;
-    document.getElementById('pref-show-status').checked = prefs.showStatus !== false;
-    document.getElementById('pref-show-assignment').checked = prefs.showAssignment !== false;
-    document.getElementById('pref-show-icon').checked = prefs.showBoardIcon !== false;
-    document.getElementById('pref-show-title').checked = prefs.showBoardTitle !== false;
-    document.getElementById('pref-show-card-details').checked = prefs.showCardDetails !== false;
+    document.getElementById('pref-card-show-tags').checked = prefs.showTags !== false;
+    document.getElementById('pref-card-show-date').checked = prefs.showDate !== false;
+    document.getElementById('pref-card-show-status').checked = prefs.showStatus !== false;
+    document.getElementById('pref-card-show-assignment').checked = prefs.showAssignment !== false;
+    document.getElementById('pref-board-show-icon').checked = prefs.showBoardIcon !== false;
+    document.getElementById('pref-board-show-title').checked = prefs.showBoardTitle !== false;
+    document.getElementById('pref-card-show-details').checked = prefs.showCardDetails !== false;
 
     // Opção de privacidade
     const privacyValue = originalUserData.privacy || 'private';

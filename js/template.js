@@ -10,7 +10,7 @@ import {
     saveColumn
 } from './storage.js';
 import { getCurrentUser, updateUser } from './auth.js';
-import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage, showIconPickerDialog, ICON_LIBRARY } from './ui-controls.js';
+import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage, showIconPickerDialog, ICON_LIBRARY, showContextMenu } from './ui-controls.js';
 
 let currentUser;
 let untitledColumnCounter = 1;
@@ -73,7 +73,6 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
         
         if (isEditable) {
             card.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
                 showTemplateContextMenu(e, template, 'board');
             });
         }
@@ -155,7 +154,6 @@ function renderTagTemplates(templates, gridElement, isEditable) {
         
         if (isEditable) {
             card.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
                 showTemplateContextMenu(e, template, 'tag');
             });
         }
@@ -625,59 +623,24 @@ function showAlertDialog(message) {
     }, 10);
 }
 
-function showTemplateContextMenu(event, template, type) {
-    const existingMenu = document.getElementById('template-context-menu');
-    if (existingMenu) {
-        existingMenu.remove();
-    }
+function showTemplateContextMenu(event, template, type) {    
+    const menuItems = [
+        { 
+            label: 'Editar', 
+            icon: '✏️', 
+            action: () => type === 'board' ? showBoardTemplateDialog(template.id) : showTagTemplateDialog(template.id) 
+        },
+        { 
+            label: 'Excluir', 
+            icon: '🗑️', 
+            action: () => type === 'board' ? deleteBoardTemplate(template.id) : deleteTagTemplate(template.id),
+            isDestructive: true
+        },
+        { isSeparator: true },
+        { label: 'Detalhes', icon: 'ℹ️', action: () => showTemplateDetails(template, type) }
+    ];
 
-    const menu = document.createElement('div');
-    menu.id = 'template-context-menu';
-    menu.className = 'context-menu';
-    menu.style.position = 'fixed';
-    menu.style.left = `${event.pageX}px`;
-    menu.style.top = `${event.pageY}px`;
-
-    menu.innerHTML = `
-        <button data-action="edit">Editar</button>
-        <button data-action="delete">Excluir</button>
-        <hr>
-        <button data-action="details">Detalhes</button>
-    `;
-
-    document.body.appendChild(menu);
-
-    const closeMenu = () => {
-        menu.remove();
-        document.removeEventListener('click', closeMenu);
-    };
-
-    setTimeout(() => {
-        document.addEventListener('click', closeMenu);
-    }, 100);
-
-    menu.querySelector('[data-action="edit"]').onclick = () => {
-        closeMenu();
-        if (type === 'board') {
-            showBoardTemplateDialog(template.id);
-        } else {
-            showTagTemplateDialog(template.id);
-        }
-    };
-
-    menu.querySelector('[data-action="delete"]').onclick = () => {
-        closeMenu();
-        if (type === 'board') {
-            deleteBoardTemplate(template.id);
-        } else {
-            deleteTagTemplate(template.id);
-        }
-    };
-
-    menu.querySelector('[data-action="details"]').onclick = () => {
-        closeMenu();
-        showTemplateDetails(template, type);
-    };
+    showContextMenu(event, menuItems);
 }
 
 function showTemplateDetails(template, type) {

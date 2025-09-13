@@ -208,6 +208,14 @@ export function deleteBoard(boardId) {
             saveUserProfile(owner);
         }
     }
+    // NOVO: Remove a referência do quadro do grupo, se existir
+    if (board && board.groupId) {
+        const group = getGroup(board.groupId);
+        if (group && group.boardIds) {
+            group.boardIds = group.boardIds.filter(id => id !== boardId);
+            saveGroup(group);
+        }
+    }
     return deleteItem(boardId, 'board');
 }
 

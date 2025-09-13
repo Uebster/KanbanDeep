@@ -630,3 +630,49 @@ export function initCustomSelects() {
         });
     }
 }
+
+/**
+ * Cria e exibe um menu de contexto (clique direito) padronizado.
+ * @param {MouseEvent} event - O evento do mouse para obter as coordenadas.
+ * @param {Array<Object>} items - Um array de objetos que definem os itens do menu.
+ *   Cada objeto pode ter:
+ *   - `label` (string): O texto do botão.
+ *   - `icon` (string, opcional): O emoji ou ícone.
+ *   - `action` (function): A função a ser executada no clique.
+ *   - `isDestructive` (boolean, opcional): Se o botão deve ter estilo de "perigo".
+ *   - `isSeparator` (boolean, opcional): Se o item é um separador <hr>.
+ */
+export function showContextMenu(event, items) {
+    event.preventDefault();
+    document.querySelectorAll('.context-menu').forEach(menu => menu.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+
+    items.forEach(item => {
+        if (item.isSeparator) {
+            menu.appendChild(document.createElement('hr'));
+        } else {
+            const button = document.createElement('button');
+            button.innerHTML = `${item.icon || ''} ${item.label}`;
+            if (item.isDestructive) {
+                button.classList.add('destructive');
+            }
+            button.onclick = () => {
+                item.action();
+                menu.remove();
+            };
+            menu.appendChild(button);
+        }
+    });
+
+    document.body.appendChild(menu);
+
+    const { innerWidth, innerHeight } = window;
+    menu.style.left = `${event.clientX + menu.offsetWidth > innerWidth ? innerWidth - menu.offsetWidth - 5 : event.clientX}px`;
+    menu.style.top = `${event.clientY + menu.offsetHeight > innerHeight ? innerHeight - menu.offsetHeight - 5 : event.clientY}px`;
+
+    setTimeout(() => {
+        document.addEventListener('click', () => menu.remove(), { once: true });
+    }, 0);
+}

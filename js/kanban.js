@@ -7,7 +7,7 @@ import {
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu } from './ui-controls.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
 // ===== ESTADO GLOBAL DO MÓDULO =====
@@ -17,6 +17,7 @@ let boards = [];
 let currentBoard = null;
 let draggedElement = null;
 let currentBoardFilter = 'personal'; // 'personal' ou 'group'
+let customDragGhost = null; // Para o "fantasma" customizado ao arrastar
 let undoStack = [];
 let redoStack = [];
 let clipboard = null; // Para copiar/colar
@@ -151,8 +152,8 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('column-save-btn')?.addEventListener('click', handleSaveColumn);
     document.getElementById('column-delete-btn')?.addEventListener('click', () => handleDeleteColumn(document.getElementById('column-dialog').dataset.editingId));
     document.getElementById('card-save-btn')?.addEventListener('click', handleSaveCard);
-    document.querySelectorAll('dialog .btn-secondary').forEach(btn => {
-        // Adiciona um listener genérico para fechar diálogos, mas ignora o botão de cancelar das preferências,
+    document.querySelectorAll('dialog .btn.cancel').forEach(btn => {
+        // Adiciona um listener genérico para fechar diálogos com o botão "Cancelar", mas ignora o de preferências,
         // que tem sua própria lógica customizada.
         if (btn.id !== 'pref-cancel-btn') {
             btn.addEventListener('click', () => btn.closest('dialog').close());
@@ -544,12 +545,11 @@ function createColumnElement(column) {
     const columnEl = document.createElement('div');
     columnEl.className = 'column';
     columnEl.dataset.columnId = column.id;
-    columnEl.draggable = true;
     columnEl.style.setProperty('--column-color', column.color || '#4b4b4bff');
     
 
     columnEl.innerHTML = `
-        <div class="column-header">
+        <div class="column-header" draggable="true">
             <h3>${column.title}</h3>
             <button class="paste-card-btn" style="display: none;" title="Colar Cartão">📋</button>
         </div>
@@ -661,7 +661,7 @@ function showEditDialog() {
     deleteBtn.disabled = true;
 
     // Popula o select de quadros
-    boardSelect.innerHTML = '<option value="">-- Selecione um quadro --</option>';
+    boardSelect.innerHTML = '<option value="">Selecione um quadro</option>';
     boards.forEach(board => {
         boardSelect.innerHTML += `<option value="${board.id}">${board.title}</option>`;
     });
@@ -670,7 +670,7 @@ function showEditDialog() {
         const boardId = boardSelect.value;
         columnGroup.style.display = 'none';
         cardGroup.style.display = 'none';
-        columnSelect.innerHTML = '<option value="">-- Todas as colunas --</option>';
+        columnSelect.innerHTML = '<option value="">Todas as colunas</option>';
         if (!boardId) {
             editBtn.disabled = true;
             deleteBtn.disabled = true;
@@ -690,10 +690,17 @@ function showEditDialog() {
     columnSelect.onchange = () => {
         const columnId = columnSelect.value;
         cardGroup.style.display = 'none';
-        cardSelect.innerHTML = '<option value="">-- Todos os cartões --</option>';
+        cardSelect.innerHTML = '<option value="">Todos os cartões</option>';
         if (!columnId) return;
 
-        const selectedColumn = findColumn(columnId); // Assumindo que currentBoard é o quadro certo (precisa ajustar)
+        // CORREÇÃO: Busca a coluna dentro do quadro selecionado no diálogo, não no quadro atual.
+        const boardId = boardSelect.value;
+        const selectedBoard = boards.find(b => b.id === boardId);
+        if (!selectedBoard) return; // Segurança
+
+        const selectedColumn = selectedBoard.columns.find(c => c.id === columnId);
+        if (!selectedColumn) return; // Segurança
+
         cardGroup.style.display = 'block';
 
         selectedColumn.cards.forEach(card => {
@@ -843,6 +850,9 @@ function showBoardDialog(boardId = null) {
     // Reseta o feedback de erro
     dialog.querySelector('.feedback')?.classList.remove('show');
     
+    // Inicializa os selects customizados APÓS popular os dados
+    initCustomSelects();
+
     dialog.showModal();
 }
 
@@ -945,7 +955,7 @@ function showColumnDialog(columnId = null) {
     document.getElementById('column-color-input').value = column ? column.color || '#282828' : '#282828';
     document.getElementById('column-text-color-input').value = column ? column.textColor || '#e0e0e0' : '#e0e0e0';
 
-    dialog.querySelector('.btn-danger').style.display = columnId ? 'inline-block' : 'none';
+    dialog.querySelector('.btn.danger').style.display = columnId ? 'inline-block' : 'none';
     dialog.showModal();
 }
 
@@ -990,11 +1000,14 @@ function handleSaveColumn() {
 /**
  * Mostra uma mensagem de sucesso, espera, fecha o diálogo e atualiza a UI.
  * É a função padrão para finalizar operações de salvamento bem-sucedidas.
- * @param {HTMLElement} dialog O diálogo a ser manipulado.
+ * @param {HTMLElement|null} dialog O diálogo a ser manipulado. Pode ser nulo se a ação não vier de um diálogo.
  * @param {string} boardToFocusId O ID do quadro que deve estar em foco após a atualização.
  */
 function showSuccessAndRefresh(dialog, boardToFocusId) {
-  dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
+  const delay = dialog ? 1500 : 100; // Delay menor se não houver diálogo
+  if (dialog) {
+    dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
+  }
 
   setTimeout(() => {
     // --- LÓGICA DE ATUALIZAÇÃO SEGURA (CORRIGIDA) ---
@@ -1018,12 +1031,15 @@ function showSuccessAndRefresh(dialog, boardToFocusId) {
 
     // Renderiza a tela com os dados frescos
     renderBoardSelector();
+    initCustomSelects(); // ATUALIZAÇÃO: Garante que o select customizado seja reconstruído.
     renderCurrentBoard();
 
-    // Fecha o diálogo e reabilita os botões
-    dialog.close();
-    dialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
-  }, 1500);
+    // Fecha o diálogo e reabilita os botões, se houver um diálogo
+    if (dialog) {
+      dialog.close();
+      dialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
+    }
+  }, delay);
 }
 
 function showCardDialog(cardId = null, columnId) {
@@ -1140,12 +1156,6 @@ function showCardDialog(cardId = null, columnId) {
                 if (member) assignableUsers.set(member.id, member);
             });
         }
-    } else if (currentBoard.visibility === 'private') {
-        // Se for privado, mostra uma mensagem e não adiciona mais ninguém
-        const privateMessageOption = document.createElement('option');
-        privateMessageOption.disabled = true;
-        privateMessageOption.textContent = 'Quadro privado. Mude a visibilidade para atribuir a outros.';
-        assigneeSelect.appendChild(privateMessageOption);
     }
 
     // Popula o select com os usuários filtrados
@@ -1175,8 +1185,6 @@ function handleSaveCard() {
     showConfirmationDialog(
         'Deseja salvar as alterações neste cartão?',
         (confirmationDialog) => {
-            const previousAssignee = getCard(dialog.dataset.editingId)?.assignedTo;
-            saveState(); // Salva o estado para o Desfazer
             const cardId = dialog.dataset.editingId;
             const newColumnId = document.getElementById('card-column-select').value;
             const dateValue = document.getElementById('card-due-date').value;
@@ -1184,6 +1192,7 @@ function handleSaveCard() {
             let combinedDateTime = dateValue ? (timeValue ? `${dateValue}T${timeValue}:00` : `${dateValue}T00:00:00`) : null;
             const cardData = { title, description: document.getElementById('card-description').value.trim(), dueDate: combinedDateTime, tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), assignedTo: document.getElementById('card-assigned-to').value };
 
+            const previousAssignee = getCard(cardId)?.assignedTo;
             if (cardId && cardId !== 'null') {
                 const originalCard = getCard(cardId);
                 if (!originalCard) return false;
@@ -1225,6 +1234,7 @@ function handleSaveCard() {
                 );
             }
 
+            saveState(); // Salva o estado APÓS as modificações
             showDialogMessage(confirmationDialog, 'Cartão salvo com sucesso!', 'success');
             showSuccessAndRefresh(dialog, currentBoard.id);
             return true;
@@ -1322,26 +1332,90 @@ function setupDragAndDrop() {
     if (!container) return;
 
     // Usar delegação de eventos para performance e simplicidade
-    container.addEventListener('dragstart', handleDragStart);
-    container.addEventListener('dragend', handleDragEnd);
+    document.addEventListener('dragstart', handleDragStart);
+    document.addEventListener('drag', handleDrag); // Evento para mover o fantasma
+    document.addEventListener('dragend', handleDragEnd);
+    
+    // Listeners no container para a lógica de soltar
     container.addEventListener('dragover', handleDragOver);
     container.addEventListener('drop', handleDrop);
 }
 
 function handleDragStart(e) {
-    // Garante que estamos arrastando um cartão ou coluna
-    draggedElement = e.target.closest('.card, .column');
+    // Lógica aprimorada para determinar o que está sendo arrastado.
+    const targetCard = e.target.closest('.card');
+    const targetColumnHeader = e.target.closest('.column-header');
+
+    if (targetCard) {
+        // Se o clique foi em um cartão, arrasta o cartão.
+        draggedElement = targetCard;
+    } else if (targetColumnHeader) {
+        // Se o clique foi no cabeçalho de uma coluna, arrasta a coluna inteira.
+        draggedElement = targetColumnHeader.closest('.column');
+    }
     if (draggedElement) {
-        setTimeout(() => draggedElement.classList.add('dragging'), 0);
+        // Aplica um estilo sutil ao item original que fica para trás
+        setTimeout(() => draggedElement.classList.add('dragging-source'), 0);
+
+        const rect = draggedElement.getBoundingClientRect();
+        let offsetX = e.clientX - rect.left;
+        let offsetY = e.clientY - rect.top;
+
+        // Se for uma coluna, fixa o ponto de "pegar" na parte superior para um arrastar mais natural
+        if (draggedElement.classList.contains('column')) {
+            offsetY = Math.min(offsetY, 40); // Limita o ponto de agarre vertical ao cabeçalho
+        }
+
+        // Armazena os offsets para uso no evento 'drag'
+        draggedElement.dataset.offsetX = offsetX;
+        draggedElement.dataset.offsetY = offsetY;
+
+        // Cria o "fantasma" customizado
+        customDragGhost = draggedElement.cloneNode(true);
+        customDragGhost.classList.add('drag-ghost');
+        document.body.appendChild(customDragGhost);
+
+        // Posiciona o fantasma inicial
+        customDragGhost.style.width = `${rect.width}px`;
+        customDragGhost.style.height = `${rect.height}px`;
+        customDragGhost.style.left = `${e.clientX - offsetX}px`;
+        customDragGhost.style.top = `${e.clientY - offsetY}px`;
+
+        // Esconde o fantasma padrão do navegador
+        e.dataTransfer.setDragImage(new Image(), 0, 0);
         e.dataTransfer.effectAllowed = 'move';
+    }
+}
+
+function handleDrag(e) {
+    // Move o fantasma customizado para seguir o cursor
+    if (customDragGhost && draggedElement) {
+        // Previne o reposicionamento no evento final que tem coordenadas (0,0)
+        if (e.clientX === 0 && e.clientY === 0) return;
+        
+        const offsetX = parseFloat(draggedElement.dataset.offsetX) || 0;
+        const offsetY = parseFloat(draggedElement.dataset.offsetY) || 0;
+
+        customDragGhost.style.left = `${e.clientX - offsetX}px`;
+        customDragGhost.style.top = `${e.clientY - offsetY}px`;
     }
 }
 
 function handleDragEnd(e) {
     if (draggedElement) {
-        draggedElement.classList.remove('dragging');
+        draggedElement.classList.remove('dragging-source');
+        delete draggedElement.dataset.offsetX;
+        delete draggedElement.dataset.offsetY;
         draggedElement = null;
     }
+    if (customDragGhost) {
+        customDragGhost.remove();
+        customDragGhost = null;
+    }
+
+    // Re-renderiza o quadro APÓS a operação de arrastar ser totalmente concluída.
+    // Isso garante que toda a limpeza (como remover o fantasma) tenha acontecido.
+    if (currentBoard) renderCurrentBoard();
 }
 
 function handleDragOver(e) {
@@ -1353,7 +1427,7 @@ function handleDrop(e) {
     if (!draggedElement) return;
 
     const isCard = draggedElement.classList.contains('card');
-    
+
     if (isCard) {
         const cardId = draggedElement.dataset.cardId;
         const sourceColumnId = draggedElement.closest('.column').dataset.columnId;
@@ -1361,56 +1435,49 @@ function handleDrop(e) {
         if (!targetColumnEl) return;
         const targetColumnId = targetColumnEl.dataset.columnId;
 
-        // --- LÓGICA DE MANIPULAÇÃO DE DADOS CORRIGIDA ---
-        // 1. Encontra as colunas e o índice original do cartão
         const sourceColumn = currentBoard.columns.find(c => c.id === sourceColumnId);
         const targetColumn = currentBoard.columns.find(c => c.id === targetColumnId);
         if (!sourceColumn || !targetColumn) return;
 
         const originalCardIndex = sourceColumn.cardIds.indexOf(cardId);
-        if (originalCardIndex === -1) return; // Segurança: não encontrou o cartão
+        if (originalCardIndex === -1) return;
 
-        saveState(); // Salva o estado ANTES de qualquer modificação
-
-        // 2. Remove o cartão da coluna de origem (tanto o objeto quanto o ID)
         const [removedCardObject] = sourceColumn.cards.splice(originalCardIndex, 1);
         sourceColumn.cardIds.splice(originalCardIndex, 1);
 
-        // 3. Encontra a nova posição na coluna de destino
         const afterElement = getDragAfterElement(targetColumnEl.querySelector('.cards-container'), e.clientY, false);
         const newIndex = afterElement ? targetColumn.cardIds.indexOf(afterElement.dataset.cardId) : targetColumn.cardIds.length;
 
-        // 4. Adiciona o cartão na nova posição
         targetColumn.cardIds.splice(newIndex, 0, cardId);
         targetColumn.cards.splice(newIndex, 0, removedCardObject);
 
-        // 5. Salva as colunas modificadas no armazenamento
         saveColumn(sourceColumn);
         if (sourceColumnId !== targetColumnId) saveColumn(targetColumn);
     } else {
-        saveState(); // Salva o estado para o Desfazer
         const columnId = draggedElement.dataset.columnId;
         const afterElement = getDragAfterElement(document.getElementById('columns-container'), e.clientX, true);
-        
+
         // Reordena os IDs no objeto do quadro
         const oldIndex = currentBoard.columnIds.indexOf(columnId);
         if (oldIndex > -1) currentBoard.columnIds.splice(oldIndex, 1);
         const newIndex = afterElement ? currentBoard.columnIds.indexOf(afterElement.dataset.columnId) : currentBoard.columnIds.length;
         currentBoard.columnIds.splice(newIndex, 0, columnId);
 
-        // Salva o quadro com a nova ordem de colunas
         saveBoard(currentBoard);
     }
     
-    renderCurrentBoard();
+    saveState(); // Salva o estado APÓS a modificação
+    // A renderização foi movida para o 'handleDragEnd' para garantir a limpeza correta do fantasma.
 }
 
 function getDragAfterElement(container, coordinate, isHorizontal) {
-    const draggableElements = [...container.querySelectorAll('.card:not(.dragging), .column:not(.dragging)')];
+    const draggableElements = [...container.querySelectorAll('.card:not(.dragging-source), .column:not(.dragging-source)')];
 
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
-        const offset = isHorizontal ? coordinate - box.left - box.width / 2 : coordinate - box.top - box.height / 2;
+        const offset = isHorizontal 
+            ? coordinate - box.left - box.width / 2 
+            : coordinate - box.top - box.height / 2;
         if (offset < 0 && offset > closest.offset) {
             return { offset: offset, element: child };
         } else {
@@ -1455,106 +1522,53 @@ function checkAllCardDueDates() {
  * Lida com o evento de clique com o botão direito no container das colunas.
  */
 function handleContextMenu(e) {
-    e.preventDefault();
-    closeAllContextMenus(); // Fecha qualquer menu anterior
-
     const cardEl = e.target.closest('.card');
     const columnHeaderEl = e.target.closest('.column-header');
 
     if (cardEl) {
-        createCardContextMenu(cardEl, e.clientX, e.clientY);
+        createCardContextMenu(e, cardEl);
     } else if (columnHeaderEl) {
-        createColumnContextMenu(columnHeaderEl.parentElement, e.clientX, e.clientY);
+        createColumnContextMenu(e, columnHeaderEl.parentElement);
     }
 }
 
 /**
  * Cria e exibe o menu de contexto para um cartão.
  */
-function createCardContextMenu(cardEl, x, y) {
+function createCardContextMenu(event, cardEl) {
     const cardId = cardEl.dataset.cardId;
     const { card } = findCardAndColumn(cardId);
     
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
-    
-    menu.innerHTML = `
-        <button data-action="edit">✏️ Editar</button>
-        <button data-action="details">ℹ️ Detalhes</button>      
-        <button data-action="complete">${card.isComplete ? '⚪ Marcar como Pendente' : '✅ Marcar como Concluído'}</button>
-        <hr>
-        <button data-action="copy">📋 Copiar Cartão</button>
-        <button data-action="cut">✂️ Recortar Cartão</button>
-        <hr>
-        <button data-action="delete" class="destructive">🗑️ Excluir</button>
-    `;
-    
-    document.body.appendChild(menu);
-    positionMenu(menu, x, y);
+    const menuItems = [
+        { label: 'Editar', icon: '✏️', action: () => showCardDialog(cardId) },
+        { label: 'Detalhes', icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
+        { label: card.isComplete ? 'Marcar como Pendente' : 'Marcar como Concluído', icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
+        { isSeparator: true },
+        { label: 'Copiar Cartão', icon: '📋', action: () => handleCopyCard(cardId) },
+        { label: 'Recortar Cartão', icon: '✂️', action: () => handleCutCard(cardId) },
+        { isSeparator: true },
+        { label: 'Excluir', icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true },
+    ];
 
-    // Adiciona listeners para as ações
-    menu.querySelector('[data-action="edit"]').onclick = () => showCardDialog(cardId);
-    menu.querySelector('[data-action="details"]').onclick = () => showDetailsDialog(cardId);
-    menu.querySelector('[data-action="complete"]').onclick = () => toggleCardComplete(cardId);
-    menu.querySelector('[data-action="copy"]').onclick = () => handleCopyCard(cardId);
-    menu.querySelector('[data-action="cut"]').onclick = () => handleCutCard(cardId);
-    menu.querySelector('[data-action="delete"]').onclick = () => handleDeleteCard(cardId);
+    showContextMenu(event, menuItems);
 }
 
 /**
  * Cria e exibe o menu de contexto para uma coluna.
  */
-function createColumnContextMenu(columnEl, x, y) {
+function createColumnContextMenu(event, columnEl) {
     const columnId = columnEl.dataset.columnId;
-    
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
 
-    menu.innerHTML = `
-        <button data-action="edit">✏️ Editar</button>
-        <button data-action="details">ℹ️ Detalhes</button>
-        <button data-action="cut">✂️ Recortar Coluna</button>
-        <button data-action="copy">📋 Copiar Coluna</button>
-        <hr>
-        <button data-action="delete" class="destructive">🗑️ Excluir</button>
-    `;
-    
-    document.body.appendChild(menu);
-    positionMenu(menu, x, y);
+    const menuItems = [
+        { label: 'Editar', icon: '✏️', action: () => showColumnDialog(columnId) },
+        { label: 'Detalhes', icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
+        { label: 'Recortar Coluna', icon: '✂️', action: () => handleCutColumn(columnId) },
+        { label: 'Copiar Coluna', icon: '📋', action: () => handleCopyColumn(columnId) },
+        { isSeparator: true },
+        { label: 'Excluir', icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true },
+    ];
 
-    // Adiciona listeners para as ações
-    menu.querySelector('[data-action="edit"]').onclick = () => showColumnDialog(columnId);
-    menu.querySelector('[data-action="details"]').onclick = () => showDetailsDialog(null, columnId);
-    menu.querySelector('[data-action="cut"]').onclick = () => handleCutColumn(columnId);
-    menu.querySelector('[data-action="copy"]').onclick = () => handleCopyColumn(columnId);
-    menu.querySelector('[data-action="delete"]').onclick = () => handleDeleteColumnFromMenu(columnId);
-}
-
-/**
- * Fecha todos os menus de contexto abertos.
- */
-function closeAllContextMenus() {
-    document.querySelectorAll('.context-menu').forEach(menu => menu.remove());
-    document.removeEventListener('click', closeAllContextMenus);
-}
-
-/**
- * Posiciona o menu de contexto na tela, garantindo que ele não saia da área visível.
- */
-function positionMenu(menu, x, y) {
-    const { innerWidth, innerHeight } = window;
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
-
-    if (x + menu.offsetWidth > innerWidth) {
-        menu.style.left = `${innerWidth - menu.offsetWidth - 5}px`;
-    }
-    if (y + menu.offsetHeight > innerHeight) {
-        menu.style.top = `${innerHeight - menu.offsetHeight - 5}px`;
-    }
-
-    // Adiciona um listener para fechar o menu ao clicar em qualquer outro lugar
-    setTimeout(() => document.addEventListener('click', closeAllContextMenus, { once: true }), 0);
+    showContextMenu(event, menuItems);
 }
 
 
@@ -1619,13 +1633,13 @@ function handleDeleteColumnFromMenu(columnId){
     showConfirmationDialog(
         'Tem certeza que deseja excluir esta coluna e todos os seus cartões?',
         (confirmationDialog) => {
-            saveState(); // Salva o estado para o Desfazer
             const boardData = getBoard(currentBoard.id);
             boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
             saveBoard(boardData);
             deleteColumn(columnId); // Deleta a coluna e seus cartões
             currentBoard = getFullBoardData(currentBoard.id);
             renderCurrentBoard();
+            saveState(); // Salva o estado APÓS a modificação
             showDialogMessage(confirmationDialog, 'Coluna excluída com sucesso.', 'success');
             return true;
         },
@@ -1636,11 +1650,11 @@ function handleDeleteColumnFromMenu(columnId){
 }
 
 function toggleCardComplete(cardId) {
-    saveState(); // Salva o estado para o Desfazer
     const { card } = findCardAndColumn(cardId);
     if (card) {
         card.isComplete = !card.isComplete;
         saveCard(card); // Salva a alteração no armazenamento
+        saveState();
         renderCurrentBoard(); // Redesenha a tela para refletir a mudança
     }
 }
@@ -1654,11 +1668,23 @@ function handleDeleteBoard() {
             undoStack = [];
             redoStack = [];
             deleteBoard(currentBoard.id);
+
+            // --- CORREÇÃO: Recarrega TODOS os quadros (pessoais e de grupo) ---
             const userProfile = getUserProfile(currentUser.id);
-            boards = (userProfile.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+            const personalBoards = (userProfile.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+            const allGroups = getAllGroups();
+            const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+            const groupBoards = memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+            const allBoardMap = new Map();
+            personalBoards.forEach(b => allBoardMap.set(b.id, b));
+            groupBoards.forEach(b => allBoardMap.set(b.id, b));
+            boards = Array.from(allBoardMap.values());
+
             currentBoard = boards[0] || null;
             localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : null);
+            
             renderBoardSelector();
+            initCustomSelects(); // ATUALIZAÇÃO: Garante que o select customizado seja reconstruído.
             renderCurrentBoard();
             showDialogMessage(dialog, 'Quadro excluído com sucesso.', 'success');
             return true;
@@ -1675,12 +1701,12 @@ function handleDeleteColumn(columnId) {
     showConfirmationDialog(
         'Tem certeza que deseja excluir esta coluna e todos os seus cartões?',
         (confirmationDialog) => {
-            saveState(); // Salva o estado para o Desfazer
             const boardData = getBoard(currentBoard.id);
             boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
             saveBoard(boardData);
             deleteColumn(columnId); // Deleta a coluna e seus cartões
             currentBoard = getFullBoardData(currentBoard.id);
+            saveState();
             renderCurrentBoard();
             document.getElementById('column-dialog').close(); // Close the original column dialog
             showDialogMessage(confirmationDialog, 'Coluna excluída com sucesso.', 'success');
@@ -1696,13 +1722,13 @@ function handleDeleteCard(cardId) {
     showConfirmationDialog(
         'Tem certeza que deseja excluir este cartão?',
         (dialog) => {
-            saveState(); // Salva o estado para o Desfazer
             const columnData = getColumn(currentBoard.columns.find(c => c.cardIds.includes(cardId)).id);
             columnData.cardIds = columnData.cardIds.filter(id => id !== cardId);
             saveColumn(columnData);
             deleteCard(cardId);
             currentBoard = getFullBoardData(currentBoard.id);
             renderCurrentBoard();
+            saveState();
             showDialogMessage(dialog, 'Cartão excluído.', 'success');
             return true;
         },
@@ -1725,8 +1751,8 @@ function undoAction() {
         showFloatingMessage('Nada para desfazer.', 'info');
         return;
     }
-    const lastState = undoStack.pop();
-    redoStack.push(lastState);
+    const currentState = undoStack.pop();
+    redoStack.push(currentState);
     
     const previousState = JSON.parse(undoStack[undoStack.length - 1]);
     currentBoard = previousState;
@@ -1789,6 +1815,88 @@ function handleKeyDown(e) {
 }
 
 /**
+ * Copia um cartão para a área de transferência interna.
+ * @param {string} cardId - O ID do cartão a ser copiado.
+ */
+function handleCopyCard(cardId) {
+    const { card, column } = findCardAndColumn(cardId);
+    if (card) {
+        clipboard = {
+            type: 'card',
+            mode: 'copy',
+            sourceColumnId: column.id, // Guarda a coluna de origem
+            // Clona o cartão, reseta o ID, adiciona (Cópia) e define o usuário atual como criador
+            data: { 
+                ...card, 
+                id: null, 
+                title: `${card.title} (Cópia)`,
+                creatorId: currentUser.id, 
+                createdAt: new Date().toISOString() 
+            }
+        };
+        showFloatingMessage('Cartão copiado!', 'info');
+        updatePasteButtons();
+    }
+}
+
+/**
+ * Recorta um cartão para a área de transferência, marcando-o para ser movido.
+ * @param {string} cardId - O ID do cartão a ser recortado.
+ */
+function handleCutCard(cardId) {
+    const { card, column } = findCardAndColumn(cardId);
+    if (card) {
+        clipboard = {
+            type: 'card',
+            mode: 'cut',
+            sourceCardId: cardId,
+            sourceColumnId: column.id,
+            data: card
+        };
+        showFloatingMessage('Cartão recortado. Use o menu de contexto para colar.', 'info');
+        updatePasteButtons();
+    }
+}
+
+/**
+ * Cola um cartão da área de transferência em uma nova coluna.
+ * @param {string} targetColumnId - O ID da coluna de destino.
+ */
+function handlePasteCard(targetColumnId) {
+    if (!clipboard || clipboard.type !== 'card') {
+        showFloatingMessage('Nenhum cartão para colar.', 'warning');
+        return;
+    }
+
+    const targetColumn = findColumn(targetColumnId);
+    if (!targetColumn) return;
+
+    if (clipboard.mode === 'cut') {
+        const sourceColumn = getColumn(clipboard.sourceColumnId);
+        if (sourceColumn) {
+            // Sempre remove da origem
+            const cardIndex = sourceColumn.cardIds.indexOf(clipboard.sourceCardId);
+            if (cardIndex > -1) {
+                sourceColumn.cardIds.splice(cardIndex, 1);
+                saveColumn(sourceColumn);
+            }
+        }
+        // Sempre adiciona ao destino
+        targetColumn.cardIds.push(clipboard.sourceCardId);
+        saveColumn(targetColumn);
+    } else { // 'copy'
+        const newCard = saveCard(clipboard.data);
+        targetColumn.cardIds.push(newCard.id);
+        saveColumn(targetColumn);
+    }
+
+    saveState();
+    clipboard = null;
+    showFloatingMessage('Cartão colado com sucesso!', 'success');
+    showSuccessAndRefresh(null, currentBoard.id);
+}
+
+/**
  * Busca a cor de uma etiqueta no mapa de cores pré-carregado.
  * @param {string} tagName - O nome da etiqueta.
  * @returns {string} A cor hexadecimal da etiqueta ou uma cor padrão.
@@ -1807,6 +1915,74 @@ function findCardAndColumn(cardId) {
 
 function findColumn(columnId) {
     return currentBoard.columns.find(c => c.id === columnId);
+}
+
+/**
+ * Atualiza a visibilidade dos botões de "colar" nas colunas.
+ */
+function updatePasteButtons() {
+    const pasteButtons = document.querySelectorAll('.paste-card-btn');
+    const display = (clipboard && clipboard.type === 'card') ? 'inline-block' : 'none';
+    pasteButtons.forEach(btn => {
+        btn.style.display = display;
+    });
+}
+
+/**
+ * Lida com a ação de colar via atalho de teclado (Ctrl+V).
+ * Cola o item na primeira coluna do quadro atual.
+ */
+function handlePaste() {
+    if (clipboard && clipboard.type === 'card') {
+        // Cola sempre na primeira coluna do quadro ATUAL
+        if (currentBoard.columns.length > 0) {
+            const targetColumnId = currentBoard.columns[0].id;
+            handlePasteCard(targetColumnId);
+        } else {
+            showFloatingMessage('Crie uma coluna para colar o cartão.', 'warning');
+        }
+    } else if (clipboard && clipboard.type === 'column') {
+        handlePasteColumn();
+    }
+}
+
+function handleCopyColumn(columnId) {
+    const columnToCopy = findColumn(columnId);
+    if (columnToCopy) {
+        const cardsToCopy = columnToCopy.cards.map(card => ({
+            ...card,
+            id: null, // Reseta o ID para criar um novo
+            creatorId: currentUser.id,
+            createdAt: new Date().toISOString()
+        }));
+
+        clipboard = {
+            type: 'column',
+            mode: 'copy',
+            data: {
+                ...columnToCopy,
+                id: null, // Reseta o ID da coluna
+                title: `${columnToCopy.title} (Cópia)`,
+                cards: cardsToCopy // Armazena os dados completos dos cartões a serem criados
+            }
+        };
+        showFloatingMessage('Coluna copiada!', 'info');
+        // Não precisa de updatePasteButtons, pois a colagem de coluna é via Ctrl+V
+    }
+}
+
+function handleCutColumn(columnId) {
+    const columnToCut = findColumn(columnId);
+    if (columnToCut) {
+        clipboard = {
+            type: 'column',
+            mode: 'cut',
+            sourceColumnId: columnId,
+            sourceBoardId: currentBoard.id,
+            data: columnToCut
+        };
+        showFloatingMessage('Coluna recortada! Use Ctrl+V para colar em outro quadro.', 'info');
+    }
 }
 
 // Adicione esta função se ela não existir, ou substitua a antiga
@@ -1869,6 +2045,53 @@ async function saveBoardAsTemplate() {
         showDialogMessage(dialog, `Template '${newTemplate.name}' salvo com sucesso!`, 'success');
         setTimeout(() => dialog.close(), 1500);
     });
+}
+
+function handlePasteColumn() {
+    if (!clipboard || clipboard.type !== 'column') {
+        showFloatingMessage('Nenhuma coluna para colar.', 'warning');
+        return;
+    }
+
+    if (clipboard.mode === 'cut') {
+        // Lógica para MOVER a coluna
+        const { sourceColumnId, sourceBoardId } = clipboard;
+
+        // Não pode colar no mesmo quadro de onde recortou
+        if (sourceBoardId === currentBoard.id) {
+            showFloatingMessage('Para reordenar colunas no mesmo quadro, apenas arraste e solte.', 'info');
+            clipboard = null; // Limpa o clipboard para evitar ações repetidas
+            return;
+        }
+
+        // Remove a coluna do quadro de origem
+        const sourceBoard = getBoard(sourceBoardId);
+        if (sourceBoard) {
+            sourceBoard.columnIds = sourceBoard.columnIds.filter(id => id !== sourceColumnId);
+            saveBoard(sourceBoard);
+        }
+
+        // Adiciona a coluna ao quadro atual
+        const targetBoard = getBoard(currentBoard.id);
+        targetBoard.columnIds.push(sourceColumnId);
+        saveBoard(targetBoard);
+
+        showFloatingMessage('Coluna movida com sucesso!', 'success');
+
+    } else { // 'copy'
+        // Lógica para COPIAR a coluna
+        const columnData = clipboard.data;
+        const newCardIds = columnData.cards.map(cardData => saveCard(cardData).id);
+        const newColumn = saveColumn({ ...columnData, cardIds: newCardIds });
+        const boardData = getBoard(currentBoard.id);
+        boardData.columnIds.push(newColumn.id);
+        saveBoard(boardData);
+        showFloatingMessage('Coluna colada com sucesso!', 'success');
+    }
+
+    saveState(); // Salva o estado para o Desfazer
+    clipboard = null; // Limpa a área de transferência
+    showSuccessAndRefresh(null, currentBoard.id);
 }
 
 function handlePreferencesCancel() {
@@ -2043,6 +2266,7 @@ function savePreferencesData() {
     };
 
     if (updateUser(user.id, updatedUser)) {
+        currentUser = updatedUser; // ATUALIZAÇÃO: Garante que a variável local seja atualizada.
         // Atualizar os valores originais
         kanbanIsSaved = true;
         applyUserTheme(); // Aplica globalmente
