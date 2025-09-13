@@ -133,6 +133,7 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || 'system-tags-prio';
             document.getElementById('pref-board-show-icon').checked = userData.preferences.showBoardIcon !== false;
             document.getElementById('pref-board-show-title').checked = userData.preferences.showBoardTitle !== false;
             document.getElementById('pref-card-show-details').checked = userData.preferences.showCardDetails !== false;
+            document.getElementById('pref-smart-header').checked = userData.preferences.smartHeader === true;
         }
         
         // --- LÓGICA DE COR PRIMÁRIA ---
@@ -239,7 +240,7 @@ function setupEventListeners() {
 
     // Para checkboxes
     [
-        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details'
+        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details', 'pref-smart-header'
     ].forEach(id => document.getElementById(id)?.addEventListener('change', () => { isSaved = false; }));
     
     // Para opções de privacidade
@@ -500,6 +501,7 @@ async function processProfileUpdate() {
             showBoardIcon: document.getElementById('pref-board-show-icon').checked,
             showBoardTitle: document.getElementById('pref-board-show-title').checked,
             showCardDetails: document.getElementById('pref-card-show-details').checked,
+            smartHeader: document.getElementById('pref-smart-header').checked,
             defaultTagTemplateId: document.getElementById('default-tag-template').value,
             primaryColor: primaryColor // Salva a nova preferência de cor
         }
@@ -786,7 +788,7 @@ function showGroupSearchDialog() {
         <div class="feedback" id="group-search-feedback"></div>
         
         <div class="modal-actions">
-            <button id="group-search-cancel" class="btn btn-secondary">Cancelar</button>
+            <button id="group-search-cancel" class="btn cancel">Cancelar</button>
         </div>
     `;
     
@@ -995,6 +997,7 @@ function restoreOriginalData() {
     document.getElementById('pref-board-show-icon').checked = prefs.showBoardIcon !== false;
     document.getElementById('pref-board-show-title').checked = prefs.showBoardTitle !== false;
     document.getElementById('pref-card-show-details').checked = prefs.showCardDetails !== false;
+    document.getElementById('pref-smart-header').checked = prefs.smartHeader === true;
 
     // Opção de privacidade
     const privacyValue = originalUserData.privacy || 'private';

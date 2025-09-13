@@ -433,6 +433,9 @@ export function applyUserTheme() {
 
     // 3. Aplica a cor primária
     applyPrimaryColor(user.preferences?.primaryColor);
+
+    // 4. Aplica o comportamento do header inteligente
+    initSmartHeader();
 }
 
 /**
@@ -466,6 +469,49 @@ function applyFontSize(size) {
     const sizeMap = { small: '0.75rem', medium: '1rem', large: '1.3rem', 'x-large': '1.6rem' };
     const fontSizeValue = sizeMap[size] || '1rem'; // Padrão para 1rem (medium)
     document.documentElement.style.fontSize = fontSizeValue;
+}
+
+/**
+ * Inicializa ou desativa o comportamento de "header inteligente" (auto-ocultar).
+ */
+function initSmartHeader() {
+    const user = getCurrentUser();
+    const header = document.getElementById('main-header');
+    if (!user || !header) return;
+
+    const isEnabled = user.preferences?.smartHeader === true;
+
+    // Remove listeners antigos para evitar duplicação
+    document.removeEventListener('mousemove', handleHeaderMouseMove);
+
+    if (isEnabled) {
+        document.body.classList.add('smart-header-enabled');
+        document.addEventListener('mousemove', handleHeaderMouseMove);
+    } else {
+        document.body.classList.remove('smart-header-enabled');
+        header.classList.remove('show-header');
+        // Garante que a classe do indicador seja removida ao desativar a função
+        document.body.classList.remove('header-is-visible');
+    }
+}
+
+/**
+ * Lida com o movimento do mouse para mostrar/ocultar o header.
+ */
+function handleHeaderMouseMove(e) {
+    const header = document.getElementById('main-header');
+    if (!header) return;
+
+    // Mostra o header se o mouse estiver na área do topo da página (ex: 60px)
+    // ou sobre o próprio header, caso ele já esteja visível.
+    if (e.clientY < 60 || header.matches(':hover')) {
+        header.classList.add('show-header');
+        document.body.classList.add('header-is-visible');
+    } else {
+        // Esconde o header se o mouse estiver fora da área de ativação.
+        header.classList.remove('show-header');
+        document.body.classList.remove('header-is-visible');
+    }
 }
 
 /**

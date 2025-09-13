@@ -2135,6 +2135,7 @@ function showPreferencesDialog() { // REFEITA
         showStatus: prefs.showStatus !== false,
         showAssignment: prefs.showAssignment !== false,
         showCardDetails: prefs.showCardDetails !== false,
+        smartHeader: prefs.smartHeader === true,
         defaultTagTemplateId: prefs.defaultTagTemplateId || 'system-tags-prio'
     };
 
@@ -2150,6 +2151,7 @@ function showPreferencesDialog() { // REFEITA
     dialog.querySelector('#pref-card-show-status').checked = originalPreferences.showStatus;
     dialog.querySelector('#pref-card-show-assignment').checked = originalPreferences.showAssignment;
     dialog.querySelector('#pref-card-show-details').checked = originalPreferences.showCardDetails;
+    dialog.querySelector('#pref-smart-header').checked = originalPreferences.smartHeader;
 
     // Popula e seleciona o template de tags
     populateTagTemplatesSelect(originalPreferences.defaultTagTemplateId);
@@ -2191,7 +2193,8 @@ function setupPreferencesControlsListeners(dialog) {
         { id: 'pref-card-show-details', action: applyCardPreview },
         { id: 'pref-card-show-assignment', action: applyCardPreview },
         { id: 'pref-board-show-title', action: applyTitlePreview },
-        { id: 'pref-board-show-icon', action: applyTitlePreview }
+        { id: 'pref-board-show-icon', action: applyTitlePreview },
+        { id: 'pref-smart-header', action: applyUserTheme } // Aplica o tema para ativar/desativar
     ];
 
     fieldsToTrack.forEach(field => {
@@ -2261,6 +2264,7 @@ function savePreferencesData() {
             showBoardIcon: document.getElementById('pref-board-show-icon').checked,
             showBoardTitle: document.getElementById('pref-board-show-title').checked,
             showCardDetails: document.getElementById('pref-card-show-details').checked,
+            smartHeader: document.getElementById('pref-smart-header').checked,
             primaryColor: primaryColor
         }
     };
