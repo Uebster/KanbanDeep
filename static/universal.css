@@ -664,6 +664,81 @@ body.no-primary-effects .nav-item.active {
     box-shadow: none !important; /* !important para sobrescrever os :hover */
 }
 
+/* ===== ESTILOS PARA EDITOR DE TEMPLATES (Universal) ===== */
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: var(--bg-page);
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+}
+
+.editor-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.editor-item input[type="text"] {
+    flex-grow: 1;
+}
+
+.editor-item input[type="color"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding: 0;
+    height: 35px;
+    width: 40px;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.editor-item input[type="color"]::-webkit-color-swatch { border-radius: 4px; border: 1px solid var(--border); }
+.editor-item input[type="color"]::-moz-color-swatch { border-radius: 4px; border: 1px solid var(--border); }
+
+.remove-btn {
+    background-color: #e74c3c; color: white; border: none; border-radius: 50%;
+    width: 24px; height: 24px; cursor: pointer; font-weight: bold;
+    line-height: 24px; flex-shrink: 0; font-size: 1.2rem; padding: 0;
+}
+.remove-btn:hover { background-color: #c0392b; }
+
+/* NOVO: Estilos para agrupar múltiplos controles em uma única linha */
+.inline-controls {
+    display: flex;
+    align-items: center; /* Alinha verticalmente os controles */
+    gap: 10px;
+}
+
+/* Permite que o input principal cresça para preencher o espaço */
+.inline-controls input[type="text"]:first-child {
+    flex-grow: 1;
+}
+
+/* Garante que o seletor de ícone e o botão não encolham */
+/* Estilos para o seletor de ícone (Universal) */
+.icon-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-display {
+    width: 50px;
+    text-align: center;
+    font-size: 1.5rem;
+    padding: 5px;
+    background-color: var(--bg-page); /* Usa variável padrão */
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
 
 /* ===== PALETA DE CORES (Adicionado) ===== */
 .color-palette {

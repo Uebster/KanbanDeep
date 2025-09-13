@@ -1,33 +1,37 @@
 /* --- LAYOUT PRINCIPAL DA PÁGINA --- */
-.container {
+/* O layout principal agora é controlado pelo .card em universal.css, e a navegação por .showcase-navbar */
+
+.card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
     width: 100%;
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 20px auto;
-    padding: 0 20px;
+    border: 1px solid var(--primary);
 }
-.tabs {
-    display: flex; gap: 8px; margin-bottom: 25px;
-    border-bottom: 1px solid var(--border);
-}
-.tab {
-    padding: 12px 24px; background-color: transparent; color: var(--text-muted);
-    border: none; border-bottom: 3px solid transparent; cursor: pointer;
-    font-size: 1.1rem; font-weight: 500; transition: var(--transition-fast);
-}
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.template-section { margin-bottom: 40px; }
+/* Estrutura das seções, inspirada em groups.css */
+.template-section {
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 25px; /* Espaçamento entre as seções e a navbar */
+}
+.template-section:not(:last-child) {
+    margin-bottom: 25px;
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
-    padding-bottom: 15px;
 }
 .templates-grid {
     display: grid;
@@ -84,104 +88,4 @@
     font-weight: 500;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-}
-
-/* Em templates.css */
-
-/* --- Estilos para os Editores nos Diálogos --- */
-#board-columns-editor, #tags-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background-color: var(--bg-page);
-    padding: 10px;
-    border-radius: 6px;
-    margin: 10px 0;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.editor-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.editor-item input[type="text"] {
-    flex-grow: 1;
-    padding: 8px;
-    font-size: 0.9rem;
-}
-
-.editor-item input[type="color"] {
-    padding: 2px;
-    height: 35px;
-    width: 40px;
-    border: none;
-    background: none;
-}
-
-.editor-item .remove-btn {
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    font-weight: bold;
-    line-height: 24px;
-}
-
-/* ===== ESTILOS PARA OS EDITORES NOS DIÁLOGOS ===== */
-#board-columns-editor, #tags-editor {
-    display: flex; flex-direction: column; gap: 10px;
-    background-color: var(--bg-page); padding: 10px; border-radius: 6px;
-    margin: 10px 0 0; max-height: 200px; overflow-y: auto;
-    border: 1px solid var(--border);
-}
-.editor-item { display: flex; align-items: center; gap: 10px; }
-.editor-item input[type="text"] { flex-grow: 1; padding: 8px; font-size: 0.9rem; }
-.editor-item input[type="color"] {
-    -webkit-appearance: none; -moz-appearance: none; appearance: none;
-    padding: 0; height: 35px; width: 40px; border: none; background: none; cursor: pointer;
-}
-.editor-item input[type="color"]::-webkit-color-swatch { border-radius: 4px; border: 1px solid var(--border); }
-.editor-item input[type="color"]::-moz-color-swatch { border-radius: 4px; border: 1px solid var(--border); }
-.editor-item .remove-btn {
-    background-color: #c0392b; color: white; border: none; border-radius: 50%;
-    width: 24px; height: 24px; cursor: pointer; font-weight: bold;
-    line-height: 24px; flex-shrink: 0;
-}
-
-.hidden {
-    display: none !important; /* !important garante que ela se sobreponha a outras regras */
-}
-
-/* Estilos para o seletor de ícone (copiado de templates.css e ajustado) */
-.icon-input-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.icon-display {
-    width: 50px;
-    text-align: center;
-    font-size: 1.5rem;
-    padding: 5px;
-    background-color: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-}
-
-.icon-picker-btn {
-    font-size: 2.2rem; /* Aumenta o tamanho do ícone no seletor */
-    padding: 12px;
-}
-
-/* Adiciona espaçamento vertical para os botões de adicionar coluna/etiqueta nos diálogos */
-#add-board-column-btn,
-#add-tag-btn {
-    margin-top: 15px;
 }

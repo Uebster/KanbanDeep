@@ -820,6 +820,7 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
     };
 
     updateItemCount(dialog);
+    toggleEditorContainerVisibility(dialog); // Garante o estado inicial correto
     dialog.showModal();
 }
 
@@ -844,15 +845,15 @@ function createTemplateEditorDialog(type) {
             </div>
         </div>
         <div class="form-group">
-            <label>Ícone:</label>
-            <div class="icon-input-group">
-                <input type="text" class="icon-display template-icon-input" readonly>
-                <button type="button" class="btn edit btn-choose-icon">Escolher</button>
-            </div>
+            <label>Nome do ${title}</label>
+            <input type="text" class="template-name-input" placeholder="Digite o nome aqui...">
         </div>
         <div class="form-group">
-            <label>Nome do ${title}:</label>
-            <input type="text" class="template-name-input">
+            <label>Ícone</label>
+            <div class="icon-input-group">
+                <input type="text" class="icon-display template-icon-input" readonly>
+                <button type="button" class="btn btn-sm edit btn-choose-icon">Escolher</button>
+            </div>
         </div>
         <div class="form-group">
             <label>Descrição:</label>
@@ -879,16 +880,18 @@ function addTemplateItemToEditor(dialog, name = '', color = '#333') {
         showDialogMessage(dialog, 'Limite de 8 itens atingido.', 'warning');
         return;
     }
+    editor.classList.remove('hidden'); // Garante que o container esteja visível ao adicionar
     const itemEl = document.createElement('div');
     itemEl.className = 'editor-item';
     itemEl.innerHTML = `
-        <input type="text" value="${name}" placeholder="Nome do item" class="form-control">
+        <input type="text" value="${name}" placeholder="Nome do item">
         <input type="color" value="${color}">
-        <button class="btn btn-sm danger remove-btn">-</button>
+        <button class="remove-btn" title="Remover">-</button>
     `;
     itemEl.querySelector('.remove-btn').onclick = () => {
         itemEl.remove();
         updateItemCount(dialog);
+        toggleEditorContainerVisibility(dialog); // Verifica se precisa esconder o container
     };
     editor.appendChild(itemEl);
     updateItemCount(dialog);
@@ -898,6 +901,13 @@ function updateItemCount(dialog) {
     const count = dialog.querySelector('.editor-container').children.length;
     dialog.querySelector('.item-count').textContent = count;
     dialog.querySelector('.btn-add-item').disabled = count >= 8;
+}
+
+function toggleEditorContainerVisibility(dialog) {
+    const editor = dialog.querySelector('.editor-container');
+    if (!editor) return;
+    const hasItems = editor.children.length > 0;
+    editor.classList.toggle('hidden', !hasItems);
 }
 
 function saveTemplateFromEditor(dialog, type) {

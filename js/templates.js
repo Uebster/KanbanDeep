@@ -232,7 +232,7 @@ function deleteTagTemplate(templateId) {
 }
 
 function setupTabs() {
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     const actionsMenu = document.getElementById('actions-dropdown');
 

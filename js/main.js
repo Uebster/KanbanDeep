@@ -9,7 +9,7 @@ import { initProfilePage } from './profile.js';
 import { initGroupsPage, checkAndSendReports } from './groups.js';
 import { initNotificationsPage } from './notifications.js';
 import { initFriendsPage } from './friends.js';
-import { initTemplatesPage } from './template.js';
+import { initTemplatesPage } from './templates.js';
 import { initPublicProfilePage } from './public-profile.js';
 import { updateUserAvatar } from './ui-controls.js';
 
