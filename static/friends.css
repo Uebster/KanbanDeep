@@ -1,33 +1,18 @@
 /* static/friends.css */
 
-.container {
+/* O layout principal agora é controlado pelo .card em universal.css */
+/* A navegação é controlada por .showcase-navbar em universal.css */
+
+.card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
     width: 100%;
     max-width: 1200px;
     margin: 20px auto;
-    padding: 0 20px;
+    border: 1px solid var(--primary);
 }
-
-.tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 25px;
-    border-bottom: 1px solid var(--border);
-}
-
-.tab {
-    padding: 12px 24px;
-    background-color: transparent;
-    color: var(--text-muted);
-    border: none;
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    font-size: 1.1rem;
-    font-weight: 500;
-    transition: var(--transition-fast);
-}
-
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
@@ -37,12 +22,17 @@
     to { opacity: 1; }
 }
 
-.card {
-    background-color: var(--bg-card);
+/* Estrutura das seções, inspirada em groups.css e templates.css */
+.form-section {
+    border: 1px solid var(--primary);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    padding: 30px;
+    padding: 20px;
+    margin-top: 25px; /* Espaçamento entre as seções e a navbar */
 }
+.form-section:not(:last-child) {
+    margin-bottom: 25px;
+}
+
 
 .card-header {
     display: flex;
@@ -113,6 +103,15 @@
 .user-username, .request-message {
     color: var(--text-muted);
     font-size: 0.9rem;
+}
+.user-mutual-friends {
+    color: var(--primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .user-actions, .request-actions {

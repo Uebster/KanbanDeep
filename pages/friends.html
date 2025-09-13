@@ -37,16 +37,16 @@
         </div>
     </header>
 
-    <main class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="my-friends">Meus Amigos</button>
-            <button class="tab" data-tab="pending-requests">Solicitações</button>
-            <button class="tab" data-tab="find-users">Buscar Usuários</button>
-        </div>
+    <main class="card">
+        <nav class="showcase-navbar">
+            <button class="nav-item active" data-tab="my-friends">Meus Amigos</button>
+            <button class="nav-item" data-tab="pending-requests">Solicitações</button>
+            <button class="nav-item" data-tab="find-users">Buscar Usuários</button>
+        </nav>
 
         <!-- Conteúdo da Aba: Meus Amigos -->
         <div id="my-friends" class="tab-content active">
-            <div class="card">
+            <section class="form-section">
                 <div class="card-header">
                     <h2 class="card-title">Lista de Amigos</h2>
                     <input type="text" id="friend-filter-input" class="filter-input" placeholder="Filtrar amigos por nome...">
@@ -54,28 +54,28 @@
                 <div id="friends-list" class="user-list">
                     <!-- Amigos serão renderizados aqui -->
                 </div>
-            </div>
+            </section>
         </div>
 
         <!-- Conteúdo da Aba: Solicitações Pendentes -->
         <div id="pending-requests" class="tab-content">
-            <div class="card">
-                <h2 class="card-title">Solicitações Recebidas</h2>
-                <div id="received-requests-list" class="request-list">
-                    <!-- Solicitações recebidas serão renderizadas aqui -->
+            <section class="form-section">
+                <div class="card-header">
+                    <h2 class="card-title">Solicitações Recebidas</h2>
                 </div>
-            </div>
-            <div class="card" style="margin-top: 20px;">
-                <h2 class="card-title">Solicitações Enviadas</h2>
-                <div id="sent-requests-list" class="request-list">
-                    <!-- Solicitações enviadas serão renderizadas aqui -->
+                <div id="received-requests-list" class="request-list"></div>
+            </section>
+            <section class="form-section">
+                <div class="card-header">
+                    <h2 class="card-title">Solicitações Enviadas</h2>
                 </div>
-            </div>
+                <div id="sent-requests-list" class="request-list"></div>
+            </section>
         </div>
 
         <!-- Conteúdo da Aba: Buscar Usuários -->
         <div id="find-users" class="tab-content">
-            <div class="card">
+            <section class="form-section">
                 <div class="card-header">
                     <h2 class="card-title">Encontrar Novos Amigos</h2>
                 </div>
@@ -85,7 +85,7 @@
                 <div id="user-search-results" class="user-list">
                     <!-- Resultados da busca serão renderizados aqui -->
                 </div>
-            </div>
+            </section>
         </div>
     </main>
 

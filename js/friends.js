@@ -24,20 +24,20 @@ export function initFriendsPage() {
 }
 
 function setupEventListeners() {
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', (e) => switchTab(e.currentTarget.dataset.tab));
-    });
+document.querySelectorAll('.nav-item').forEach(tab => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+});
 
     document.getElementById('friend-filter-input')?.addEventListener('input', (e) => renderFriendsList(e.target.value));
     document.getElementById('user-search-input')?.addEventListener('input', debounce((e) => renderUserSearchResults(e.target.value), 300));
 
-    document.querySelector('main.container').addEventListener('click', handleActionClick);
+    document.querySelector('main.card').addEventListener('click', handleActionClick);
 }
 
 function switchTab(tabId) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+    document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
     document.getElementById(tabId).classList.add('active');
 }
 
@@ -48,9 +48,15 @@ function loadAndRenderAll() {
     const notifications = getNotifications(currentUser.id);
     receivedRequests = notifications.filter(n => n.type === 'friend_request' && n.status === 'pending');
 
-    // Para solicitações enviadas, precisamos verificar as notificações de outros usuários
-    const allNotifications = allUsers.flatMap(u => getNotifications(u.id));
-    sentRequests = allNotifications.filter(n => n.type === 'friend_request' && n.senderId === currentUser.id && n.status === 'pending');
+    // CORREÇÃO: Para solicitações enviadas, precisamos manter o contexto de quem é o destinatário.
+    const allNotificationsWithContext = [];
+    allUsers.forEach(user => {
+        const userNotifications = getNotifications(user.id);
+        userNotifications.forEach(notification => {
+            allNotificationsWithContext.push({ ...notification, receiverId: user.id }); // Adiciona o ID do destinatário
+        });
+    });
+    sentRequests = allNotificationsWithContext.filter(n => n.type === 'friend_request' && n.senderId === currentUser.id && n.status === 'pending');
 
     renderFriendsList();
     renderRequests();
@@ -94,7 +100,7 @@ function renderRequests() {
     sentListEl.innerHTML = '';
 
     if (receivedRequests.length === 0) {
-        receivedListEl.innerHTML = '<p class="empty-list-message">Nenhuma solicitação de amizade recebida.</p>';
+        receivedListEl.innerHTML = '<div class="empty-list-message"><span class="icon">📥</span>Nenhuma solicitação de amizade recebida.</div>';
     } else {
         receivedRequests.forEach(req => {
             const itemEl = document.createElement('div');
@@ -115,10 +121,10 @@ function renderRequests() {
     }
 
     if (sentRequests.length === 0) {
-        sentListEl.innerHTML = '<p class="empty-list-message">Nenhuma solicitação de amizade enviada.</p>';
+        sentListEl.innerHTML = '<div class="empty-list-message"><span class="icon">📤</span>Nenhuma solicitação de amizade enviada.</div>';
     } else {
         sentRequests.forEach(req => {
-            const receiver = allUsers.find(u => u.id === req.userId);
+            const receiver = allUsers.find(u => u.id === req.receiverId); // CORREÇÃO: Usa a propriedade receiverId
             if (!receiver) return;
             const itemEl = document.createElement('div');
             itemEl.className = 'request-item';
@@ -158,6 +164,11 @@ function renderUserSearchResults(query = '') {
     }
 
     filteredUsers.forEach(user => {
+        // Calcula amigos em comum
+        const currentUserFriendIds = friends.map(f => f.id);
+        const targetUserFriendIds = user.friends || [];
+        const mutualFriendsCount = currentUserFriendIds.filter(id => targetUserFriendIds.includes(id)).length;
+
         const itemEl = document.createElement('div');
         itemEl.className = 'user-item';
         itemEl.innerHTML = `
@@ -165,6 +176,11 @@ function renderUserSearchResults(query = '') {
             <div class="user-info">
                 <div class="user-name">${user.name}</div>
                 <div class="user-username">@${user.username}</div>
+                ${mutualFriendsCount > 0 ? 
+                    `<div class="user-mutual-friends">
+                        🧑‍🤝‍🧑 ${mutualFriendsCount} amigo(s) em comum
+                    </div>` : ''
+                }
             </div>
             <div class="user-actions">
                 <button class="btn btn-secondary btn-sm" data-action="view-profile" data-id="${user.id}">Ver Perfil</button>
