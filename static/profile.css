@@ -17,7 +17,7 @@ body {
     box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
     padding: 30px;
     width: 100%;
-    max-width: 1400px; /* Alinhado com create-user.css */
+    max-width: 1600px; /* Alinhado com create-user.css */
     margin: 20px auto; /* Centraliza o card horizontalmente e adiciona margem superior */
     border: 1px solid var(--primary);
 }

@@ -58,16 +58,16 @@ function setupEventListeners() {
     document.getElementById('close-notification-details')?.addEventListener('click', () => {
         document.getElementById('notification-details-dialog').close();
     });
-    
+
     document.getElementById('action-notification-btn')?.addEventListener('click', handleNotificationDialogAction);
-    
+
     // Diálogo de confirmação
     document.getElementById('confirmation-cancel')?.addEventListener('click', () => {
         document.getElementById('confirmation-dialog').close();
     });
 
     // Lógica das abas
-    document.querySelectorAll('.tab').forEach(tab => {
+    document.querySelectorAll('.nav-item').forEach(tab => {
         tab.addEventListener('click', () => {
             const tabId = tab.dataset.tab;
             switchTab(tabId);
@@ -76,13 +76,13 @@ function setupEventListeners() {
 }
 
 function switchTab(tabId) {
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
-    
+
     tabs.forEach(tab => tab.classList.remove('active'));
     tabContents.forEach(content => content.classList.remove('active'));
-    
-    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+
+    document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
     document.getElementById(tabId).classList.add('active');
     
     // Aplicar filtros específicos para cada aba
@@ -168,6 +168,8 @@ function getNotificationIcon(type) {
         friend_accepted: '✅',
         group_request: '👪',
         group_invite: '📨',
+        group_leave: '🚪',
+        group_removal: '🚫',
         card_mention: '📍',
         card_overdue: '⏰',
         card_due_today: '📅',
@@ -260,21 +262,21 @@ function filterNotificationsByTime(notificationsList, timeFilter = null) {
 
 function filterCardNotifications() {
     const filter = document.getElementById('cardStatusFilter').value;
-    const notificationsList = notifications.filter(n => n.type.includes('card_'));
+    const allCardNotifications = notifications.filter(n => n.type.startsWith('card_'));
     
     const cardNotificationsList = document.querySelector('#card-notifications .notifications-list');
     if (!cardNotificationsList) return;
     
     cardNotificationsList.innerHTML = '';
     
-    let filteredNotifications = notificationsList;
+    let filteredNotifications = allCardNotifications;
     
     if (filter !== 'all') {
-        filteredNotifications = notificationsList.filter(notification => notification.type === `card_${filter}`);
+        filteredNotifications = allCardNotifications.filter(notification => notification.type === `card_${filter}`);
     }
     
     if (filteredNotifications.length === 0) {
-        cardNotificationsList.innerHTML = '<p class="no-notifications">Nenhuma notificação de cartão encontrada.</p>';
+        cardNotificationsList.innerHTML = '<p class="no-notifications">Nenhuma notificação de cartão encontrada para este filtro.</p>';
         return;
     }
     
@@ -356,26 +358,32 @@ function renderGroupRequests() {
     const requestsList = document.querySelector('#group-requests .requests-list');
     if (!requestsList) return;
     
-    const groupRequests = notifications.filter(n => n.type === 'group_request' && n.status === 'pending');
+    // CORREÇÃO: Filtra tanto solicitações para entrar quanto convites recebidos
+    const groupNotifications = notifications.filter(n => 
+        (n.type === 'group_request' || n.type === 'group_invitation') && 
+        n.status === 'pending'
+    );
     
     requestsList.innerHTML = '';
     
-    if (groupRequests.length === 0) {
-        requestsList.innerHTML = '<p class="no-requests">Nenhuma solicitação de grupo pendente.</p>';
+    if (groupNotifications.length === 0) {
+        requestsList.innerHTML = '<p class="no-requests">Nenhum convite ou solicitação de grupo pendente.</p>';
         return;
     }
     
-    groupRequests.forEach(request => {
+    groupNotifications.forEach(request => {
         const requestEl = document.createElement('div');
         requestEl.className = 'request-item';
         requestEl.dataset.id = request.id;
         
+        const title = request.type === 'group_request' ? request.sender : (request.data?.groupName || 'Grupo');
+
         requestEl.innerHTML = `
             <div class="request-avatar">
-                <img src="https://ui-avatars.com/api/?name=${request.group}&background=random" alt="${request.group}">
+                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=random" alt="${title}">
             </div>
             <div class="request-info">
-                <div class="request-name">${request.group}</div>
+                <div class="request-name">${title}</div>
                 <div class="request-message">${request.message}</div>
             </div>
             <div class="request-actions">
@@ -505,6 +513,8 @@ function acceptNotification(notificationId) {
                 
                 saveNotifications(currentUser.id, notifications);
                 renderNotifications();
+                renderFriendRequests();
+                renderGroupRequests(); // ATUALIZAÇÃO: Renderiza também a lista de grupos
                 updateNotificationBadge();
 
                 return true;
@@ -533,6 +543,8 @@ function rejectNotification(notificationId) {
             
             saveNotifications(currentUser.id, notifications);
             renderNotifications();
+            renderFriendRequests();
+            renderGroupRequests(); // ATUALIZAÇÃO: Renderiza também a lista de grupos
             updateNotificationBadge();
             
             showDialogMessage(dialog, 'Solicitação recusada.', 'info');
@@ -613,11 +625,12 @@ function handleNotificationDialogAction() {
         window.location.href = `public-profile.html?userId=${notification.senderId}`;
 
     } else if (notification.type === 'report' && notification.data.groupName) {
-        // Para relatórios, redireciona para a página de grupos e abre as estatísticas
-        const group = getAllGroups().find(g => g.name === notification.data.groupName);
+        // CORREÇÃO: Redireciona para a aba de relatórios e pré-seleciona os filtros
+        const group = getAllGroups().find(g => g.name === notification.data.groupName); // Idealmente, seria por ID
         if (group) {
-            localStorage.setItem('selectedGroupId', group.id);
-            localStorage.setItem('openStatistics', 'true');
+            localStorage.setItem('openTab', 'reports');
+            localStorage.setItem('groupId', group.id);
+            localStorage.setItem('reportPeriod', notification.data.period);
             window.location.href = 'groups.html';
         }
     }
@@ -733,6 +746,21 @@ export function addGroupInvitationNotification(groupName, groupId, adminName, ad
     };
     
     addNotificationToUser(userId, notification);
+    return notification;
+}
+
+export function addGroupLeaveNotification(groupName, leaverName, adminId) {
+    const notification = {
+        id: 'group-leave-' + Date.now() + '-' + adminId,
+        type: 'group_leave',
+        title: 'Membro Saiu do Grupo',
+        message: `${leaverName} saiu do grupo "${groupName}"`,
+        date: new Date().toISOString(),
+        read: false,
+        status: 'unread'
+    };
+    
+    addNotificationToUser(adminId, notification);
     return notification;
 }
 

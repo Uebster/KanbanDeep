@@ -34,6 +34,7 @@ import {
     addGroupRemovalNotification,
     addMeetingNotification,
     addMessageNotification,
+    addGroupLeaveNotification,
     addReportNotification
 } from './notifications.js';
 
@@ -60,6 +61,7 @@ export function initGroupsPage() {
     // LER PARÂMETROS DA URL para abrir uma aba específica
     const openTab = localStorage.getItem('openTab');
     const groupId = localStorage.getItem('groupId');
+    const reportPeriod = localStorage.getItem('reportPeriod');
     
     // VERIFICAÇÃO PARA ABRIR A ABA DE CRIAÇÃO DE GRUPO
     const openCreateGroup = localStorage.getItem('openCreateGroup');
@@ -85,6 +87,18 @@ export function initGroupsPage() {
         localStorage.removeItem('openTab');
         localStorage.removeItem('groupId');
         switchTab(openTab, { groupId: groupId });
+    } else if (openTab === 'reports' && groupId && reportPeriod) {
+        localStorage.removeItem('openTab');
+        localStorage.removeItem('groupId');
+        localStorage.removeItem('reportPeriod');
+        
+        switchTab('reports');
+        
+        // Pré-seleciona os filtros e gera o relatório
+        document.getElementById('report-group-select').value = groupId;
+        document.getElementById('report-period-select').value = reportPeriod;
+        initCustomSelects(); // Atualiza a UI dos selects
+        generateAndRenderReport();
     }
 }
 
@@ -122,6 +136,9 @@ function setupEventListeners() {
     document.getElementById('btn-cancel-group')?.addEventListener('click', cancelGroupCreation);
 
     
+    // --- ABA "RELATÓRIOS" ---
+    document.getElementById('generate-report-btn')?.addEventListener('click', generateAndRenderReport);
+
     // --- ABA "MEUS GRUPOS" (USANDO DELEGAÇÃO DE EVENTOS) ---
 document.getElementById('my-groups')?.addEventListener('click', (e) => {
     const button = e.target.closest('button[data-action]');
@@ -294,6 +311,9 @@ function switchTab(tabId, options = {}) {
         }
     } else if (tabId === 'meetings') {
         loadAndRenderMeetings();
+    } else if (tabId === 'reports') {
+        populateGroupSelectorForReports();
+        initCustomSelects();
     }
 }
 
@@ -1536,6 +1556,9 @@ function leaveGroup() {
                     if (groupData && groupData.memberIds) {
                         groupData.memberIds = groupData.memberIds.filter(id => id !== currentUser.id);
                         saveGroup(groupData);
+                        
+                        // Notifica o admin que o usuário saiu
+                        addGroupLeaveNotification(groupData.name, currentUser.name, groupData.adminId);
                     }
 
                     if (userProfile && userProfile.groupIds) {
@@ -1738,6 +1761,131 @@ function renderStatusChart(data) {
             }
         }
     });
+}
+
+function populateGroupSelectorForReports() {
+    const selectElement = document.getElementById('report-group-select');
+    if (!selectElement) return;
+    selectElement.innerHTML = '';
+
+    const memberGroups = groups;
+    if (memberGroups.length === 0) {
+        selectElement.innerHTML = '<option value="">Você não participa de nenhum grupo</option>';
+        selectElement.disabled = true;
+        return;
+    }
+
+    selectElement.disabled = false;
+    memberGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.name;
+        selectElement.appendChild(option);
+    });
+}
+
+function generateAndRenderReport() {
+    const groupId = document.getElementById('report-group-select').value;
+    const period = document.getElementById('report-period-select').value;
+    const container = document.getElementById('report-container');
+
+    if (!groupId) {
+        container.innerHTML = '<p class="no-templates">Por favor, selecione um grupo.</p>';
+        return;
+    }
+
+    const group = getGroup(groupId);
+    if (!group) {
+        container.innerHTML = '<p class="no-templates">Grupo não encontrado.</p>';
+        return;
+    }
+
+    // 1. Filtrar cartões pelo período
+    const now = new Date();
+    let startDate = new Date();
+    switch (period) {
+        case 'daily': startDate.setDate(now.getDate() - 1); break;
+        case 'weekly': startDate.setDate(now.getDate() - 7); break;
+        case 'monthly': startDate.setMonth(now.getMonth() - 1); break;
+    }
+
+    const allCardsInGroup = (group.boardIds || []).flatMap(boardId => {
+        const board = getFullBoardData(boardId);
+        return board ? board.columns.flatMap(col => col.cards) : [];
+    });
+
+    const cardsInPeriod = allCardsInGroup.filter(card => new Date(card.createdAt) >= startDate);
+    const cardsCompletedInPeriod = allCardsInGroup.filter(card => card.isComplete && new Date(card.completedAt) >= startDate);
+
+    // 2. Calcular métricas
+    const totalCreated = cardsInPeriod.length;
+    const totalCompleted = cardsCompletedInPeriod.length;
+    const completionRate = totalCreated > 0 ? ((totalCompleted / totalCreated) * 100).toFixed(1) : 0;
+
+    const memberPerformance = group.memberIds.map(memberId => {
+        const user = allUsers.find(u => u.id === memberId);
+        if (!user) return null;
+        const assigned = cardsInPeriod.filter(c => c.assignedTo === memberId).length;
+        const completed = cardsCompletedInPeriod.filter(c => c.assignedTo === memberId).length;
+        const productivity = assigned > 0 ? ((completed / assigned) * 100).toFixed(1) : 0;
+        return { name: user.name, assigned, completed, productivity };
+    }).filter(Boolean);
+
+    const overdueCards = allCardsInGroup.filter(c => !c.isComplete && c.dueDate && new Date(c.dueDate) < now).length;
+
+    // 3. Renderizar HTML do relatório
+    container.innerHTML = `
+        <div class="report-header">
+            <h3>Relatório de Atividade - ${group.name}</h3>
+            <p><strong>Período:</strong> ${period.charAt(0).toUpperCase() + period.slice(1)} | <strong>Gerado em:</strong> ${now.toLocaleString('pt-BR')}</p>
+        </div>
+
+        <div class="report-section">
+            <h4>Resumo Geral</h4>
+            <div class="stats-summary">
+                <div class="stat-item">
+                    <span class="stat-number">${totalCreated}</span>
+                    <span class="stat-label">Tarefas Criadas</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${totalCompleted}</span>
+                    <span class="stat-label">Tarefas Concluídas</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${completionRate}%</span>
+                    <span class="stat-label">Taxa de Conclusão</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${overdueCards}</span>
+                    <span class="stat-label">Tarefas Atrasadas</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h4>Desempenho dos Membros</h4>
+            <table class="participants-table">
+                <thead>
+                    <tr>
+                        <th>Membro</th>
+                        <th>Tarefas Atribuídas</th>
+                        <th>Tarefas Concluídas</th>
+                        <th>Produtividade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${memberPerformance.map(p => `
+                        <tr>
+                            <td>${p.name}</td>
+                            <td>${p.assigned}</td>
+                            <td>${p.completed}</td>
+                            <td>${p.productivity}%</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
 async function testServerConnection(serverUrl) {

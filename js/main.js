@@ -1,6 +1,6 @@
 // js/main.js - VERSÃO FINAL SIMPLIFICADA E SEGURA
 
-import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme } from './ui-controls.js';
+import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme, initCustomSelects } from './ui-controls.js';
 import { getCurrentUser } from './auth.js';
 import { initKanbanPage } from './kanban.js';
 import { initListUsersPage } from './list-users.js';
@@ -75,6 +75,9 @@ function setupGlobalHeader() {
 
     // Aplica o tema e a fonte do usuário em todas as páginas logadas
     applyUserTheme();
+
+    // Inicializa selects customizados em todas as páginas
+    initCustomSelects();
 
     // --- Lógica Flexível de Botões ---
     // Procura por cada botão e adiciona o listener APENAS se ele existir.

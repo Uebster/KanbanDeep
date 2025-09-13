@@ -47,6 +47,7 @@
             <button class="nav-item" data-tab="group-templates">Templates de Grupo</button>
             <button class="nav-item" data-tab="statistics">Estatísticas</button>
             <button class="nav-item" data-tab="meetings">Reuniões</button>
+            <button class="nav-item" data-tab="reports">Relatórios</button>
             <button class="nav-item" data-tab="admin-servers">Administrar Servidores</button>
         </nav>
 
@@ -77,7 +78,7 @@
                             <label for="group-icon">Ícone do Grupo:</label>
                             <div class="icon-input-group">
                                 <input type="text" id="group-icon" class="icon-display" readonly value="👥">
-                                <button type="button" id="btn-choose-group-icon" class="btn btn-sm edit">Escolher</button>
+                                <button type="button" id="btn-choose-group-icon" class="btn btn-sm">Escolher</button>
                             </div>
                         </div>
                         <div class="form-group">
@@ -208,6 +209,28 @@
         <div class="tab-content" id="meetings">
             <button id="btn-schedule-meeting" class="btn confirm" style="margin-bottom: 20px;">Agendar Nova Reunião</button>
             <div id="meetings-list" class="meetings-list"></div>
+        </div>
+
+        <div class="tab-content" id="reports">
+            <section class="form-section">
+                <div class="card-header">
+                    <h2>Gerador de Relatórios de Atividade</h2>
+                    <div class="filters">
+                        <div class="custom-select report-filter">
+                            <select id="report-group-select"></select>
+                        </div>
+                        <div class="custom-select report-filter">
+                            <select id="report-period-select">
+                                <option value="daily">Diário</option>
+                                <option value="weekly">Semanal</option>
+                                <option value="monthly">Mensal</option>
+                            </select>
+                        </div>
+                        <button id="generate-report-btn" class="btn confirm">Gerar Relatório</button>
+                    </div>
+                </div>
+                <div id="report-container"></div>
+            </section>
         </div>
 
         <div class="tab-content" id="admin-servers">

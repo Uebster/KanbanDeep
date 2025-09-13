@@ -508,17 +508,22 @@ function handleHeaderMouseMove(e) {
     const header = document.getElementById('main-header');
     if (!header) return;
 
-    // Mostra o header se o mouse estiver na área do topo da página (ex: 60px)
-    // ou sobre o próprio header, caso ele já esteja visível.
-    if (e.clientY < 60 || header.matches(':hover')) {
+    // Se o mouse está sobre o header, ele deve permanecer visível.
+    if (header.matches(':hover')) {
         header.classList.add('show-header');
         document.body.classList.add('header-is-visible');
-    } else {
-        // Esconde o header se o mouse estiver fora da área de ativação.
+        return; // Sai para não executar a lógica de esconder
+    }
+
+    // Se o mouse está na área de ativação (10px), mostra o header.
+    if (e.clientY < 10) {
+        header.classList.add('show-header');
+        document.body.classList.add('header-is-visible');
+    } 
+    // Se o mouse está na área de desativação (além de 75px), esconde o header.
+    else if (e.clientY > 75) {
         header.classList.remove('show-header');
         document.body.classList.remove('header-is-visible');
-        // CORREÇÃO: Garante que todos os dropdowns sejam fechados ao esconder o header.
-        // Isso evita que o header "desça" com um menu já aberto.
         document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
     }
 }
@@ -540,7 +545,7 @@ export function showIconPickerDialog(callback) {
                 <!-- Ícones serão inseridos aqui -->
             </div>
             <div class="modal-actions">
-                <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
+                <button id="close-icon-picker-btn" class="btn cancel">Fechar</button>
             </div>
         `;
         document.body.appendChild(dialog);

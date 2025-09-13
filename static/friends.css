@@ -9,7 +9,7 @@
     box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
     padding: 30px;
     width: 100%;
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 20px auto;
     border: 1px solid var(--primary);
 }

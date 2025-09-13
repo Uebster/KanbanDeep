@@ -1,48 +1,28 @@
 /* Container principal */
-.container {
+/* Container principal */
+.card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
     width: 100%;
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 20px auto;
-    padding: 0 20px;
+    border: 1px solid var(--primary);
 }
 
-/* Tabs */
-.tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 25px;
-    border-bottom: 1px solid var(--border);
-}
-
-.tab {
-    padding: 12px 24px;
-    background-color: transparent;
-    color: var(--text-muted);
-    border: none;
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    font-size: 1.1rem;
-    font-weight: 500;
-    transition: var(--transition-fast);
-}
-
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+/* O layout principal agora é controlado pelo .card em universal.css */
+/* A navegação é controlada por .showcase-navbar em universal.css */
 
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Cards */
-.card {
-    background-color: var(--bg-card);
+/* Estrutura das seções */
+.form-section {
+    border: 1px solid var(--primary);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    padding: 30px;
+    padding: 20px;
+    margin-top: 25px;
 }
 
 .card-header {
@@ -50,8 +30,6 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
 }
 
 .notification-filters {
@@ -60,13 +38,9 @@
     align-items: center;
     flex-wrap: wrap;
 }
-
-.filter-select {
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background-color: var(--bg-page);
-    color: var(--text);
+/* Padroniza o tamanho dos seletores de filtro no cabeçalho das seções */
+.card-header .custom-select {
+    min-width: 240px; /* Define uma largura mínima para consistência */
 }
 
 /* Lista de notificações */
