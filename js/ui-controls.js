@@ -10,7 +10,8 @@ import {
  * Biblioteca de ícones padrão para uso em toda a aplicação.
  */
 export const ICON_LIBRARY = [
-  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠'
+  '📋', '🏷️', '💼', '📚', '🛒', '🎮', '🔥', '📊', '🚀', '🎯', '💡', '🎉', '🏆', '⚙️', '🔧', '🏠', '❤️', '⭐', '📌', '📎', '📁', '📅', '⏰', '✅', '❌', '❓', '❗', '💰', '👥', '🧠',
+  '🧑‍🤝‍🧑', '🔔', '💬', '🌍', '🔒', '🔑'
 ];
 
 // ===== FUNÇÕES DE CONTROLE DE MODAIS E TECLADO =====
@@ -532,7 +533,7 @@ export function showIconPickerDialog(callback) {
         dialog.className = 'draggable';
         dialog.innerHTML = `
             <h3 class="drag-handle">Selecione um Ícone</h3>
-            <div id="icon-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; padding: 10px; border: 1px solid var(--border);">
+            <div id="icon-grid">
                 <!-- Ícones serão inseridos aqui -->
             </div>
             <div class="modal-actions">
@@ -550,9 +551,6 @@ export function showIconPickerDialog(callback) {
         const iconBtn = document.createElement('button');
         iconBtn.className = 'icon-picker-btn'; // Use uma classe para estilização se necessário
         iconBtn.textContent = icon;
-        iconBtn.style.fontSize = '2rem';
-        iconBtn.style.padding = '10px';
-        iconBtn.style.cursor = 'pointer';
         iconBtn.onclick = () => {
             callback(icon);
             dialog.close();
@@ -852,7 +850,7 @@ function createTemplateEditorDialog(type) {
             <label>Ícone</label>
             <div class="icon-input-group">
                 <input type="text" class="icon-display template-icon-input" readonly>
-                <button type="button" class="btn btn-sm edit btn-choose-icon">Escolher</button>
+                <button type="button" class="btn btn-sm btn-choose-icon">Escolher</button>
             </div>
         </div>
         <div class="form-group">

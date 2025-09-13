@@ -740,6 +740,39 @@ body.no-primary-effects .nav-item.active {
     border-radius: 6px;
 }
 
+/* ===== Seletor de Ícones ===== */
+#icon-picker-dialog {
+    max-width: 480px; /* Largura para acomodar a grade 6x6 */
+}
+
+#icon-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-top: 15px;
+}
+
+.icon-picker-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 2.2rem;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-picker-btn:hover {
+    color: var(--primary);
+    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.8);
+}
+
 /* ===== PALETA DE CORES (Adicionado) ===== */
 .color-palette {
     display: flex;
