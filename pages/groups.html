@@ -39,575 +39,367 @@
     </div>
   </header>
   
-  <div class="container">
-    <!-- Tabs de navegação atualizadas -->
-    <div class="tabs">
-      <div class="tab active" data-tab="my-groups">Gerenciar Grupos</div>
-      <div class="tab" data-tab="create-group">Criar Grupo</div>
-      <div class="tab" data-tab="manage-servers">Administrar Servidores</div>
-      <div class="tab" data-tab="group-templates">Templates do Grupo</div>
-      <div class="tab" data-tab="meetings">Reuniões</div>
-      <div class="tab" data-tab="statistics">Estatísticas</div>
-    </div>
-    
-    <!-- Conteúdo: Meus Grupos (modificado com duas divisões) -->
-<div class="tab-content active" id="my-groups">
-  <div class="card">
-    <div class="groups-nav">
-      <button class="group-tab active" data-target="admin-groups">Grupos que Criei</button>
-      <button class="group-tab" data-target="member-groups">Grupos que Participo</button>
-    </div>
-    
-    <div class="group-content active" id="admin-groups">
-      <div class="groups-grid">
-        <!-- Conteúdo dos grupos em que o usuário é administrador -->
-      </div>
-    </div>
-    
-    <div class="group-content" id="member-groups">
-      <div class="groups-grid">
-        <!-- Conteúdo dos grupos em que o usuário é membro -->
-      </div>
-    </div>
-  </div>
-</div>
-    
-<!-- Conteúdo: Criar Grupo -->
-<div class="tab-content" id="create-group">
-  <div class="card">
-    <div class="card-header">
-      <h2 class="card-title">Criar Novo Grupo</h2>
-    </div>
-    
-    <form id="create-group-form">
-      <!-- NOVO LAYOUT DE DUAS COLUNAS -->
-      <div class="form-layout">
-        <!-- Coluna Esquerda -->
-        <div class="form-column">
-          <!-- Seção 1: Informações Básicas -->
-          <div class="form-section">
-            <h2>Informações Básicas</h2>
+    <main class="card">
+        <!-- NOVO: Sistema de abas com estilo de navbar -->
+        <nav class="showcase-navbar">
+            <button class="nav-item active" data-tab="my-groups">Meus Grupos</button>
+            <button class="nav-item" data-tab="create-group">Criar Grupo</button>
+            <button class="nav-item" data-tab="group-templates">Templates de Grupo</button>
+            <button class="nav-item" data-tab="statistics">Estatísticas</button>
+            <button class="nav-item" data-tab="meetings">Reuniões</button>
+            <button class="nav-item" data-tab="admin-servers">Administrar Servidores</button>
+        </nav>
+
+        <div class="tab-content active" id="my-groups">
+            <!-- O botão foi movido para o lado do título da página, se necessário, ou pode ser integrado de outra forma -->
+            <div class="groups-nav">
+                <button class="group-tab active" data-target="admin-groups">Grupos que Administro</button>
+                <button class="group-tab" data-target="member-groups">Grupos que Participo</button>
+            </div>
+            <div id="admin-groups" class="group-content active">
+                <div class="groups-grid"></div>
+            </div>
+            <div id="member-groups" class="group-content">
+                <div class="groups-grid"></div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="create-group">
+            <form id="create-group-form" class="form-layout">
+                <div class="form-column">
+                    <div class="form-section">
+                        <h3>Informações Básicas</h3>
+                        <div class="form-group">
+                            <label for="group-icon">Ícone do Grupo:</label>
+                            <div class="icon-input-group">
+                                <input type="text" id="group-icon" class="icon-display" readonly value="👥">
+                                <button type="button" id="btn-choose-group-icon" class="btn btn-sm edit">Escolher</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="group-name">Nome do Grupo:</label>
+                            <input type="text" id="group-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="group-description">Descrição:</label>
+                            <textarea id="group-description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="group-access">Acesso:</label>
+                            <div class="custom-select">
+                                <select id="group-access">
+                                    <option value="public">Público (qualquer um pode pedir para entrar)</option>
+                                    <option value="private">Privado (apenas por convite)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h3>Membros</h3>
+                        <div class="form-group">
+                            <label for="group-members">Adicionar Membros (segure Ctrl/Cmd para selecionar vários):</label>
+                            <select id="group-members" multiple size="5"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-section">
+                        <h3>Quadros Iniciais</h3>
+                        <div id="group-boards-container"></div>
+                        <button type="button" id="btn-add-board" class="btn alternative1" style="width: 100%; margin-top: 10px;">Adicionar Quadro</button>
+                    </div>
+                    <div class="form-section">
+                        <h3>Conjunto de Etiquetas Padrão</h3>
+                        <div class="form-group">
+                            <label for="group-tag-template">Usar um conjunto de etiquetas:</label>
+                            <div class="custom-select">
+                                <select id="group-tag-template"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <div class="actions">
+                <button id="btn-cancel-group" class="btn cancel">Cancelar</button>
+                <button id="btn-save-group" class="btn confirm">Criar Grupo</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="group-templates">
+            <div class="template-type-buttons" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="btn-new-board-template" class="btn confirm">Novo Template de Quadro</button>
+                <button id="btn-new-tag-template" class="btn confirm">Novo Conjunto de Etiquetas</button>
+            </div>
+            <div class="templates-sections">
+                <div class="template-section">
+                    <h3>Templates de Quadro</h3>
+                    <div id="group-board-templates-grid" class="templates-grid"></div>
+                </div>
+                <div class="template-section">
+                    <h3>Conjuntos de Etiquetas</h3>
+                    <div id="group-tag-templates-grid" class="templates-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="statistics">
+            <div class="card-header" style="flex-wrap: wrap;">
+                <div class="filters" style="width: 100%;">
+                    <label for="stats-group-select">Selecionar Grupo:</label>
+                    <div class="custom-select stats-filter"><select id="stats-group-select" class="filter-select"></select></div>
+                    <div class="custom-select stats-filter"><select id="time-filter" class="filter-select">
+                        <option value="all">Todo o Período</option>
+                        <option value="last30">Últimos 30 dias</option>
+                        <option value="last7">Últimos 7 dias</option>
+                        <option value="today">Hoje</option>
+                    </select></div>
+                    <div class="custom-select stats-filter"><select id="chart-type" class="filter-select">
+                        <option value="pie">Gráfico de Pizza</option>
+                        <option value="bar">Gráfico de Barras</option>
+                        <option value="line">Gráfico de Linha</option>
+                    </select></div>
+                </div>
+            </div>
+            <div class="stats-sections">
+                <div class="stats-section">
+                    <h3>Resumo</h3>
+                    <div class="stats-summary">
+                        <div class="stat-item">
+                            <span class="stat-number" id="total-cards">0</span>
+                            <span class="stat-label">Total de Tarefas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="completed-cards">0</span>
+                            <span class="stat-label">Concluídas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="active-cards">0</span>
+                            <span class="stat-label">Ativas</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-section">
+                    <h3>Desempenho dos Participantes</h3>
+                    <table class="participants-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Função</th>
+                                <th>Tarefas Concluídas</th>
+                                <th>Produtividade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participants-table-body"></tbody>
+                    </table>
+                </div>
+                <div class="stats-section">
+                    <h3>Status dos Cartões</h3>
+                    <div class="chart-container">
+                        <canvas id="status-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="meetings">
+            <button id="btn-schedule-meeting" class="btn confirm" style="margin-bottom: 20px;">Agendar Nova Reunião</button>
+            <div id="meetings-list" class="meetings-list"></div>
+        </div>
+
+        <div class="tab-content" id="admin-servers">
+            <div class="actions" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="btn-create-server" class="btn confirm">Criar Servidor Local</button>
+                <button id="btn-add-server" class="btn alternative1">Adicionar Servidor Externo</button>
+            </div>
+            <div class="servers-list"></div>
+        </div>
+    </main>
+
+    <!-- Diálogos -->
+    <dialog id="edit-group-dialog" class="draggable">
+        <h3 class="drag-handle">Editar Grupo</h3>
+        <form id="edit-group-form">
             <div class="form-group">
-                <label for="group-name" class="required">Nome do Grupo</label>
-                <input type="text" id="group-name" required placeholder="Ex: Projeto Alpha">
+                <label for="edit-group-icon">Ícone do Grupo:</label>
+                <div class="icon-input-group">
+                    <input type="text" id="edit-group-icon" class="icon-display" readonly>
+                    <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm edit">Escolher</button>
+                </div>
             </div>
             <div class="form-group">
-                <label for="group-description">Descrição</label>
-                <textarea id="group-description" placeholder="Descreva o propósito do grupo..."></textarea>
+                <label for="edit-group-name">Nome do Grupo:</label>
+                <input type="text" id="edit-group-name" required>
             </div>
             <div class="form-group">
-                <label for="group-access">Tipo de Acesso</label>
-                <select id="group-access">
-                    <option value="public">Público (qualquer um pode solicitar entrada)</option>
-                    <option value="private">Privado (somente com convite)</option>
-                </select>
+                <label for="edit-group-description">Descrição:</label>
+                <textarea id="edit-group-description" rows="3"></textarea>
             </div>
             <div class="form-group">
-                <label for="group-tag-template">Conjunto de Etiquetas Padrão</label>
-                <select id="group-tag-template">
-                    <!-- Opções preenchidas pelo JavaScript -->
-                </select>
+                <label for="edit-group-access">Acesso:</label>
+                <div class="custom-select">
+                    <select id="edit-group-access">
+                        <option value="public">Público</option>
+                        <option value="private">Privado</option>
+                    </select>
+                </div>
             </div>
-          </div>
-
-          <!-- Seção 2: Quadros do Grupo -->
-          <div class="form-section">
-            <h2>Quadros do Grupo</h2>
             <div class="form-group">
-              <div id="group-boards-container">
-                  <!-- Os quadros serão adicionados aqui -->
-              </div>
-              <button type="button" id="btn-add-board" class="btn btn-sm">+ Adicionar Quadro</button>
+                <label for="edit-group-tag-template">Conjunto de Etiquetas Padrão:</label>
+                <div class="custom-select">
+                    <select id="edit-group-tag-template"></select>
+                </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Coluna Direita -->
-        <div class="form-column">
-          <!-- Seção 3: Permissões -->
-          <div class="form-section">
-            <h2>Permissões dos Membros</h2>
-            <div class="form-group">
-              <div class="permissions-container">
-                  <label class="checkbox-container">Criar quadros<input type="checkbox" id="perm-create-boards"><span class="checkmark"></span></label>
-                  <label class="checkbox-container">Editar quadros<input type="checkbox" id="perm-edit-boards"><span class="checkmark"></span></label>
-                  <label class="checkbox-container">Criar colunas<input type="checkbox" id="perm-create-columns"><span class="checkmark"></span></label>
-                  <label class="checkbox-container">Editar colunas<input type="checkbox" id="perm-edit-columns"><span class="checkmark"></span></label>
-                  <label class="checkbox-container">Criar etiquetas<input type="checkbox" id="perm-create-tags"><span class="checkmark"></span></label>
-                  <label class="checkbox-container">Editar etiquetas<input type="checkbox" id="perm-edit-tags"><span class="checkmark"></span></label>
-                  <label class="checkbox-container">Criar Cartões<input type="checkbox" id="perm-create-cards"><span class="checkmark"></span></label>
-                  <!-- ALERTA INFORMATIVO ADICIONADO -->
-                  <div class="permission-alert">
-                    <span>ℹ️</span> A permissão para editar cartões é concedida a todos os membros do grupo por padrão.
-                  </div>
-              </div>
+            <div class="form-section">
+                <h3>Relatórios Automáticos</h3>
+                <div class="form-group">
+                    <label for="edit-group-report-frequency">Frequência:</label>
+                    <div class="custom-select">
+                        <select id="edit-group-report-frequency">
+                            <option value="none">Nenhum</option>
+                            <option value="daily">Diário</option>
+                            <option value="weekly">Semanal</option>
+                            <option value="monthly">Mensal</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="edit-group-report-day-of-week-container" class="form-group hidden">
+                    <label for="edit-group-report-day-of-week">Dia da Semana:</label>
+                    <div class="custom-select">
+                        <select id="edit-group-report-day-of-week">
+                            <option value="1">Segunda-feira</option>
+                            <option value="2">Terça-feira</option>
+                            <option value="3">Quarta-feira</option>
+                            <option value="4">Quinta-feira</option>
+                            <option value="5">Sexta-feira</option>
+                            <option value="6">Sábado</option>
+                            <option value="0">Domingo</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="edit-group-report-day-of-month-container" class="form-group hidden">
+                    <label for="edit-group-report-day-of-month">Dia do Mês:</label>
+                    <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
+                </div>
             </div>
-          </div>
-
-          <!-- Seção 4: Membros -->
-          <div class="form-section">
-            <h2>Convidar Membros</h2>
-            <div class="form-group">
-              <label for="group-members">Selecionar Membros</label>
-              <select id="group-members" multiple style="height: 150px;">
-                <!-- Aqui os membros serão renderizados pelo JavaScript -->
-              </select>
-              <small>Segure Ctrl para selecionar múltiplos membros</small>
+            <div class="form-section">
+                <h3>Participantes</h3>
+                <div id="group-members-list"></div>
+                <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;">Adicionar Participante</button>
             </div>
-          </div>
-
-          <!-- Seção 5: Relatórios Automáticos -->
-          <div class="form-section">
-            <h2>Relatórios Automáticos</h2>
-            <div class="form-group">
-              <label for="group-report-frequency">Frequência do Relatório</label>
-              <select id="group-report-frequency">
-                <option value="none" selected>Nenhum</option>
-                <option value="daily">Diário</option>
-                <option value="weekly">Semanal</option>
-                <option value="monthly">Mensal</option>
-              </select>
-            </div>
-            <div class="form-group hidden" id="group-report-day-of-week-container">
-              <label for="group-report-day-of-week">Dia da Semana</label>
-              <select id="group-report-day-of-week"><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option><option value="0">Domingo</option></select>
-            </div>
-            <div class="form-group hidden" id="group-report-day-of-month-container">
-              <label for="group-report-day-of-month">Dia do Mês</label>
-              <input type="number" id="group-report-day-of-month" min="1" max="31" value="1">
-            </div>
-            <small>Um relatório de estatísticas será gerado e enviado para todos os membros na frequência escolhida.</small>
-          </div>
+            <div class="feedback"></div>
+        </form>
+        <div class="modal-actions">
+            <button id="cancel-edit-group" class="btn cancel">Cancelar</button>
+            <button type="submit" form="edit-group-form" class="btn confirm">Salvar Alterações</button>
         </div>
-      </div>
-      <div class="feedback"></div>
-      <div class="actions">
-        <button type="button" id="btn-cancel-group" class="btn btn-secondary">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Criar Grupo</button>
-      </div>
-    </form>
-  </div>
-</div>
-    
-    <!-- Conteúdo: Reuniões -->
-    <div class="tab-content" id="meetings">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Próximas Reuniões</h2>
-          <button id="btn-schedule-meeting" class="btn btn-primary" style="display: none;">+ Agendar Reunião</button>
-        </div>
-        <div id="meetings-list" class="meetings-list">
-          <!-- A lista de reuniões será renderizada aqui -->
-          <p class="loading-text">Carregando reuniões...</p>
-        </div>
-      </div>
-    </div>
+    </dialog>
 
-    <!-- ABA: Administrar Servidores -->
-    <div class="tab-content" id="manage-servers">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Servidores</h2>
-          <div class="server-actions">
-            <button id="btn-create-server" class="btn btn-primary">Criar Servidor</button>
-            <button id="btn-add-server" class="btn btn-secondary">Adicionar Servidor</button>
-          </div>
-        </div>
-        
-        <div class="servers-list">
-          <!-- Lista de servidores será preenchida pelo JavaScript -->
-        </div>
-      </div>
-    </div>
-    
-<!-- Conteúdo: Templates do Grupo -->
-<div class="tab-content" id="group-templates">
-  <div class="card">
-    <div class="card-header">
-      <h2 class="card-title">Templates de Grupos</h2>
-      <div class="template-type-buttons">
-        <button class="btn btn-primary" id="btn-new-board-template">+ Template de Quadro</button>
-        <button class="btn btn-primary" id="btn-new-tag-template">+ Conjunto de Etiquetas</button>
-      </div>
-    </div>
-    
-    <div class="templates-sections">
-      <!-- Seção: Templates de Quadro do Grupo -->
-      <div class="template-section">
-        <h3 class="section-title">Templates de Quadro</h3>
-        <div id="group-board-templates-grid" class="templates-grid">
-          <!-- Templates de quadro do grupo serão renderizados aqui -->
-        </div>
-      </div>
-      
-      <!-- Seção: Templates de Etiquetas do Grupo -->
-      <div class="template-section">
-        <h3 class="section-title">Conjuntos de Etiquetas</h3>
-        <div id="group-tag-templates-grid" class="templates-grid">
-          <!-- Templates de etiquetas do grupo serão renderizados aqui -->
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-    
-<!-- Conteúdo: Estatísticas -->
-<div class="tab-content" id="statistics">
-  <div class="card">
-    <div class="card-header">
-      <!-- TÍTULO SUBSTITUÍDO POR UM SELETOR -->
-      <div class="form-group">
-        <label for="stats-group-select" style="font-size: 1.2rem; color: var(--text);">Estatísticas do Grupo:</label>
-        <select id="stats-group-select" class="filter-select"></select>
-      </div>
-      <div class="filters">
-        <select id="time-filter" class="filter-select">
-          <option value="today">Hoje</option>
-          <option value="all">Todo o Período</option>
-          <option value="last7">Últimos 7 dias</option>
-          <option value="last30">Últimos 30 dias</option>
-        </select>
-        <select id="chart-type" class="filter-select">
-          <option value="pie">Gráfico de Pizza</option>
-          <option value="bar">Gráfico de Barras</option>
-          <option value="line">Gráfico de Linha</option>
-        </select>
-      </div>
-    </div>
-    
-    <div class="stats-sections">
-      <!-- Seção 1: Gráfico de Status -->
-      <div class="stats-section">
-        <h3 class="section-title">Status dos Cartões</h3>
-        <div class="stat-card wide">
-          <div class="chart-container">
-            <canvas id="status-chart" width="400" height="300"></canvas>
-          </div>
-          <div class="chart-legend" id="status-legend"></div>
-        </div>
-      </div>
-      
-      <!-- Seção 2: Resumo -->
-      <div class="stats-section">
-        <h3 class="section-title">Resumo</h3>
-        <div class="stat-card">
-          <div class="stat-numbers">
-            <div class="stat-item">
-              <div class="stat-value" id="total-cards">0</div>
-              <div class="stat-label">Total de Cartões</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value" id="completed-cards">0</div>
-              <div class="stat-label">Concluídos</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value" id="active-cards">0</div>
-              <div class="stat-label">Ativos</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Seção 3: Participantes -->
-      <div class="stats-section">
-        <h3 class="section-title">Participantes</h3>
-        <div class="stat-card">
-          <table class="participants-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Cargo</th>
-                <th>Tarefas Concluídas</th>
-                <th>Produtividade</th>
-              </tr>
-            </thead>
-            <tbody id="participants-table-body">
-              <!-- Conteúdo preenchido pelo JavaScript -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-  <!-- Diálogos modais -->
-  <dialog id="server-dialog" class="draggable">
-    <h3 class="drag-handle" id="server-dialog-title">Criar Novo Servidor</h3>
-    <div class="form-group">
-      <label for="server-name">Nome do Servidor:</label>
-      <input type="text" id="server-name" placeholder="Nome do servidor">
-    </div>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="cancel-server-btn">Cancelar</button>
-      <button class="btn btn-primary" id="confirm-server-btn">Criar</button>
-    </div>
-  </dialog>
-
-  <dialog id="add-server-dialog" class="draggable">
-    <h3 class="drag-handle">Adicionar Servidor</h3>
-    <div class="form-group">
-      <label for="server-url">URL do Servidor:</label>
-      <div class="input-with-button">
-        <input type="text" id="server-url" placeholder="Cole a URL do servidor">
-        <button type="button" id="paste-server-btn" class="btn btn-sm">Colar</button>
-      </div>
-    </div>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="cancel-add-server-btn">Cancelar</button>
-      <button class="btn btn-primary" id="confirm-add-server-btn">Adicionar</button>
-    </div>
-  </dialog>
-
-  <dialog id="share-server-dialog" class="draggable">
-    <h3 class="drag-handle">Compartilhar Servidor</h3>
-    <div class="form-group">
-      <label for="server-share-url">URL para Compartilhar:</label>
-      <div class="input-with-button">
-        <input type="text" id="server-share-url" readonly>
-        <button type="button" id="copy-server-url-btn" class="btn btn-sm">Copiar</button>
-      </div>
-    </div>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="close-share-dialog-btn">Fechar</button>
-    </div>
-  </dialog>
-
-  <dialog id="confirmation-dialog" class="draggable">
-    <h3 class="drag-handle">Confirmação</h3>
-    <p id="confirmation-message"></p>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="confirmation-cancel">Não</button>
-      <button class="btn btn-primary" id="confirmation-confirm">Sim</button>
-    </div>
-  </dialog>
-
-  <!-- Diálogo para Criar/Editar Template de Quadro do Grupo -->
-<dialog id="group-board-template-dialog" class="draggable">
-    <h3 class="drag-handle" id="group-board-template-dialog-title">Criar Template de Quadro para o Grupo</h3>
-    <div class="form-group">
-        <label for="group-board-template-name">Nome do Template:</label>
-        <input type="text" id="group-board-template-name" placeholder="Novo Template" required>
-    </div>
-    <div class="form-group">
-        <label for="group-board-template-desc">Descrição:</label>
-        <textarea id="group-board-template-desc" rows="2"></textarea>
-    </div>
-    <!-- Adicione este bloco -->
-    <div class="form-group">
-        <label for="group-board-template-icon">Ícone:</label>
-        <div class="icon-input-group">
-            <input type="text" id="group-board-template-icon" class="icon-display" readonly>
-            <button type="button" id="btn-choose-group-board-icon" class="btn btn-sm">Escolher</button>
-        </div>
-    </div>
-    <h4>Colunas (<span id="group-board-column-count">0</span>/8)</h4>
-    <div id="group-board-columns-editor" class="hidden">
-        <!-- Colunas serão adicionadas aqui -->
-    </div>
-    <button id="add-group-board-column-btn" class="btn btn-sm">+ Adicionar Coluna</button>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
-        <button id="save-group-board-template-btn" class="btn btn-primary">Salvar Template</button>
-    </div>
-</dialog>
-
-<!-- Diálogo para Criar/Editar Template de Etiqueta do Grupo -->
-<dialog id="group-tag-template-dialog" class="draggable">
-    <h3 class="drag-handle" id="group-tag-template-dialog-title">Criar Conjunto de Etiquetas para o Grupo</h3>
-    <div class="form-group">
-        <label for="group-tag-template-name">Nome do Conjunto:</label>
-        <input type="text" id="group-tag-template-name" placeholder="Novo Conjunto" required>
-    </div>
-    <div class="form-group">
-        <label for="group-tag-template-desc">Descrição:</label>
-        <textarea id="group-tag-template-desc" rows="2"></textarea>
-    </div>
-    <!-- Adicione este bloco -->
-    <div class="form-group">
-        <label for="group-tag-template-icon">Ícone:</label>
-        <div class="icon-input-group">
-            <input type="text" id="group-tag-template-icon" class="icon-display" readonly>
-            <button type="button" id="btn-choose-group-tag-icon" class="btn btn-sm">Escolher</button>
-        </div>
-    </div>
-    <h4>Etiquetas (<span id="group-tag-count">0</span>/8)</h4>
-    <div id="group-tags-editor" class="hidden">
-        <!-- Etiquetas serão adicionadas aqui -->
-    </div>
-    <button id="add-group-tag-btn" class="btn btn-sm">+ Adicionar Etiqueta</button>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
-        <button id="save-group-tag-template-btn" class="btn btn-primary">Salvar Conjunto</button>
-    </div>
-</dialog>
-
-<dialog id="edit-group-dialog" class="draggable">
-  <h3 class="drag-handle">Editar Grupo</h3>
-  <form id="edit-group-form">
-    <div class="form-group">
-      <label for="edit-group-name" class="required">Nome do Grupo</label>
-      <input type="text" id="edit-group-name" required>
-    </div>
-    <div class="form-group">
-      <label for="edit-group-description">Descrição</label>
-      <textarea id="edit-group-description"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="edit-group-access">Tipo de Acesso</label>
-      <select id="edit-group-access">
-        <option value="public">Público</option>
-        <option value="private">Privado</option>
-      </select>
-    </div>
-    <!-- NOVO CAMPO ADICIONADO -->
-    <div class="form-group">
-      <label for="edit-group-tag-template">Conjunto de Etiquetas Padrão</label>
-      <select id="edit-group-tag-template">
-        <!-- Opções preenchidas pelo JavaScript -->
-      </select>
-    </div>
-
-    <!-- Seção de Relatórios Automáticos -->
-    <div class="form-section">
-      <h3 class="section-title">Relatórios Automáticos</h3>
-      <div class="form-group">
-        <label for="edit-group-report-frequency">Frequência do Relatório</label>
-        <select id="edit-group-report-frequency">
-          <option value="none">Nenhum</option>
-          <option value="daily">Diário</option>
-          <option value="weekly">Semanal</option>
-          <option value="monthly">Mensal</option>
-        </select>
-      </div>
-      <div class="form-group hidden" id="edit-group-report-day-of-week-container">
-        <label for="edit-group-report-day-of-week">Dia da Semana</label>
-        <select id="edit-group-report-day-of-week"><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option><option value="0">Domingo</option></select>
-      </div>
-      <div class="form-group hidden" id="edit-group-report-day-of-month-container">
-        <label for="edit-group-report-day-of-month">Dia do Mês</label>
-        <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
-      </div>
-    </div>
-    
-    <!-- Seção para gerenciar participantes -->
-    <div class="form-section">
-      <h2>Gerenciar Participantes</h2>
-      <div id="group-members-list">
-        <!-- Lista de participantes será preenchida via JavaScript -->
-      </div>
-      <div class="form-actions-inline">
-        <button type="button" id="btn-add-participant" class="btn btn-sm">+ Adicionar Participante</button>
-        <button type="button" id="btn-message-all" class="btn btn-sm">📢 Enviar Mensagem para Todos</button>
-      </div>
-    </div>
-
-    <div class="feedback"></div>
-    <div class="modal-actions">
-      <button type="button" id="cancel-edit-group" class="btn btn-secondary">Cancelar</button>
-      <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog id="add-participant-dialog" class="draggable">
-  <h3 class="drag-handle">Adicionar Participante</h3>
-  <div class="form-group">
-    <label for="participant-select">Selecionar Usuário:</label>
-    <select id="participant-select">
-      <!-- Opções preenchidas via JavaScript -->
-    </select>
-  </div>
-  <div class="feedback"></div>
-  <div class="modal-actions">
-    <button class="btn btn-secondary" id="cancel-add-participant">Cancelar</button>
-    <button class="btn btn-primary" id="confirm-add-participant">Adicionar</button>
-  </div>
-</dialog>
-
-<!-- Adicione este diálogo no final do body -->
-<dialog id="icon-picker-dialog" class="draggable">
-    <h3 class="drag-handle">Selecione um Ícone</h3>
-    <div id="icon-grid">
-        <!-- Ícones serão inseridos aqui pelo JavaScript -->
-    </div>
-    <div class="modal-actions">
-        <button id="close-icon-picker-btn" class="btn btn-secondary">Fechar</button>
-    </div>
-</dialog>
-  
-  <!-- Diálogo para Adicionar Quadro na Criação de Grupo -->
-<dialog id="add-board-to-group-dialog" class="draggable">
-    <h3 class="drag-handle">Adicionar Quadro ao Grupo</h3>
-    <div class="form-group">
-        <label for="add-board-template-select">Usar um Template do Sistema (Opcional):</label>
-        <select id="add-board-template-select">
-            <!-- Preenchido pelo JS -->
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="add-board-title-input">Título do Quadro:</label>
-        <input type="text" id="add-board-title-input" required>
-    </div>
-    <div class="form-group">
-        <label for="add-board-description-input">Descrição (Opcional):</label>
-        <textarea id="add-board-description-input" rows="2" placeholder="Adicione uma breve descrição para este quadro..."></textarea>
-    </div>
-    <div class="form-group">
-        <label for="add-board-icon-input">Ícone:</label>
-        <div class="icon-input-group">
-            <input type="text" id="add-board-icon-input" class="icon-display" readonly value="📋">
-            <button type="button" id="btn-choose-add-board-icon" class="btn btn-sm">Escolher</button>
-        </div>
-    </div>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-        <button class="btn btn-secondary" id="cancel-add-board-to-group-btn">Cancelar</button>
-        <button class="btn btn-primary" id="confirm-add-board-to-group-btn">Adicionar Quadro</button>
-    </div>
-</dialog>
-
-<!-- Diálogo para Agendar Reunião -->
-<dialog id="meeting-dialog" class="draggable">
-    <h3 class="drag-handle" id="meeting-dialog-title">Agendar Nova Reunião</h3>
-    <div class="form-group">
-        <label for="meeting-group-select" class="required">Grupo:</label>
-        <select id="meeting-group-select"></select>
-    </div>
-    <div class="form-group">
-        <label for="meeting-title" class="required">Título da Reunião:</label>
-        <input type="text" id="meeting-title" placeholder="Ex: Reunião de Alinhamento Semanal">
-    </div>
-    <div class="form-row">
+    <dialog id="add-participant-dialog" class="draggable">
+        <h3 class="drag-handle">Adicionar Participante</h3>
         <div class="form-group">
-            <label for="meeting-date" class="required">Data:</label>
+            <label for="participant-select">Selecione um usuário para convidar:</label>
+            <div class="custom-select">
+                <select id="participant-select"></select>
+            </div>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button id="cancel-add-participant" class="btn cancel">Cancelar</button>
+            <button id="confirm-add-participant" class="btn confirm">Enviar Convite</button>
+        </div>
+    </dialog>
+
+    <dialog id="add-board-to-group-dialog" class="draggable">
+        <h3 class="drag-handle">Adicionar Quadro ao Grupo</h3>
+        <div class="form-group">
+            <label for="add-board-title-input">Nome do Quadro:</label>
+            <input type="text" id="add-board-title-input">
+        </div>
+        <div class="form-group">
+            <label for="add-board-template-select">Usar Template do Sistema:</label>
+            <div class="custom-select">
+                <select id="add-board-template-select"></select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="add-board-description-input">Descrição:</label>
+            <textarea id="add-board-description-input" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="add-board-icon-input">Ícone:</label>
+            <div class="icon-input-group">
+                <input type="text" id="add-board-icon-input" class="icon-display" readonly value="📋">
+                <button type="button" id="btn-choose-add-board-icon" class="btn btn-sm edit">Escolher</button>
+            </div>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button id="cancel-add-board-to-group-btn" class="btn cancel">Cancelar</button>
+            <button id="confirm-add-board-to-group-btn" class="btn confirm">Adicionar</button>
+        </div>
+    </dialog>
+
+    <dialog id="meeting-dialog" class="draggable">
+        <h3 class="drag-handle">Agendar Reunião</h3>
+        <div class="form-group">
+            <label for="meeting-group-select">Grupo:</label>
+            <div class="custom-select"><select id="meeting-group-select"></select></div>
+        </div>
+        <div class="form-group">
+            <label for="meeting-title">Título:</label>
+            <input type="text" id="meeting-title">
+        </div>
+        <div class="form-group">
+            <label for="meeting-date">Data:</label>
             <input type="date" id="meeting-date">
         </div>
-        <div class="form-group">
-            <label for="meeting-time" class="required">Horário:</label>
-            <input type="time" id="meeting-time">
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel" onclick="this.closest('dialog').close()">Cancelar</button>
+            <button id="save-meeting-btn" class="btn confirm">Agendar e Notificar</button>
         </div>
-    </div>
-    <div class="form-group">
-        <label for="meeting-location">Local (ou link):</label>
-        <input type="text" id="meeting-location" placeholder="Ex: Sala de Conferências 3 ou link do Google Meet">
-    </div>
-    <div class="form-group">
-        <label for="meeting-description">Descrição/Pauta:</label>
-        <textarea id="meeting-description" rows="4" placeholder="Tópicos a serem discutidos..."></textarea>
-    </div>
-    <div class="feedback"></div>
-    <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Cancelar</button>
-        <button id="save-meeting-btn" class="btn btn-primary">Agendar e Notificar</button>
-    </div>
-</dialog>
+    </dialog>
+
+    <dialog id="server-dialog" class="draggable">
+        <h3 class="drag-handle" id="server-dialog-title">Criar Servidor</h3>
+        <div class="form-group"><label for="server-name">Nome do Servidor:</label><input type="text" id="server-name"></div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button id="cancel-server-btn" class="btn cancel">Cancelar</button>
+            <button id="confirm-server-btn" class="btn confirm">Criar</button>
+        </div>
+    </dialog>
+
+    <dialog id="add-server-dialog" class="draggable">
+        <h3 class="drag-handle">Adicionar Servidor Externo</h3>
+        <div class="form-group">
+            <label for="server-url">URL do Servidor:</label>
+            <div class="input-with-button">
+                <input type="text" id="server-url" placeholder="https://exemplo.com">
+                <button id="paste-server-btn" class="btn alternative1">Colar</button>
+            </div>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button id="cancel-add-server-btn" class="btn cancel">Cancelar</button>
+            <button id="confirm-add-server-btn" class="btn confirm">Adicionar</button>
+        </div>
+    </dialog>
+
+    <dialog id="share-server-dialog" class="draggable">
+        <h3 class="drag-handle">Compartilhar Servidor</h3>
+        <div class="form-group">
+            <label for="server-share-url">URL para Compartilhar:</label>
+            <input type="text" id="server-share-url" readonly>
+            <button id="copy-server-url-btn" class="btn">Copiar</button>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button id="close-share-dialog-btn" class="btn cancel">Fechar</button>
+        </div>
+    </dialog>
+
+    <!-- Diálogos de template foram removidos daqui, pois agora são criados dinamicamente pela função universal -->
 
   <script type="module" src="../js/main.js"></script>
 </body>

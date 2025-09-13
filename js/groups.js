@@ -25,7 +25,9 @@ import {
   updateUserAvatar,
   showConfirmationDialog,
   showDialogMessage,
-  showIconPickerDialog
+  showIconPickerDialog,
+  showTemplateEditorDialog,
+  initCustomSelects
 } from './ui-controls.js';
 import { 
     addGroupInvitationNotification,
@@ -75,7 +77,6 @@ export function initGroupsPage() {
     }
 
     setupEventListeners();
-    setupTabs();
     loadServers();
     initDraggableElements();
 
@@ -99,8 +100,8 @@ function loadGroups() {
 
 function setupEventListeners() {
     document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
-    // --- ABAS PRINCIPAIS ---
-    document.querySelectorAll('.tabs .tab').forEach(tab => {
+    // --- ABAS PRINCIPAIS (agora com a classe .nav-item) ---
+    document.querySelectorAll('.showcase-navbar .nav-item').forEach(tab => {
         tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
     document.getElementById('btn-create-group')?.addEventListener('click', () => switchTab('create-group'));
@@ -111,6 +112,10 @@ function setupEventListeners() {
 
     // --- ABA "CRIAR GRUPO" ---
     document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
+    document.getElementById('btn-choose-group-icon')?.addEventListener('click', () => {
+        showIconPickerDialog(icon => document.getElementById('group-icon').value = icon);
+    });
+    document.getElementById('btn-save-group')?.addEventListener('click', handleSaveGroup);
     document.getElementById('group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('edit-group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('btn-message-all')?.addEventListener('click', sendMessageToAllMembers);
@@ -231,8 +236,14 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
 });
     
     // --- TEMPLATES DE GRUPO ---
-    document.getElementById('btn-new-board-template')?.addEventListener('click', () => showGroupBoardTemplateDialog());
-    document.getElementById('btn-new-tag-template')?.addEventListener('click', () => showGroupTagTemplateDialog());
+    document.getElementById('btn-new-board-template')?.addEventListener('click', () => {
+        // Chama a função universal, passando o contexto 'group'
+        showTemplateEditorDialog('board', { ownerType: 'group' });
+    });
+    document.getElementById('btn-new-tag-template')?.addEventListener('click', () => {
+        // Chama a função universal, passando o contexto 'group'
+        showTemplateEditorDialog('tag', { ownerType: 'group' });
+    });
 
     
     // --- ABA "ADMINISTRAR SERVIDORES" ---
@@ -258,54 +269,26 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
             document.getElementById('share-server-dialog').close();
         }, 1500);
     });
-
-    // --- DELEGAÇÃO DE EVENTOS PARA DIÁLOGOS DE TEMPLATE ---
-    // Usar delegação de eventos para evitar duplicação
-    document.body.addEventListener('click', (e) => {
-        // Para o diálogo de template de quadro
-        if (e.target.matches('#add-group-board-column-btn')) {
-            addColumnToGroupEditor();
-        }
-        if (e.target.matches('#save-group-board-template-btn')) {
-            saveGroupBoardTemplate();
-        }
-        
-        // Para o diálogo de template de etiqueta
-        if (e.target.matches('#add-group-tag-btn')) {
-            addTagToGroupEditor();
-        }
-        if (e.target.matches('#save-group-tag-template-btn')) {
-            saveGroupTagTemplate();
-        }
-    });
-}
-
-function setupTabs() {
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabId = tab.dataset.tab;
-            switchTab(tabId);
-        });
-    });
 }
 
 function switchTab(tabId, options = {}) {
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     
     tabs.forEach(tab => tab.classList.remove('active'));
     tabContents.forEach(content => content.classList.remove('active'));
     
-    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+    document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
     document.getElementById(tabId).classList.add('active');
     
     // Carregar dados específicos da aba
     if (tabId === 'create-group') {
         loadUsersForSelection();
         loadTagTemplatesForGroup();
+        initCustomSelects();
     } else if (tabId === 'group-templates') {
         loadGroupTemplates();
+        initCustomSelects();
     } else if (tabId === 'statistics') {
         const groupSelect = document.getElementById('stats-group-select');
         populateGroupSelectorForStats(groupSelect);
@@ -315,10 +298,53 @@ function switchTab(tabId, options = {}) {
             // Garante que o select mostre o grupo correto
             groupSelect.value = groupIdToLoad;
             loadAndRenderStatistics(groupIdToLoad);
+            initCustomSelects();
         }
     } else if (tabId === 'meetings') {
         loadAndRenderMeetings();
     }
+}
+
+function handleSaveGroup() {
+    const name = document.getElementById('group-name').value.trim();
+    if (!name) {
+        showFloatingMessage('O nome do grupo é obrigatório.', 'error');
+        return;
+    }
+
+    showConfirmationDialog('Deseja criar este novo grupo?', (dialog) => {
+        const newGroup = {
+            name,
+            icon: document.getElementById('group-icon').value || '👥',
+            description: document.getElementById('group-description').value.trim(),
+            access: document.getElementById('group-access').value,
+            adminId: currentUser.id,
+            memberIds: [currentUser.id, ...Array.from(document.getElementById('group-members').selectedOptions).map(opt => opt.value)],
+            boardIds: [],
+            tagTemplate: document.getElementById('group-tag-template').value,
+            createdAt: new Date().toISOString()
+        };
+
+        // Lógica para criar quadros iniciais
+        const boardItems = document.querySelectorAll('#group-boards-container .group-board-item');
+        boardItems.forEach(item => {
+            const boardData = {
+                title: item.querySelector('strong').textContent,
+                description: item.dataset.description,
+                icon: '📋', // Ícone padrão para quadros criados com o grupo
+                ownerId: currentUser.id,
+                visibility: 'group',
+                columnIds: [] // A lógica de template precisa ser aplicada aqui se necessário
+            };
+            const savedBoard = saveBoard(boardData);
+            newGroup.boardIds.push(savedBoard.id);
+        });
+
+        const savedGroup = saveGroup(newGroup);
+        showDialogMessage(dialog, 'Grupo criado com sucesso!', 'success');
+        setTimeout(() => { dialog.close(); loadGroups(); switchTab('my-groups'); }, 1500);
+        return true;
+    });
 }
 
 function handleReportFrequencyChange(e) {
@@ -410,6 +436,7 @@ function showMeetingDialog() {
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
     newSaveBtn.addEventListener('click', saveMeeting);
 
+    initCustomSelects();
     dialog.showModal();
 }
 
@@ -477,7 +504,7 @@ function addBoardToGroup(name, templateId, description) {
             <strong>${name}</strong>
             ${templateName ? `<span class="template-badge">Template: ${templateName}</span>` : ''}
         </div>
-        <button class="btn btn-sm btn-danger remove-board-btn">Remover</button>
+        <button class="btn btn-sm danger remove-board-btn">Remover</button>
     `;
     
     boardElement.querySelector('.remove-board-btn').addEventListener('click', () => {
@@ -543,6 +570,7 @@ function showAddBoardToGroupDialog() {
         }, 1500);
     });
 
+    initCustomSelects();
     dialog.showModal();
 }
 
@@ -575,403 +603,6 @@ function loadTagTemplatesForGroup() {
 }
 
 // js/groups.js - PART 2/4 - REFACTORED VERSION
-
-// ===== FUNÇÕES DE TEMPLATES DE GRUPO =====
-
-// js/groups.js - PARTE ADICIONAL - Funções para templates de grupo
-
-// Contadores para nomes não titulados
-let untitledColumnCounter = 1;
-let untitledTagCounter = 1;
-
-// Funções para templates de quadro do grupo
-function showGroupBoardTemplateDialog(templateId = null) {
-    const dialog = document.getElementById('group-board-template-dialog');
-    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
-
-    if (adminGroups.length === 0) {
-        showFloatingMessage("Você não administra nenhum grupo para criar templates.", 'warning');
-        return;
-    }
-
-    // Injeta o seletor de grupo no diálogo
-    const nameField = dialog.querySelector('#group-board-template-name').parentElement;
-    let selectorGroup = dialog.querySelector('#group-selector-container');
-    if (!selectorGroup) {
-        selectorGroup = document.createElement('div');
-        selectorGroup.className = 'form-group';
-        selectorGroup.id = 'group-selector-container';
-        nameField.insertAdjacentElement('beforebegin', selectorGroup);
-    }
-    selectorGroup.innerHTML = `
-        <label for="group-template-target-group">Salvar no Grupo:</label>
-        <select id="group-template-target-group">
-            <option value="">-- Selecione um grupo --</option>
-            ${adminGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-        </select>
-    `;
-    const groupSelector = dialog.querySelector('#group-template-target-group');
-
-    let template = null;
-    if (templateId) {
-        for (const group of adminGroups) {
-            const foundTemplate = (group.boardTemplates || []).find(t => t.id === templateId);
-            if (foundTemplate) {
-                template = foundTemplate;
-                groupSelector.value = group.id;
-                groupSelector.disabled = true; // Não permite mover template entre grupos na edição
-                break;
-            }
-        }
-    } else {
-        groupSelector.disabled = false;
-    }
-    
-    dialog.dataset.editingId = templateId;
-    dialog.querySelector('#group-board-template-dialog-title').textContent = template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
-    document.getElementById('group-board-template-name').value = template ? template.name : '';
-    document.getElementById('group-board-template-desc').value = template ? template.description : '';
-
-    // Lógica do Ícone
-    const iconInput = document.getElementById('group-board-template-icon');
-    if (iconInput) {
-        iconInput.value = template ? template.icon || '📋' : '📋';
-    }
-    const chooseIconButton = document.getElementById('btn-choose-group-board-icon');
-    if (chooseIconButton) {
-        chooseIconButton.onclick = () => {
-            showIconPickerDialog((selectedIcon) => iconInput.value = selectedIcon);
-        };
-    }
-    
-    const editor = document.getElementById('group-board-columns-editor');
-    editor.innerHTML = '';
-    const initialColumns = template ? template.columns : [{ name: 'Nova Coluna', color: '#e74c3c' }];
-    initialColumns.forEach(col => addColumnToGroupEditor(col.name, col.color));
-
-    // Limpar mensagens de erro
-    const feedbackEl = dialog.querySelector('.feedback');
-    feedbackEl.textContent = '';
-    feedbackEl.classList.remove('show', 'error', 'success');
-
-    updateGroupColumnCount(editor); 
-    
-    // Adicionar event listeners aos botões
-    
-    dialog.showModal();
-}
-
-function addColumnToGroupEditor(name = '', color = '#333333') {
-    const editor = document.getElementById('group-board-columns-editor');
-    editor.classList.remove('hidden');
-
-    if (editor.children.length >= 8) {
-        showDialogMessage(editor.closest('dialog').querySelector('.feedback'), 'Limite de 8 colunas por quadro atingido.', 'warning');
-        return;
-    }
-    
-    const item = document.createElement('div');
-    item.className = 'editor-item';
-    item.innerHTML = `
-        <input type="text" value="${name}" placeholder="Nova Coluna" class="form-control" name="column_name">
-        <input type="color" value="${color}" name="column_color">
-        <button class="remove-btn">-</button>
-    `;
-    
-    item.querySelector('.remove-btn').onclick = () => {
-        item.remove();
-        updateGroupColumnCount(editor);
-    };
-    
-    editor.appendChild(item);
-    updateGroupColumnCount(editor);
-}
-
-function updateGroupColumnCount(editor) {
-    if (!editor) return;
-    
-    const count = editor.children.length;
-    const dialog = editor.closest('dialog');
-    if (!dialog) return;
-
-    dialog.querySelector('#group-board-column-count').textContent = count;
-    dialog.querySelector('#add-group-board-column-btn').disabled = count >= 8;
-    editor.classList.toggle('hidden', count === 0);
-}
-
-function saveGroupBoardTemplate() {
-    const dialog = document.getElementById('group-board-template-dialog');
-    const templateId = dialog.dataset.editingId;
-    const icon = document.getElementById('group-board-template-icon')?.value || '📋';
-    const name = document.getElementById('group-board-template-name').value.trim();
-    const groupId = dialog.querySelector('#group-template-target-group').value;
-    const description = document.getElementById('group-board-template-desc').value;
-
-    if (!groupId) {
-        showDialogMessage(dialog, 'É necessário selecionar um grupo.', 'error');
-        return;
-    }
-
-    const targetGroup = getGroup(groupId);
-    if (!targetGroup) {
-        showDialogMessage(dialog, 'Grupo selecionado não encontrado.', 'error');
-        return;
-    }
-
-    if (!name) {
-        showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
-        return;
-    }
-
-    const boardTemplates = targetGroup.boardTemplates || [];
-    const isNameUnique = !boardTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
-
-    if (!isNameUnique) {
-        showDialogMessage(dialog, 'Já existe um template com este nome no grupo. Por favor, escolha outro nome.', 'error');
-        return;
-    }
-
-    const columns = [];
-    document.querySelectorAll('#group-board-columns-editor .editor-item').forEach(item => {
-        let colName = item.querySelector('input[type="text"]').value.trim();
-        const colColor = item.querySelector('input[type="color"]').value;
-        
-        if (!colName) {
-            colName = `Nova Coluna ${untitledColumnCounter}`;
-            untitledColumnCounter++;
-        }
-        
-        columns.push({ name: colName, color: colColor });
-    });
-
-    if (columns.length === 0) {
-        showDialogMessage(dialog, 'Adicione pelo menos uma coluna ao template.', 'error');
-        return;
-    }
-    
-    showConfirmationDialog(
-        'Deseja salvar este template?',
-        async (confirmationDialog) => {
-            if (!targetGroup.boardTemplates) targetGroup.boardTemplates = [];
-
-            if (templateId && templateId !== 'null') {
-                const index = targetGroup.boardTemplates.findIndex(t => t.id === templateId);
-                if (index !== -1) {
-                    targetGroup.boardTemplates[index] = { ...targetGroup.boardTemplates[index], icon, name, description, columns };
-                }
-            } else {
-                const newTemplate = { id: 'group-board-' + Date.now(), name, icon, description, columns };
-                targetGroup.boardTemplates.push(newTemplate);
-            }
-
-            if (saveGroup(targetGroup)) {
-                showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
-                loadGroupTemplates();
-                setTimeout(() => dialog.close(), 1500);
-                return true;
-            } else {
-                showDialogMessage(confirmationDialog, 'Erro ao salvar o template.', 'error');
-                return false;
-            }
-        }
-    );
-}
-
-// Funções para templates de etiqueta do grupo
-function showGroupTagTemplateDialog(templateId = null) {
-    const dialog = document.getElementById('group-tag-template-dialog');
-    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
-
-    if (adminGroups.length === 0) {
-        // A mensagem já é mostrada pela função de quadro, não precisa repetir.
-        return;
-    }
-
-    // Injeta o seletor de grupo no diálogo
-    const nameField = dialog.querySelector('#group-tag-template-name').parentElement;
-    let selectorGroup = dialog.querySelector('#group-selector-container');
-    if (!selectorGroup) {
-        selectorGroup = document.createElement('div');
-        selectorGroup.className = 'form-group';
-        selectorGroup.id = 'group-selector-container';
-        nameField.insertAdjacentElement('beforebegin', selectorGroup);
-    }
-    selectorGroup.innerHTML = `
-        <label for="group-template-target-group-tag">Salvar no Grupo:</label>
-        <select id="group-template-target-group-tag">
-            <option value="">-- Selecione um grupo --</option>
-            ${adminGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-        </select>
-    `;
-    const groupSelector = dialog.querySelector('#group-template-target-group-tag');
-
-    let template = null;
-    if (templateId) {
-        for (const group of adminGroups) {
-            const foundTemplate = (group.tagTemplates || []).find(t => t.id === templateId);
-            if (foundTemplate) {
-                template = foundTemplate;
-                groupSelector.value = group.id;
-                groupSelector.disabled = true;
-                break;
-            }
-        }
-    } else {
-        groupSelector.disabled = false;
-    }
-    
-    dialog.dataset.editingId = templateId;
-    dialog.querySelector('#group-tag-template-dialog-title').textContent = template ? 'Editar Conjunto de Etiquetas' : 'Criar Novo Conjunto de Etiquetas';
-    document.getElementById('group-tag-template-name').value = template ? template.name : '';
-    document.getElementById('group-tag-template-desc').value = template ? template.description : '';
-
-    // Lógica do Ícone
-    const iconInput = document.getElementById('group-tag-template-icon');
-    if (iconInput) {
-        iconInput.value = template ? template.icon || '🏷️' : '🏷️';
-    }
-    const chooseIconButton = document.getElementById('btn-choose-group-tag-icon');
-    if (chooseIconButton) {
-        chooseIconButton.onclick = () => {
-            showIconPickerDialog((selectedIcon) => iconInput.value = selectedIcon);
-        };
-    }
-
-    const editor = document.getElementById('group-tags-editor');
-    editor.innerHTML = '';
-    const initialTags = template ? template.tags : [{ name: 'Nova Etiqueta', color: '#3498db' }];
-    initialTags.forEach(tag => addTagToGroupEditor(tag.name, tag.color));
-
-    // Limpar mensagens de erro
-    const feedbackEl = dialog.querySelector('.feedback');
-    feedbackEl.textContent = '';
-    feedbackEl.classList.remove('show', 'error', 'success');
-
-    updateGroupTagCount(editor);
-    
-    dialog.showModal();
-}
-
-function addTagToGroupEditor(name = '', color = '#4cd4e6') {
-    const editor = document.getElementById('group-tags-editor');
-    editor.classList.remove('hidden');
-
-    if (editor.children.length >= 8) {
-        showDialogMessage(editor.closest('dialog').querySelector('.feedback'), 'Limite de 8 etiquetas por conjunto atingido.', 'warning');
-        return;
-    }
-    
-    const item = document.createElement('div');
-    item.className = 'editor-item';
-    item.innerHTML = `
-        <input type="text" value="${name}" placeholder="Nova Etiqueta" class="form-control" name="tag_name">
-        <input type="color" value="${color}" name="tag_color">
-        <button class="remove-btn">-</button>
-    `;
-    
-    item.querySelector('.remove-btn').onclick = () => {
-        item.remove();
-        updateGroupTagCount(editor);
-    };
-    
-    editor.appendChild(item);
-    updateGroupTagCount(editor);
-}
-
-function updateGroupTagCount(editor) {
-    if (!editor) return;
-
-    const count = editor.children.length;
-    const dialog = editor.closest('dialog');
-    if (!dialog) return;
-    
-    dialog.querySelector('#group-tag-count').textContent = count;
-    dialog.querySelector('#add-group-tag-btn').disabled = count >= 8;
-    editor.classList.toggle('hidden', count === 0);
-}
-
-function saveGroupTagTemplate() {
-    const dialog = document.getElementById('group-tag-template-dialog');
-    const templateId = dialog.dataset.editingId;
-    const icon = document.getElementById('group-tag-template-icon')?.value || '🏷️';
-    const name = document.getElementById('group-tag-template-name').value.trim();
-    const groupId = dialog.querySelector('#group-template-target-group-tag').value;
-    const description = document.getElementById('group-tag-template-desc').value;
-    
-    if (!groupId) {
-        showDialogMessage(dialog, 'É necessário selecionar um grupo.', 'error');
-        return;
-    }
-
-    const targetGroup = getGroup(groupId);
-    if (!targetGroup) {
-        showDialogMessage(dialog, 'Grupo selecionado não encontrado.', 'error');
-        return;
-    }
-
-    if (!name) {
-        showDialogMessage(dialog, 'O nome do conjunto é obrigatório.', 'error');
-        return;
-    }
-
-    const tagTemplates = targetGroup.tagTemplates || [];
-    const isNameUnique = !tagTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
-
-    if (!isNameUnique) {
-        showDialogMessage(dialog, 'Já existe um conjunto com este nome no grupo. Por favor, escolha outro nome.', 'error');
-        return;
-    }
-
-    const tags = [];
-    document.querySelectorAll('#group-tags-editor .editor-item').forEach(item => {
-        let tagName = item.querySelector('input[type="text"]').value.trim();
-        const tagColor = item.querySelector('input[type="color"]').value;
-        
-        if (!tagName) {
-            tagName = `Nova Etiqueta ${untitledTagCounter}`;
-            untitledTagCounter++;
-        }
-        
-        tags.push({ name: tagName, color: tagColor });
-    });
-
-    if (tags.length === 0) {
-        showDialogMessage(dialog, 'Adicione pelo menos uma etiqueta ao conjunto.', 'error');
-        return;
-    }
-
-    showConfirmationDialog(
-        'Deseja salvar este conjunto de etiquetas?',
-        async (confirmationDialog) => {
-            if (!targetGroup.tagTemplates) targetGroup.tagTemplates = [];
-
-            if (templateId && templateId !== 'null') {
-                const index = targetGroup.tagTemplates.findIndex(t => t.id === templateId);
-                if (index !== -1) {
-                    targetGroup.tagTemplates[index] = { ...targetGroup.tagTemplates[index], icon, name, description, tags };
-                }
-            } else {
-                const newTemplate = { id: 'group-tag-' + Date.now(), name, icon, description, tags };
-                targetGroup.tagTemplates.push(newTemplate);
-                // Se o grupo não tinha um template padrão, o novo se torna o padrão.
-                if (!targetGroup.tagTemplate || targetGroup.tagTemplate === '') {
-                    targetGroup.tagTemplate = newTemplate.id;
-                }
-            }
-
-            if (saveGroup(targetGroup)) {
-                showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
-                loadGroups(); // Atualiza a lista de grupos para refletir a mudança no alerta
-                loadGroupTemplates();
-                setTimeout(() => dialog.close(), 1500);
-                return true;
-            } else {
-                showDialogMessage(confirmationDialog, 'Erro ao salvar o conjunto.', 'error');
-                return false;
-            }
-        }
-    );
-}
 
 function loadGroupTemplates() {
     const boardContainer = document.getElementById('group-board-templates-grid');
@@ -1023,9 +654,9 @@ function renderGroupBoardTemplates(templates) {
                 ${template.columns.length > 4 ? '<span>...</span>' : ''}
             </div>
             <div class="template-actions">
-                <button class="btn btn-sm btn-primary use-template-btn" data-template-id="${template.id}">Usar</button>
-                <button class="btn btn-sm btn-secondary edit-template-btn" data-template-id="${template.id}">Editar</button>
-                <button class="btn btn-sm btn-danger delete-template-btn" data-template-id="${template.id}">Excluir</button>
+                <button class="btn btn-sm confirm use-template-btn" data-template-id="${template.id}">Usar</button>
+                <button class="btn btn-sm edit edit-template-btn" data-template-id="${template.id}">Editar</button>
+                <button class="btn btn-sm danger delete-template-btn" data-template-id="${template.id}">Excluir</button>
             </div>
         `;
         
@@ -1042,8 +673,8 @@ function renderGroupBoardTemplates(templates) {
     
     container.querySelectorAll('.edit-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.closest('.template-card').dataset.templateId;
-            showGroupBoardTemplateDialog(templateId);
+            const card = e.target.closest('.template-card');
+            showTemplateEditorDialog('board', { ownerType: 'group', ownerId: card.dataset.groupId }, card.dataset.templateId);
         });
     });
     
@@ -1083,9 +714,9 @@ function renderGroupTagTemplates(templates) {
                 ${template.tags.length > 3 ? '<span>...</span>' : ''}
             </div>
             <div class="template-actions">
-                <button class="btn btn-sm btn-primary use-template-btn" data-template-id="${template.id}">Usar</button>
-                <button class="btn btn-sm btn-secondary edit-template-btn" data-template-id="${template.id}">Editar</button>
-                <button class="btn btn-sm btn-danger delete-template-btn" data-template-id="${template.id}">Excluir</button>
+                <button class="btn btn-sm confirm use-template-btn" data-template-id="${template.id}">Usar</button>
+                <button class="btn btn-sm edit edit-template-btn" data-template-id="${template.id}">Editar</button>
+                <button class="btn btn-sm danger delete-template-btn" data-template-id="${template.id}">Excluir</button>
             </div>
         `;
         
@@ -1102,8 +733,8 @@ function renderGroupTagTemplates(templates) {
     
     container.querySelectorAll('.edit-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const templateId = e.target.closest('.template-card').dataset.templateId;
-            showGroupTagTemplateDialog(templateId);
+            const card = e.target.closest('.template-card');
+            showTemplateEditorDialog('tag', { ownerType: 'group', ownerId: card.dataset.groupId }, card.dataset.templateId);
         });
     });
     
@@ -1231,8 +862,8 @@ function renderServers() {
                 </div>
             </div>
             <div class="server-actions">
-                <button class="btn btn-sm btn-primary share-server-btn" data-server-id="${server.id}">Compartilhar</button>
-                <button class="btn btn-sm btn-danger delete-server-btn" data-server-id="${server.id}">Excluir</button>
+                <button class="btn btn-sm share share-server-btn" data-server-id="${server.id}">Compartilhar</button>
+                <button class="btn btn-sm danger delete-server-btn" data-server-id="${server.id}">Excluir</button>
             </div>
         `;
         
@@ -1500,47 +1131,32 @@ function createGroupCard(group) {
     groupCard.dataset.groupId = group.id;
 
     const isAdmin = group.adminId === currentUser.id;
-    
-    const statusHtml = isAdmin
-        ? '<span class="group-status status-admin">Admin</span>'
-        : '<span class="group-status status-member">Membro</span>';
-
-    const noTagTemplateWarning = !group.tagTemplate
-        ? `<div class="group-warning"><span>⚠️</span> Sem conjunto de etiquetas padrão!</div>`
-        : '';
 
     const actionsHtml = isAdmin
-        ? `<button class="btn btn-sm btn-secondary" data-action="edit">Editar</button>
-           <button class="btn btn-sm btn-danger" data-action="delete">Excluir</button>`
-        : `<button class="btn btn-sm btn-danger" data-action="leave">Sair</button>`;
+        ? `<button class="btn btn-sm edit" data-action="edit">Editar</button>
+           <button class="btn btn-sm danger" data-action="delete">Excluir</button>`
+        : `<button class="btn btn-sm danger" data-action="leave">Sair</button>`;
 
     groupCard.innerHTML = `
-        ${statusHtml}
-        <div class="group-header">
-            <span class="group-icon">👥</span>
-            <div class="group-info">
-                <h3 class="group-name">${group.name}</h3>
-                <p class="group-members">${group.memberIds ? group.memberIds.length : 0} membros</p>
-            </div>
-        </div>
+        <div class="group-icon">${group.icon || '👥'}</div>
+        <h4 class="group-name">${group.name}</h4>
         <p class="group-description">${group.description || 'Sem descrição.'}</p>
-        ${noTagTemplateWarning}
-        <div class="group-stats">
+        <div class="group-stats-grid">
             <div class="group-stat">
-                <div class="stat-number">${getGroupTaskCount(group.id)}</div>
-                <div class="stat-label">Tarefas</div>
+                <span class="stat-number">${group.memberIds ? group.memberIds.length : 0}</span>
+                <span class="stat-label">Membros</span>
             </div>
             <div class="group-stat">
-                <div class="stat-number">${getCompletedTaskCount(group.id)}</div>
-                <div class="stat-label">Concluídas</div>
+                <span class="stat-number">${getGroupTaskCount(group.id)}</span>
+                <span class="stat-label">Tarefas</span>
             </div>
             <div class="group-stat">
-                <div class="stat-number">${getOverdueTaskCount(group.id)}</div>
-                <div class="stat-label">Atrasadas</div>
+                <span class="stat-number">${getCompletedTaskCount(group.id)}</span>
+                <span class="stat-label">Concluídas</span>
             </div>
         </div>
         <div class="group-actions">
-            <button class="btn btn-sm btn-primary" data-action="view">Visualizar</button>
+            <button class="btn btn-sm confirm" data-action="view">Estatísticas</button>
             ${actionsHtml}
         </div>
     `;
@@ -1603,9 +1219,15 @@ function editGroup(group) {
     
     // Preencher formulário com dados atuais
     document.getElementById('edit-group-name').value = group.name;
+    const iconInput = document.getElementById('edit-group-icon');
+    iconInput.value = group.icon || '👥';
+    document.getElementById('btn-choose-edit-group-icon').onclick = () => {
+        showIconPickerDialog(icon => iconInput.value = icon);
+    };
     document.getElementById('edit-group-description').value = group.description || '';
     document.getElementById('edit-group-access').value = group.access || 'public';
 
+    initCustomSelects();
     // --- LÓGICA PARA O SELECT DE TAG TEMPLATE ---
     const tagTemplateSelect = document.getElementById('edit-group-tag-template');
     tagTemplateSelect.innerHTML = ''; // Limpa
@@ -1690,6 +1312,7 @@ function editGroup(group) {
     feedbackEl.textContent = '';
     feedbackEl.className = 'feedback';
     
+    initCustomSelects();
     // Mostrar diálogo
     dialog.showModal();
 }
@@ -1723,6 +1346,7 @@ function saveGroupChanges(e) {
         (confirmationDialog) => {
             currentGroup.name = name;
             currentGroup.description = document.getElementById('edit-group-description').value;
+            currentGroup.icon = document.getElementById('edit-group-icon').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
             currentGroup.tagTemplate = document.getElementById('edit-group-tag-template').value;
             
@@ -2283,8 +1907,8 @@ function sendMessageToMember(memberId) {
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-neon cancel">Cancelar</button>
-            <button class="btn btn-neon confirm">Enviar Convite</button>
+            <button class="btn cancel">Cancelar</button>
+            <button class="btn confirm">Enviar</button>
         </div>
     `;
 
@@ -2407,10 +2031,10 @@ function loadGroupMembers(group) {
                 </div>
             </div>
             <div>
-                ${isAdmin ? 
-                    '<span class="admin-badge">Administrador</span>' : 
-                    `<button class="btn btn-sm btn-secondary message-member-btn" data-member-id="${memberId}" title="Enviar Mensagem">✉️</button>
-                     <button class="btn btn-sm btn-danger remove-member-btn" data-member-id="${memberId}">Remover</button>`
+                ${isAdmin ?
+                    '<span class="admin-badge">Administrador</span>' :
+                    `<button class="btn btn-sm alternative1 message-member-btn" data-member-id="${memberId}" title="Enviar Mensagem">✉️</button>
+                     <button class="btn btn-sm danger remove-member-btn" data-member-id="${memberId}">Remover</button>`
                 }
             </div>
         `;

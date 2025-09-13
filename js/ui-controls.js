@@ -1,5 +1,10 @@
 // js/ui-controls.js - Controles de UI universais e avançados
 import { getCurrentUser, updateUser } from './auth.js';
+import { 
+    saveUserBoardTemplates, getUserBoardTemplates, 
+    saveUserTagTemplates, getUserTagTemplates,
+    getGroup, saveGroup, getAllGroups
+} from './storage.js';
 
 /**
  * Biblioteca de ícones padrão para uso em toda a aplicação.
@@ -721,4 +726,247 @@ export function showContextMenu(event, items) {
     setTimeout(() => {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }, 0);
+}
+
+/**
+ * Exibe um editor de template universal para quadros ou etiquetas.
+ * @param {'board' | 'tag'} type - O tipo de template ('board' ou 'tag').
+ * @param {object} context - O contexto de salvamento. Ex: { ownerType: 'user' } ou { ownerType: 'group', ownerId: '...' }.
+ * @param {string|null} templateId - O ID do template para editar, ou null para criar um novo.
+ */
+export function showTemplateEditorDialog(type, context, templateId = null) {
+    const isBoard = type === 'board';
+    const dialogId = isBoard ? 'board-template-dialog' : 'tag-template-dialog';
+
+    // CORREÇÃO: Remove qualquer diálogo antigo para evitar conflitos de estrutura.
+    const oldDialog = document.getElementById(dialogId);
+    if (oldDialog) {
+        oldDialog.remove();
+    }
+
+    // Sempre cria um novo diálogo para garantir a estrutura correta.
+    const dialog = createTemplateEditorDialog(type);
+    document.body.appendChild(dialog);
+    makeDraggable(dialog);
+
+    const title = isBoard ? 'Template de Quadro' : 'Conjunto de Etiquetas';
+    const item = isBoard ? 'Coluna' : 'Etiqueta';
+    const icon = isBoard ? '📋' : '🏷️';
+
+    dialog.querySelector('.dialog-title').textContent = templateId ? `Editar ${title}` : `Criar Novo ${title}`;
+    dialog.querySelector('.template-icon-input').value = icon;
+    dialog.querySelector('.template-name-input').value = '';
+    dialog.querySelector('.template-desc-input').value = '';
+    dialog.querySelector('.editor-container').innerHTML = '';
+    dialog.dataset.editingId = templateId || '';
+    dialog.dataset.context = JSON.stringify(context);
+
+    // --- LÓGICA PARA O SELETOR DE GRUPO (SE APLICÁVEL) ---
+    const groupSelectorContainer = dialog.querySelector('.group-selector-container');
+    if (context.ownerType === 'group') {
+        groupSelectorContainer.style.display = 'block';
+        const groupSelect = groupSelectorContainer.querySelector('select');
+        const adminGroups = getAllGroups().filter(g => g.adminId === getCurrentUser().id);
+
+        groupSelect.innerHTML = '<option value="">-- Selecione um grupo --</option>';
+        adminGroups.forEach(g => {
+            groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+        });
+
+        if (templateId && context.ownerId) {
+            // Se estiver editando, pré-seleciona e desabilita o grupo.
+            groupSelect.value = context.ownerId;
+            groupSelect.disabled = true;
+        } else {
+            // Se estiver criando, habilita o seletor.
+            groupSelect.disabled = false;
+        }
+        initCustomSelects(); // Inicializa o select customizado
+    } else {
+        // Esconde o seletor se o contexto for 'user'.
+        groupSelectorContainer.style.display = 'none';
+    }
+
+    // Lógica para preencher os dados se estiver editando
+    let template = null;
+    if (templateId) {
+        if (context.ownerType === 'user') {
+            const templates = isBoard ? getUserBoardTemplates(getCurrentUser().id) : getUserTagTemplates(getCurrentUser().id);
+            template = templates.find(t => t.id === templateId);
+        } else if (context.ownerType === 'group') {
+            const group = getGroup(context.ownerId);
+            const templates = isBoard ? group?.boardTemplates : group?.tagTemplates;
+            template = (templates || []).find(t => t.id === templateId);
+        }
+    }
+
+    if (template) {
+        dialog.querySelector('.template-icon-input').value = template.icon || icon;
+        dialog.querySelector('.template-name-input').value = template.name;
+        dialog.querySelector('.template-desc-input').value = template.description || '';
+        const items = isBoard ? template.columns : template.tags;
+        items.forEach(it => addTemplateItemToEditor(dialog, it.name, it.color));
+    } else {
+        addTemplateItemToEditor(dialog, `Nova ${item}`, isBoard ? '#e74c3c' : '#3498db');
+    }
+
+    // Configura os botões
+    dialog.querySelector('.btn-add-item').onclick = () => addTemplateItemToEditor(dialog);
+    dialog.querySelector('.btn-save-template').onclick = () => saveTemplateFromEditor(dialog, type);
+    dialog.querySelector('.btn-cancel').onclick = () => dialog.close();
+    dialog.querySelector('.btn-choose-icon').onclick = () => {
+        showIconPickerDialog(selectedIcon => {
+            dialog.querySelector('.template-icon-input').value = selectedIcon;
+        });
+    };
+
+    updateItemCount(dialog);
+    dialog.showModal();
+}
+
+function createTemplateEditorDialog(type) {
+    const isBoard = type === 'board';
+    const dialog = document.createElement('dialog');
+    dialog.id = isBoard ? 'board-template-dialog' : 'tag-template-dialog';
+    dialog.className = 'draggable';
+
+    const title = isBoard ? 'Template de Quadro' : 'Conjunto de Etiquetas';
+    const item = isBoard ? 'Coluna' : 'Etiqueta';
+
+    dialog.innerHTML = `
+        <h3 class="drag-handle dialog-title">Criar ${title}</h3>
+        <div class="form-group group-selector-container" style="display: none;">
+            <label>Salvar no Grupo:</label>
+            <div class="custom-select">
+                <select class="template-group-select"></select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Ícone:</label>
+            <div class="icon-input-group">
+                <input type="text" class="icon-display template-icon-input" readonly>
+                <button type="button" class="btn edit btn-choose-icon">Escolher</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Nome do ${title}:</label>
+            <input type="text" class="template-name-input">
+        </div>
+        <div class="form-group">
+            <label>Descrição:</label>
+            <textarea class="template-desc-input" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+            <label>${isBoard ? 'Colunas' : 'Etiquetas'} (<span class="item-count">0</span>/8):</label>
+            <div class="editor-container"></div>
+            <button type="button" class="btn alternative1 btn-add-item" style="width:100%; margin-top:10px;">Adicionar ${item}</button>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel">Cancelar</button>
+            <button class="btn confirm btn-save-template">Salvar</button>
+        </div>
+    `;
+    return dialog;
+}
+
+function addTemplateItemToEditor(dialog, name = '', color = '#333') {
+    const editor = dialog.querySelector('.editor-container');
+    if (editor.children.length >= 8) {
+        showDialogMessage(dialog, 'Limite de 8 itens atingido.', 'warning');
+        return;
+    }
+    const itemEl = document.createElement('div');
+    itemEl.className = 'editor-item';
+    itemEl.innerHTML = `
+        <input type="text" value="${name}" placeholder="Nome do item" class="form-control">
+        <input type="color" value="${color}">
+        <button class="btn btn-sm danger remove-btn">-</button>
+    `;
+    itemEl.querySelector('.remove-btn').onclick = () => {
+        itemEl.remove();
+        updateItemCount(dialog);
+    };
+    editor.appendChild(itemEl);
+    updateItemCount(dialog);
+}
+
+function updateItemCount(dialog) {
+    const count = dialog.querySelector('.editor-container').children.length;
+    dialog.querySelector('.item-count').textContent = count;
+    dialog.querySelector('.btn-add-item').disabled = count >= 8;
+}
+
+function saveTemplateFromEditor(dialog, type) {
+    const context = JSON.parse(dialog.dataset.context);
+    const templateId = dialog.dataset.editingId;
+    const name = dialog.querySelector('.template-name-input').value.trim();
+    if (!name) {
+        showDialogMessage(dialog, 'O nome é obrigatório.', 'error');
+        return;
+    }
+
+    // Validação para templates de grupo
+    if (context.ownerType === 'group') {
+        const groupId = dialog.querySelector('.template-group-select').value;
+        if (!groupId) {
+            showDialogMessage(dialog, 'É necessário selecionar um grupo.', 'error');
+            return;
+        }
+        context.ownerId = groupId; // Atualiza o ownerId com o grupo selecionado
+    }
+
+    const items = Array.from(dialog.querySelectorAll('.editor-container .editor-item')).map(item => ({
+        name: item.querySelector('input[type="text"]').value.trim() || 'Item sem nome',
+        color: item.querySelector('input[type="color"]').value
+    }));
+
+    if (items.length === 0) {
+        showDialogMessage(dialog, 'Adicione pelo menos um item.', 'error');
+        return;
+    }
+
+    const newTemplateData = {
+        id: templateId || `${context.ownerType}-${type}-${Date.now()}`,
+        name: name,
+        icon: dialog.querySelector('.template-icon-input').value,
+        description: dialog.querySelector('.template-desc-input').value.trim()
+    };
+    if (type === 'board') newTemplateData.columns = items;
+    else newTemplateData.tags = items;
+
+    showConfirmationDialog('Deseja salvar este template?', (confirmDialog) => {
+        let success = false;
+        if (context.ownerType === 'user') {
+            const userId = getCurrentUser().id;
+            const getFunc = type === 'board' ? getUserBoardTemplates : getUserTagTemplates;
+            const saveFunc = type === 'board' ? saveUserBoardTemplates : saveUserTagTemplates;
+            let templates = getFunc(userId);
+            const index = templates.findIndex(t => t.id === templateId);
+            if (index !== -1) templates[index] = newTemplateData;
+            else templates.push(newTemplateData);
+            success = saveFunc(userId, templates);
+        } else if (context.ownerType === 'group') {
+            const group = getGroup(context.ownerId);
+            if (group) {
+                const templateKey = type === 'board' ? 'boardTemplates' : 'tagTemplates';
+                if (!group[templateKey]) group[templateKey] = [];
+                const index = group[templateKey].findIndex(t => t.id === templateId);
+                if (index !== -1) group[templateKey][index] = newTemplateData;
+                else group[templateKey].push(newTemplateData);
+                success = saveGroup(group);
+            }
+        }
+
+        if (success) {
+            showDialogMessage(confirmDialog, 'Template salvo com sucesso!', 'success');
+            // Recarrega a lista de templates na página que chamou
+            window.dispatchEvent(new CustomEvent('templatesUpdated'));
+            setTimeout(() => dialog.close(), 1500);
+            return true;
+        } else {
+            showDialogMessage(confirmDialog, 'Erro ao salvar o template.', 'error');
+            return false;
+        }
+    });
 }

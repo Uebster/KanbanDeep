@@ -1,33 +1,20 @@
-/* Container principal */
-.container {
+/* Layout Principal */
+body {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
     width: 100%;
     max-width: 1200px;
     margin: 20px auto;
-    padding: 0 20px;
+    border: 1px solid var(--primary);
 }
-
-/* Tabs */
-.tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 25px;
-    border-bottom: 1px solid var(--border);
-}
-
-.tab {
-    padding: 12px 24px;
-    background-color: transparent;
-    color: var(--text-muted);
-    border: none;
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    font-size: 1.1rem;
-    font-weight: 500;
-    transition: var(--transition-fast);
-}
-
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
@@ -37,19 +24,13 @@
     to { opacity: 1; }
 }
 
-/* Cards */
-.card {
-    background-color: var(--bg-card);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    padding: 30px;
-}
-
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
 }
 
 .card-title {
@@ -368,7 +349,7 @@
 }
 
 .form-section {
-  border: 1px solid var(--border);
+  border: 1px solid var(--primary);
   border-radius: 8px;
   padding: 20px;
 }
@@ -379,7 +360,7 @@
 }
 
 .stats-section {
-  border: 1px solid var(--border);
+  border: 1px solid var(--primary);
   border-radius: 8px;
   padding: 20px;
 }
@@ -405,6 +386,12 @@
   display: flex;
   flex-direction: column;
   gap: 30px;
+}
+
+.template-section {
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 20px;
 }
 
 .template-type-buttons {
@@ -662,9 +649,89 @@
     border: 1px solid var(--warning);
 }
 
+.filters label {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.filters .custom-select {
+    margin-top: 0; /* Sobrescreve o margin-top padrão para alinhamento horizontal */
+}
+
+.stats-filter {
+    min-width: 250px;
+}
+
+/* NOVO: Estilo para o card de grupo, inspirado nos templates */
+.group-card {
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.group-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border-color: var(--primary);
+}
+
+.group-card .group-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.group-card .group-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.group-card .group-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+/* NOVO: Estilo para as estatísticas do grupo */
+.group-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px; /* Cria linhas finas entre as células */
+    background-color: var(--border); /* Cor das linhas */
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden; /* Garante que o border-radius seja aplicado */
+    margin-top: 15px;
+}
+
+.group-stat {
+    background-color: var(--bg-page);
+    padding: 12px;
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 .templates-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    margin-top: 15px;
     gap: 25px;
     min-height: 100px; /* Garante que a mensagem "nenhum template" tenha espaço */
 }

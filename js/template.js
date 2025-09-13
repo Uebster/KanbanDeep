@@ -10,7 +10,7 @@ import {
     saveColumn
 } from './storage.js';
 import { getCurrentUser, updateUser } from './auth.js';
-import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage, showIconPickerDialog, ICON_LIBRARY, showContextMenu } from './ui-controls.js';
+import { showFloatingMessage, updateUserAvatar, showConfirmationDialog, showDialogMessage, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showTemplateEditorDialog } from './ui-controls.js';
 
 let currentUser;
 let untitledColumnCounter = 1;
@@ -29,6 +29,9 @@ export function initTemplatesPage() {
     setupTabs();
     setupActionButtons();
     loadAndRenderAllTemplates();
+
+    // Listener para recarregar templates quando forem salvos pelo editor universal
+    window.addEventListener('templatesUpdated', loadAndRenderAllTemplates);
 }
 
 function setupPage() {
@@ -60,8 +63,8 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
 
         const actionsHtml = isEditable ? `
             <button class="btn btn-sm btn-primary btn-use-template">Usar</button>
-            <button class="btn btn-sm btn-edit-board">Editar</button>
-            <button class="btn btn-sm btn-danger btn-delete-board">Excluir</button>
+            <button class="btn btn-sm edit btn-edit-board">Editar</button>
+            <button class="btn btn-sm danger btn-delete-board">Excluir</button>
         ` : `<button class="btn btn-sm btn-primary btn-use-template">Usar</button>`;
 
         card.innerHTML = `
@@ -140,9 +143,9 @@ function renderTagTemplates(templates, gridElement, isEditable) {
         ).join('');
         
         const actionsHtml = isEditable ? `
-            <button class="btn btn-sm btn-primary btn-use-tag">Usar</button>
-            <button class="btn btn-sm btn-edit-tag">Editar</button>
-            <button class="btn btn-sm btn-danger btn-delete-tag">Excluir</button>
+            <button class="btn btn-sm confirm btn-use-tag">Usar</button>
+            <button class="btn btn-sm edit btn-edit-tag">Editar</button>
+            <button class="btn btn-sm danger btn-delete-tag">Excluir</button>
         ` : `<button class="btn btn-sm btn-primary btn-use-tag">Usar</button>`;
 
         card.innerHTML = `
@@ -161,7 +164,9 @@ function renderTagTemplates(templates, gridElement, isEditable) {
 
     gridElement.querySelectorAll('.btn-use-tag').forEach(btn => btn.onclick = (e) => useTagTemplate(e.target.closest('.template-card').dataset.id));
     if (isEditable) {
-        gridElement.querySelectorAll('.btn-edit-tag').forEach(btn => btn.onclick = (e) => showTagTemplateDialog(e.target.closest('.template-card').dataset.id));
+        gridElement.querySelectorAll('.btn-edit-tag').forEach(btn => btn.onclick = (e) => {
+            showTemplateEditorDialog('tag', { ownerType: 'user' }, e.target.closest('.template-card').dataset.id);
+        });
         gridElement.querySelectorAll('.btn-delete-tag').forEach(btn => btn.onclick = (e) => deleteTagTemplate(e.target.closest('.template-card').dataset.id));
     }
 }
@@ -194,160 +199,6 @@ function useTagTemplate(templateId) {
     );
 }
 
-function showBoardTemplateDialog(templateId = null) {
-    const dialog = document.getElementById('board-template-dialog');
-    const userTemplates = getUserBoardTemplates(currentUser.id);
-    const template = templateId ? userTemplates.find(t => t.id === templateId) : null;
-    
-    dialog.dataset.editingId = templateId;
-    document.getElementById('board-template-dialog-title').textContent = template ? 'Editar Template de Quadro' : 'Criar Novo Template de Quadro';
-    
-    // Lógica do Ícone
-    const iconInput = document.getElementById('board-template-icon');
-    iconInput.value = template ? template.icon || '📋' : '📋';
-    document.getElementById('btn-choose-board-icon').onclick = () => {
-        showIconPickerDialog((selectedIcon) => {
-            iconInput.value = selectedIcon;
-        });
-    };
-
-    document.getElementById('board-template-name').value = template ? template.name : '';
-    document.getElementById('board-template-desc').value = template ? template.description : '';
-    
-    const editor = document.getElementById('board-columns-editor');
-    editor.innerHTML = '';
-    const initialColumns = template ? template.columns : [{ name: 'Coluna 1', color: '#e74c3c' }];
-    initialColumns.forEach(col => addColumnToEditor(col.name, col.color));
-
-    // Limpar mensagens de erro
-    const feedbackEl = dialog.querySelector('.feedback');
-    feedbackEl.textContent = '';
-    feedbackEl.classList.remove('show', 'error', 'success');
-
-    updateColumnCount(editor); 
-    dialog.showModal();
-}
-
-function addColumnToEditor(name = '', color = '#333333') {
-    const editor = document.getElementById('board-columns-editor');
-    editor.classList.remove('hidden'); // Mostra o editor ao adicionar o primeiro item
-
-    if (editor.children.length >= 8) {
-        showFloatingMessage('Limite de 8 colunas por quadro atingido.', 'warning');
-        return;
-    }
-    const item = document.createElement('div');
-    item.className = 'editor-item';
-    item.innerHTML = `
-        <input type="text" value="${name}" placeholder="Nova Coluna" class="form-control" name="column_name">
-        <input type="color" value="${color}" name="column_color">
-        <button class="remove-btn">-</button>
-    `;
-    item.querySelector('.remove-btn').onclick = () => {
-        item.remove();
-        // Passa a referência do editor para a função de contagem
-        updateColumnCount(editor); 
-    };
-    editor.appendChild(item);
-    // Passa a referência do editor para a função de contagem
-    updateColumnCount(editor); 
-}
-
-function updateColumnCount(editor) { // <-- Agora recebe 'editor' como parâmetro
-    if (!editor) return; // Segurança
-    
-    const count = editor.children.length;
-    // Precisamos encontrar os elementos de contagem a partir do diálogo pai
-    const dialog = editor.closest('dialog');
-    if (!dialog) return;
-
-    dialog.querySelector('#board-column-count').textContent = count;
-    dialog.querySelector('#add-board-column-btn').disabled = count >= 8;
-
-    // A lógica principal: esconde ou mostra o editor
-    editor.classList.toggle('hidden', count === 0);
-}
-
-function saveBoardTemplate() {
-    const dialog = document.getElementById('board-template-dialog');
-    const templateId = dialog.dataset.editingId;
-    const icon = document.getElementById('board-template-icon').value;
-    const name = document.getElementById('board-template-name').value.trim();
-    const description = document.getElementById('board-template-desc').value;
-    
-    if (!name) {
-        showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
-        return;
-    }
-
-    // Pega uma cópia nova dos templates para a validação
-    const currentTemplates = getUserBoardTemplates(currentUser.id);
-    const isNameUnique = !currentTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
-
-    if (!isNameUnique) {
-        showDialogMessage(dialog, 'Já existe um template com este nome. Por favor, escolha outro nome.', 'error');
-        return;
-    }
-
-    const columns = [];
-    document.querySelectorAll('#board-columns-editor .editor-item').forEach(item => {
-        let colName = item.querySelector('input[type="text"]').value.trim();
-        const colColor = item.querySelector('input[type="color"]').value;
-        
-        if (!colName) {
-            colName = `Nova Coluna (${untitledColumnCounter})`;
-            untitledColumnCounter++;
-        }
-        
-        columns.push({ name: colName, color: colColor });
-    });
-
-    if (columns.length === 0) {
-        showDialogMessage(dialog, 'Adicione pelo menos uma coluna ao template.', 'error');
-        return;
-    }
-    
-    showConfirmationDialog(
-        'Deseja salvar este template?',
-        (confirmationDialog) => {
-            let templatesToSave = getUserBoardTemplates(currentUser.id);
-            if (templateId && templateId !== 'null') {
-                const index = templatesToSave.findIndex(t => t.id === templateId);
-                if (index !== -1) {
-                    templatesToSave[index] = { 
-                        ...templatesToSave[index], 
-                        icon, name, 
-                        description: description, 
-                        columns 
-                    };
-                }
-            } else {
-                const newTemplate = {
-                    id: 'user-board-' + Date.now(),
-                    name, icon,
-                    description: description,
-                    columns
-                };
-                templatesToSave.push(newTemplate);
-            }
-
-            const success = saveUserBoardTemplates(currentUser.id, templatesToSave);
-
-            if (success) {
-                loadAndRenderAllTemplates();
-                showDialogMessage(confirmationDialog, 'Template salvo com sucesso!', 'success');
-                setTimeout(() => {
-                    dialog.close(); // Fecha o diálogo principal de edição
-                }, 1500);
-                return true; // Sinaliza para fechar o diálogo de confirmação
-            } else {
-                showDialogMessage(confirmationDialog, 'Erro ao salvar o template.', 'error');
-                return false;
-            }
-        }
-    );
-}
-
 function deleteBoardTemplate(templateId) {
     showConfirmationDialog(
         'Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.',
@@ -362,154 +213,6 @@ function deleteBoardTemplate(templateId) {
         }
     );
 }
-
-function showTagTemplateDialog(templateId = null) {
-    const dialog = document.getElementById('tag-template-dialog');
-    const userTemplates = getUserTagTemplates(currentUser.id);
-    const template = templateId ? userTemplates.find(t => t.id === templateId) : null;
-
-    dialog.dataset.editingId = templateId;
-    document.getElementById('tag-template-dialog-title').textContent = template ? 'Editar Conjunto de Etiquetas' : 'Criar Novo Conjunto de Etiquetas';
-    document.getElementById('tag-template-name').value = template ? template.name : '';
-    document.getElementById('tag-template-desc').value = template ? template.description : '';
-
-    // Lógica do Ícone
-    const iconInput = document.getElementById('tag-template-icon');
-    iconInput.value = template ? template.icon || '🏷️' : '🏷️';
-    document.getElementById('btn-choose-tag-icon').onclick = () => {
-        showIconPickerDialog((selectedIcon) => {
-            iconInput.value = selectedIcon;
-        });
-    };
-
-    const editor = document.getElementById('tags-editor');
-    editor.innerHTML = '';
-    const initialTags = template ? template.tags : [{ name: 'Nova Etiqueta', color: '#3498db' }];
-    initialTags.forEach(tag => addTagToEditor(tag.name, tag.color));
-
-    // Limpar mensagens de erro
-    const feedbackEl = dialog.querySelector('.feedback');
-    feedbackEl.textContent = '';
-    feedbackEl.classList.remove('show', 'error', 'success');
-
-    updateTagCount(editor);
-    dialog.showModal();
-}
-
-function addTagToEditor(name = '', color = '#3498db') {
-    const editor = document.getElementById('tags-editor');
-    editor.classList.remove('hidden');
-
-    if (editor.children.length >= 8) {
-        showFloatingMessage('Limite de 8 etiquetas por conjunto atingido.', 'warning');
-        return;
-    }
-    const item = document.createElement('div');
-    item.className = 'editor-item';
-    item.innerHTML = `
-        <input type="text" value="${name}" placeholder="Nova Etiqueta" class="form-control" name="tag_name">
-        <input type="color" value="${color}" name="tag_color">
-        <button class="remove-btn">-</button>
-    `;
-    item.querySelector('.remove-btn').onclick = () => {
-        item.remove();
-        updateTagCount(editor); // Passa a referência
-    };
-    editor.appendChild(item);
-    updateTagCount(editor); // Passa a referência
-}
-
-function updateTagCount(editor) { // <-- Agora recebe 'editor' como parâmetro
-    if (!editor) return;
-
-    const count = editor.children.length;
-    const dialog = editor.closest('dialog');
-    if (!dialog) return;
-    
-    dialog.querySelector('#tag-count').textContent = count;
-    dialog.querySelector('#add-tag-btn').disabled = count >= 8;
-    
-    editor.classList.toggle('hidden', count === 0);
-}
-
-function saveTagTemplate() {
-    const dialog = document.getElementById('tag-template-dialog');
-    const templateId = dialog.dataset.editingId;
-    const icon = document.getElementById('tag-template-icon').value;
-    const name = document.getElementById('tag-template-name').value.trim();
-
-    if (!name) {
-        showDialogMessage(dialog, 'O nome do conjunto é obrigatório.', 'error');
-        return;
-    }
-
-    const currentTemplates = getUserTagTemplates(currentUser.id);
-    const isNameUnique = !currentTemplates.some(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== templateId);
-
-    if (!isNameUnique) {
-        showDialogMessage(dialog, 'Já existe um conjunto com este nome. Por favor, escolha outro nome.', 'error');
-        return;
-    }
-
-    const tags = [];
-    document.querySelectorAll('#tags-editor .editor-item').forEach(item => {
-        let tagName = item.querySelector('input[type="text"]').value.trim();
-        const tagColor = item.querySelector('input[type="color"]').value;
-        
-        if (!tagName) {
-            tagName = `Nova Etiqueta (${untitledTagCounter})`;
-            untitledTagCounter++;
-        }
-        
-        tags.push({ name: tagName, color: tagColor });
-    });
-
-    if (tags.length === 0) {
-        showDialogMessage(dialog, 'Adicione pelo menos uma etiqueta ao conjunto.', 'error');
-        return;
-    }
-
-    showConfirmationDialog(
-        'Deseja salvar este conjunto de etiquetas?',
-        (confirmationDialog) => {
-            let templatesToSave = getUserTagTemplates(currentUser.id);
-            if (templateId && templateId !== 'null') {
-                const index = templatesToSave.findIndex(t => t.id === templateId);
-                if (index !== -1) {
-                    templatesToSave[index] = { 
-                        ...templatesToSave[index], 
-                        icon, name, 
-                        description: document.getElementById('tag-template-desc').value, 
-                        tags 
-                    };
-                }
-            } else {
-                const newTemplate = {
-                    id: 'user-tag-' + Date.now(),
-                    name, icon,
-                    description: document.getElementById('tag-template-desc').value,
-                    tags
-                };
-                templatesToSave.push(newTemplate);
-            }
-
-            const success = saveUserTagTemplates(currentUser.id, templatesToSave);
-
-            if (success) {
-                loadAndRenderAllTemplates();
-                showDialogMessage(confirmationDialog, 'Conjunto salvo com sucesso!', 'success');
-                setTimeout(() => {
-                    dialog.close(); // Fecha o diálogo principal de edição
-                }, 1500);
-                return true; // Sinaliza para fechar o diálogo de confirmação
-            } else {
-                showDialogMessage(confirmationDialog, 'Erro ao salvar o conjunto.', 'error');
-                return false;
-            }
-        }
-    );
-}
-
 
 function deleteTagTemplate(templateId) {
     showConfirmationDialog(
@@ -553,13 +256,12 @@ function setupTabs() {
 }
 
 function setupActionButtons() {
-    document.getElementById('create-user-board-template').onclick = () => showBoardTemplateDialog();
-    document.getElementById('create-user-tag-template').onclick = () => showTagTemplateDialog();
-    
-    document.getElementById('add-board-column-btn').onclick = () => addColumnToEditor();
-    document.getElementById('save-board-template-btn').onclick = saveBoardTemplate;
-    document.getElementById('add-tag-btn').onclick = () => addTagToEditor();
-    document.getElementById('save-tag-template-btn').onclick = saveTagTemplate;
+    document.getElementById('create-user-board-template').onclick = () => {
+        showTemplateEditorDialog('board', { ownerType: 'user' });
+    };
+    document.getElementById('create-user-tag-template').onclick = () => {
+        showTemplateEditorDialog('tag', { ownerType: 'user' });
+    };
 }
 
 function deleteAllBoardTemplates() {
