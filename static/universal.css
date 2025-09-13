@@ -2,7 +2,8 @@
 /* Este arquivo contém todos os estilos globais e compartilhados pela aplicação. */
 
 /* ===== VARIÁVEIS GLOBAIS E TEMA ===== */
-:root {
+/* TEMA PADRÃO: Cinza Escuro (Original) */
+:root { 
     /* Cores Principais */
     --bg-page: #1e1e1e;
     --bg-card: #3c3c3c;
@@ -38,6 +39,30 @@ body.light-mode {
     --border: #cccccc;
     --border-light: #d1d1d1;
     --header: #d4d4d4;
+}
+
+body.dark-mode {
+    /* TEMA ESCURO (PRETO): Alto contraste, agora mais escuro */
+    --bg-page: #0c0c0c;      /* Quase preto */
+    --bg-card: #1a1a1a;      /* Cinza muito escuro */
+    --bg-header: #141414;    /* Um pouco mais escuro que o card */
+    --text: #ffffff;
+    --text-muted: #a0a0a0;
+    --border: #333333;
+    --border-light: #444444;
+    --header: #333;
+}
+
+body.light-gray-mode {
+    /* TEMA CINZA CLARO: Um tema claro com fundos e cartões em tons de cinza. */
+    --bg-page: #3f4a57;      /* Um cinza-azulado médio para o fundo */
+    --bg-card: #90a3b6;      /* Um tom mais claro para os cards */
+    --bg-header: #697d92;    /* Um tom mais escuro para o cabeçalho */
+    --text: #ffffff;         /* Texto claro para contraste */
+    --text-muted: #aeb7c2;   /* Texto secundário mais suave */
+    --border: #4d5b69;       /* Bordas visíveis */
+    --border-light: #91accf;
+    --header: #6d8a97;
 }
 
 /* ===== TÍTULOS (HEADINGS) ===== */
@@ -775,10 +800,10 @@ body.no-primary-effects .nav-item.active {
 
 /* ===== PALETA DE CORES (Adicionado) ===== */
 .color-palette {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    justify-content: space-around; /* Distribui melhor os itens */
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    justify-items: center;
     margin-top: 10px;
 }
 
@@ -817,4 +842,140 @@ body.no-primary-effects .nav-item.active {
     color: var(--primary); /* O ícone fica da cor primária no hover */
     box-shadow: none !important; /* Garante que nenhuma sombra apareça no hover */
     background-color: transparent;
+}
+
+/* Gatilho para abrir o seletor de cor customizado (MOVIMENTEI DE KANBAN.CSS) */
+.color-picker-trigger {
+    width: 40px; /* Tamanho padrão de um quadradinho */
+    height: 35px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.2s;
+    flex-shrink: 0; /* Impede que o elemento encolha */
+}
+.color-picker-trigger:hover {
+    border-color: var(--primary);
+    transform: scale(1.1);
+}
+
+/* ===== Seletor de Cores Customizado (Modal) ===== */
+#custom-color-picker-dialog {
+    width: 100%;
+    max-width: 380px; /* Aumentado para acomodar 8 cores salvas por linha */
+}
+
+.custom-color-picker-body {
+    display: flex;
+    flex-direction: column; /* Alterado para empilhar verticalmente */
+    gap: 10px; /* Reduzido o gap */
+    margin-top: 20px;
+}
+
+.picker-sliders-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.saturation-value-area {
+    width: 100%; /* Ocupa toda a largura disponível */
+    height: 150px; /* Altura ajustada para o novo layout */
+    position: relative;
+    cursor: crosshair;
+    background-image: linear-gradient(to right, #fff, rgba(255,255,255,0)), linear-gradient(to top, #000, rgba(0,0,0,0));
+}
+
+.sv-picker-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1.5px black, inset 0 0 0 1.5px black;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.hue-slider, .alpha-slider {
+    width: 100%;
+    height: 20px;
+    position: relative;
+    cursor: pointer;
+}
+
+.hue-slider {
+    background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+
+.alpha-slider {
+    background-image: /* Fundo quadriculado para visualizar a transparência */
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(135deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(135deg, transparent 75%, #ccc 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 0, 6px -6px, 0px 6px;
+}
+
+.slider-handle {
+    position: absolute;
+    top: -2px; 
+    bottom: -2px; 
+    width: 4px;
+    background: white; border: 1px solid #555; border-radius: 1px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.picker-footer { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+.color-preview { width: 40px; height: 40px; border-radius: 6px; border: 1px solid var(--border); }
+.color-inputs { display: flex; gap: 5px; flex-grow: 1; }
+.color-inputs input { width: 100%; text-align: center; padding: 8px; font-size: 0.9rem; appearance: none; -moz-appearance: textfield; }
+.color-inputs input::-webkit-outer-spin-button, .color-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.color-inputs .hex-input { flex-basis: 70px; flex-grow: 0; }
+.color-inputs .alpha-input { flex-basis: 60px; flex-grow: 1; }
+
+/* ===== Paleta de Cores Salvas no Seletor ===== */
+.custom-palette-container {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.custom-palette-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.btn-add-color {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.custom-palette-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+    gap: 8px;
+    max-height: 64px; /* Altura para 2 linhas de 28px com 8px de gap */
+    overflow-y: auto;
+}
+
+.custom-palette-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.custom-palette-swatch:hover {
+    transform: scale(1.1);
 }

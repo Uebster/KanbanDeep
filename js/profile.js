@@ -1045,16 +1045,19 @@ function restoreOriginalData() {
  * @param {string} themeValue - O valor do tema ('light', 'dark', etc.).
  */
 function applyThemeFromSelect(themeValue) {
-    document.body.className = ''; // Limpa todas as classes de tema
+    // Limpa apenas as classes de tema para evitar conflitos
+    document.body.classList.remove('light-mode', 'dark-mode', 'light-gray-mode');
+
+    // Aplica a classe correta com base no tema final
+    // 'auto' e 'dark-gray' resultam no tema padrão (:root), então não precisam de classe.
     switch (themeValue) {
         case 'light': document.body.classList.add('light-mode'); break;
-        case 'dark-gray': document.body.classList.add('dark-gray-mode'); break;
+        case 'dark': document.body.classList.add('dark-mode'); break;
         case 'light-gray': document.body.classList.add('light-gray-mode'); break;
-        case 'dark': break; // O padrão (preto) não precisa de classe
+        case 'dark-gray':
         case 'auto':
         default:
-            const systemTheme = localStorage.getItem('appTheme') || 'dark';
-            if (systemTheme === 'light') document.body.classList.add('light-mode');
+            // Não faz nada, permitindo que o tema padrão (:root) seja aplicado.
             break;
     }
 }

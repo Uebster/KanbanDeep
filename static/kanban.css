@@ -31,12 +31,6 @@ body {
 .horizontal-menu .custom-select {
     min-width: 250px;
 }
-.horizontal-menu .custom-select select {
-    display: none; /* Garante que o select original seja sempre escondido */
-}
-        .custom-select select {
-            display: none;
-        }
 
 
 /* Estilos para o filtro de quadros Pessoal/Grupo */
@@ -109,7 +103,7 @@ body {
     text-align: center;
     font-size: 1.5rem;
     font-weight: bold;
-    color: var(--text);
+    color: var(--column-text-color);
     border-bottom: 3px solid var(--border);
 }
 
@@ -255,12 +249,7 @@ body {
     flex-shrink: 0; /* Impede que o avatar encolha */
 }
 
-.card-tag-line {
-    height: 9px;
-    border: 2px solid #777;
-    border-radius: 3px;
-    margin-top: 8px; /* Espaço entre o título e a linha */
-}
+.card-tag-line { height: 9px; border: 2px solid #777; border-radius: 3px; margin-top: 8px; }
 
 .form-group input[type="color"] { padding: 5px; height: 45px; }
 

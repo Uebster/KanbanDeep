@@ -7,7 +7,7 @@ import {
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog } from './ui-controls.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
 // ===== ESTADO GLOBAL DO MÓDULO =====
@@ -420,7 +420,7 @@ function renderBoardSelector() {
     
     if (filteredBoards.length === 0) {
         // Esconde o select e mostra mensagem
-        selector.style.display = 'none';
+        selector.closest('.custom-select').style.display = 'none';
         
         // Remove mensagem anterior se existir
         const existingMessage = boardsDropdown.querySelector('.no-boards-message');
@@ -445,7 +445,7 @@ function renderBoardSelector() {
         boardsDropdown.insertBefore(message, referenceNode);
     } else {
         // Mostra o select e remove mensagem se existir
-        selector.style.display = 'block';
+        selector.closest('.custom-select').style.display = 'block';
         
         const existingMessage = boardsDropdown.querySelector('.no-boards-message');
         if (existingMessage) {
@@ -547,6 +547,7 @@ function createColumnElement(column) {
     columnEl.className = 'column';
     columnEl.dataset.columnId = column.id;
     columnEl.style.setProperty('--column-color', column.color || '#4b4b4bff');
+    columnEl.style.setProperty('--column-text-color', column.textColor || 'var(--text)');
     
 
     columnEl.innerHTML = `
@@ -966,9 +967,29 @@ function showColumnDialog(columnId = null) {
     dialog.dataset.editingId = columnId;
     document.getElementById('column-title-input').value = column ? column.title : '';
     document.getElementById('column-description').value = column ? column.description || '' : '';
-    document.getElementById('column-color-input').value = column ? column.color || '#282828' : '#282828';
-    document.getElementById('column-text-color-input').value = column ? column.textColor || '#e0e0e0' : '#e0e0e0';
 
+    const colorTrigger = document.getElementById('column-color-trigger');
+    const textColorTrigger = document.getElementById('column-text-color-trigger');
+
+    const initialColor = column ? column.color || '#3c3c3c' : '#3c3c3c';
+    colorTrigger.style.backgroundColor = initialColor;
+    colorTrigger.dataset.color = initialColor;
+    colorTrigger.onclick = () => {
+        showCustomColorPickerDialog(colorTrigger.dataset.color, (newColor) => {
+            colorTrigger.style.backgroundColor = newColor;
+            colorTrigger.dataset.color = newColor;
+        });
+    };
+
+    const initialTextColor = column ? column.textColor || '#e0e0e0' : '#e0e0e0';
+    textColorTrigger.style.backgroundColor = initialTextColor;
+    textColorTrigger.dataset.color = initialTextColor;
+    textColorTrigger.onclick = () => {
+        showCustomColorPickerDialog(textColorTrigger.dataset.color, (newColor) => {
+            textColorTrigger.style.backgroundColor = newColor;
+            textColorTrigger.dataset.color = newColor;
+        });
+    };
     dialog.querySelector('.btn.danger').style.display = columnId ? 'inline-block' : 'none';
     dialog.showModal();
 }
@@ -987,7 +1008,11 @@ function handleSaveColumn() {
         (confirmationDialog) => {
             saveState(); // Salva o estado para o Desfazer
             const columnId = dialog.dataset.editingId;
-            const columnData = { title, description: document.getElementById('column-description').value, color: document.getElementById('column-color-input').value };
+            const columnData = { 
+                title, 
+                description: document.getElementById('column-description').value, 
+                color: document.getElementById('column-color-trigger').dataset.color 
+            };
 
             if (columnId && columnId !== 'null') {
                 const existingColumn = getColumn(columnId);
@@ -2409,18 +2434,19 @@ function applyCardPreview() {
 }
 
 function applyThemeFromSelect(themeValue) {
-    document.body.classList.remove('light-mode', 'dark-mode');
-    
-    if (themeValue === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (themeValue === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else {
-        const systemTheme = localStorage.getItem('appTheme') || 'dark';
-        if (systemTheme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.add('dark-mode');
-        }
+    // Limpa apenas as classes de tema para evitar conflitos
+    document.body.classList.remove('light-mode', 'dark-mode', 'light-gray-mode');
+
+    // Aplica a classe correta com base no tema final
+    // 'auto' e 'dark-gray' resultam no tema padrão (:root), então não precisam de classe.
+    switch (themeValue) {
+        case 'light': document.body.classList.add('light-mode'); break;
+        case 'dark': document.body.classList.add('dark-mode'); break;
+        case 'light-gray': document.body.classList.add('light-gray-mode'); break;
+        case 'dark-gray':
+        case 'auto':
+        default:
+            // Não faz nada, permitindo que o tema padrão (:root) seja aplicado.
+            break;
     }
 }

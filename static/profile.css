@@ -79,10 +79,8 @@ body {
     margin-bottom: 20px;
 }
 .avatar-preview {
-    width: 190px;
-    height: 190px;
-    width: 150px;
-    height: 150px;
+    width: 260px;
+    height: 260px;
     border-radius: 50%;
     background-color: var(--bg-page);
     border: 2px solid var(--border);

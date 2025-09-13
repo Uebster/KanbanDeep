@@ -165,15 +165,14 @@ function updatePasswordStrength() {
 
 function applyTheme() {
     // Lê a preferência do sistema, definida na tela de login
-    const systemTheme = localStorage.getItem('appTheme') || 'dark';
+    const systemTheme = localStorage.getItem('appTheme') || 'dark-gray';
     
-    document.body.classList.remove('light-mode', 'dark-mode');
+    document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
 
     if (systemTheme === 'light') {
         document.body.classList.add('light-mode');
-    } else {
-        document.body.classList.add('dark-mode');
     }
+    // Se for 'dark-gray', nenhuma classe é adicionada, usando o :root.
 }
 
 function showSaveConfirmationDialog() {

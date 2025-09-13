@@ -244,22 +244,21 @@ function showFeedback(message, type = 'info') {
 
 function toggleTheme() {
     // Alterna entre 'dark' e 'light'
-    const currentTheme = localStorage.getItem('appTheme') || 'dark'; // Padrão agora é dark
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    const currentTheme = localStorage.getItem('appTheme') || 'dark-gray';
+    const newTheme = currentTheme === 'light' ? 'dark-gray' : 'light';
     
     localStorage.setItem('appTheme', newTheme);
     applyTheme(); // Reaplica o tema imediatamente
 }
 
 function applyTheme() {
-    // Padrão do sistema é 'dark' se nada estiver salvo
-    const savedTheme = localStorage.getItem('appTheme') || 'dark';
+    // Padrão do sistema é 'dark-gray' se nada estiver salvo
+    const savedTheme = localStorage.getItem('appTheme') || 'dark-gray';
     
-    document.body.classList.remove('light-mode', 'dark-mode');
+    document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
 
     if (savedTheme === 'light') {
         document.body.classList.add('light-mode');
-    } else {
-        document.body.classList.add('dark-mode');
-    }
+    } 
+    // Se for 'dark-gray' ou qualquer outro valor, nenhuma classe é adicionada, usando o :root.
 }

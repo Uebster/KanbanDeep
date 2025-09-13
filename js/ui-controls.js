@@ -418,20 +418,31 @@ export function applyUserTheme() {
 
     // 1. Aplica o tema (claro/escuro)
     const userTheme = user.preferences?.theme || user.theme || 'auto';
-    const systemTheme = localStorage.getItem('appTheme') || 'dark';
-    
-    document.body.classList.remove('light-mode', 'dark-mode');
+    const systemTheme = localStorage.getItem('appTheme') || 'dark-gray';
 
-    if (userTheme === 'light') {
-        document.body.classList.add('light-mode');
-    } else if (userTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else { // Modo 'auto'
-        if (systemTheme === 'light') {
+    // Limpa todas as classes de tema para evitar conflitos
+    document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
+
+    let themeToApply = userTheme;
+    if (themeToApply === 'auto') {
+        themeToApply = systemTheme;
+    }
+
+    // Aplica a classe correta com base no tema final
+    switch (themeToApply) {
+        case 'light':
             document.body.classList.add('light-mode');
-        } else {
+            break;
+        case 'light-gray':
+            document.body.classList.add('light-gray-mode');
+            break;
+        case 'dark':
             document.body.classList.add('dark-mode');
-        }
+            break;
+        case 'dark-gray':
+        default:
+            // O tema cinza escuro padrão não precisa de classe, pois é o :root
+            break;
     }
 
     // 2. Aplica a fonte
@@ -569,6 +580,200 @@ export function showIconPickerDialog(callback) {
     dialog.showModal();
     dialog.querySelector('#close-icon-picker-btn').onclick = () => dialog.close();
 }
+
+/**
+ * Exibe um modal com um seletor de cores RGB/HEX/A totalmente customizado.
+ * @param {string} currentColor - A cor atual em formato hexadecimal ou rgba.
+ * @param {function(string): void} callback - Função chamada com a nova cor (formato rgba) ao confirmar.
+ */
+export function showCustomColorPickerDialog(currentColor, callback) {
+    let dialog = document.getElementById('custom-color-picker-dialog');
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'custom-color-picker-dialog';
+        dialog.className = 'draggable';
+        document.body.appendChild(dialog);
+        makeDraggable(dialog);
+    }
+
+    dialog.innerHTML = `
+        <h3 class="drag-handle">Escolha uma Cor</h3>
+        <div class="custom-color-picker-body">
+            <div class="saturation-value-area">
+                <div class="sv-picker-handle"></div>
+            </div>
+            <div class="picker-sliders-container">
+                <div class="hue-slider">
+                    <div class="slider-handle"></div>
+                </div>
+                <div class="alpha-slider">
+                    <div class="slider-handle"></div>
+                </div>
+            </div>
+        </div>
+        <div class="custom-palette-container">
+            <div class="custom-palette-header">
+                <span>Cores Salvas</span>
+                <button class="btn btn-sm btn-add-color" title="Adicionar cor atual à paleta">+</button>
+            </div>
+            <div class="custom-palette-grid"></div>
+        </div>
+        <div class="picker-footer">
+            <div class="color-preview"></div>
+            <div class="color-inputs">
+                <input type="text" class="hex-input" maxlength="9">
+                <input type="number" class="rgb-input" data-channel="r" min="0" max="255">
+                <input type="number" class="rgb-input" data-channel="g" min="0" max="255">
+                <input type="number" class="rgb-input" data-channel="b" min="0" max="255">
+                <input type="number" class="alpha-input" data-channel="a" min="0" max="1" step="0.01">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn cancel">Cancelar</button>
+            <button class="btn confirm">OK</button>
+        </div>
+    `;
+
+    const svArea = dialog.querySelector('.saturation-value-area');
+    const svHandle = dialog.querySelector('.sv-picker-handle');
+    const hueSlider = dialog.querySelector('.hue-slider');
+    const hueHandle = dialog.querySelector('.slider-handle');
+    const preview = dialog.querySelector('.color-preview');
+    const hexInput = dialog.querySelector('.hex-input');
+    const rgbInputs = dialog.querySelectorAll('.rgb-input');
+    const alphaSlider = dialog.querySelector('.alpha-slider');
+    const alphaHandle = alphaSlider.querySelector('.slider-handle');
+    const alphaInput = dialog.querySelector('.alpha-input');
+
+    const addColorBtn = dialog.querySelector('.btn-add-color');
+    const paletteGrid = dialog.querySelector('.custom-palette-grid');
+
+    const MAX_SAVED_COLORS = 16;
+    let h = 0, s = 1, v = 1, a = 1;
+    const currentUser = getCurrentUser();
+    const storageKey = `customColors_${currentUser.id}`;
+
+    // Funções auxiliares para a paleta customizada
+    function getSavedColors() {
+        return JSON.parse(localStorage.getItem(storageKey)) || [];
+    }
+    function saveColors(colors) {
+        // A lógica de limite agora é tratada antes de salvar.
+        localStorage.setItem(storageKey, JSON.stringify(colors));
+    }
+
+    function updateUI() {
+        const { r, g, b } = hsvToRgb(h, s, v);
+        const rgbaString = `rgba(${r}, ${g}, ${b}, ${a})`;
+        const hex = rgbToHex(r, g, b, a);
+        
+        svArea.style.backgroundColor = `hsl(${h * 360}, 100%, 50%)`;
+        svHandle.style.left = `${s * 100}%`; svHandle.style.top = `${(1 - v) * 100}%`;
+        hueHandle.style.left = `${h * 100}%`;
+        
+        // O gradiente da cor vai por cima do fundo quadriculado
+        alphaSlider.style.backgroundImage = `linear-gradient(to right, rgba(${r},${g},${b},0), rgba(${r},${g},${b},1)), 
+                                         linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(135deg, #ccc 25%, transparent 25%),
+                                         linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(135deg, transparent 75%, #ccc 75%)`;
+        alphaSlider.style.backgroundSize = '100% 100%, 12px 12px, 12px 12px, 12px 12px, 12px 12px';
+        alphaSlider.style.backgroundPosition = '0 0, 0 0, 6px 0, 6px -6px, 0px 6px';
+        alphaHandle.style.left = `${a * 100}%`;
+        
+        preview.style.backgroundColor = rgbaString;
+        hexInput.value = hex;
+        rgbInputs[0].value = r; rgbInputs[1].value = g; rgbInputs[2].value = b;
+        alphaInput.value = a.toFixed(2);
+    }
+
+    function renderCustomPalette() {
+        paletteGrid.innerHTML = '';
+        const savedColors = getSavedColors();
+        savedColors.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'custom-palette-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.dataset.color = color;
+            swatch.title = color;
+
+            // Clique para aplicar a cor
+            swatch.addEventListener('click', () => {
+                const parsed = parseColor(color);
+                if (parsed) {
+                    const newHsv = rgbToHsv(parsed.r, parsed.g, parsed.b);
+                    h = newHsv.h; s = newHsv.s; v = newHsv.v; a = parsed.a;
+                    updateUI();
+                }
+            });
+
+            // Clique direito para remover
+            swatch.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showContextMenu(e, [{
+                    label: 'Remover Cor', icon: '🗑️', isDestructive: true,
+                    action: () => {
+                        let colors = getSavedColors().filter(c => c !== color);
+                        saveColors(colors);
+                        renderCustomPalette();
+                    }
+                }]);
+            });
+            paletteGrid.appendChild(swatch);
+        });
+    }
+
+    function handleHorizontalSlider(slider, callback) {
+        const onMouseMove = (e) => { const rect = slider.getBoundingClientRect(); callback(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))); };
+        const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+        document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
+    }
+
+    hueSlider.addEventListener('mousedown', (e) => { e.stopPropagation(); handleHorizontalSlider(hueSlider, newHue => { h = newHue; updateUI(); }); const rect = hueSlider.getBoundingClientRect(); h = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)); updateUI(); });
+    alphaSlider.addEventListener('mousedown', (e) => { e.stopPropagation(); handleHorizontalSlider(alphaSlider, newAlpha => { a = newAlpha; updateUI(); }); const rect = alphaSlider.getBoundingClientRect(); a = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)); updateUI(); });
+    svArea.addEventListener('mousedown', (e) => { e.stopPropagation(); const onMouseMove = (e) => { const rect = svArea.getBoundingClientRect(); s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)); v = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)); updateUI(); }; const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); }; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); onMouseMove(e); });
+
+    hexInput.addEventListener('change', () => { const parsed = parseColor(hexInput.value); if (parsed) { const newHsv = rgbToHsv(parsed.r, parsed.g, parsed.b); h = newHsv.h; s = newHsv.s; v = newHsv.v; a = parsed.a; updateUI(); } });
+    rgbInputs.forEach(input => input.addEventListener('change', () => { const r = parseInt(rgbInputs[0].value) || 0, g = parseInt(rgbInputs[1].value) || 0, b = parseInt(rgbInputs[2].value) || 0; const newHsv = rgbToHsv(r, g, b); h = newHsv.h; s = newHsv.s; v = newHsv.v; updateUI(); }));
+    alphaInput.addEventListener('change', () => { const newAlpha = parseFloat(alphaInput.value); if (!isNaN(newAlpha)) { a = Math.max(0, Math.min(1, newAlpha)); updateUI(); } });
+
+    addColorBtn.addEventListener('click', () => {
+        const { r, g, b } = hsvToRgb(h, s, v);
+        const newColor = `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
+        let savedColors = getSavedColors();
+
+        // Remove a cor se ela já existir, para que seja movida para o final (mais recente)
+        const existingIndex = savedColors.indexOf(newColor);
+        if (existingIndex > -1) {
+            savedColors.splice(existingIndex, 1);
+        }
+
+        // Adiciona a cor no final do array
+        savedColors.push(newColor);
+
+        // Se o array exceder o limite, remove a cor mais antiga (a primeira)
+        if (savedColors.length > MAX_SAVED_COLORS) {
+            savedColors.shift();
+        }
+
+        saveColors(savedColors);
+        renderCustomPalette();
+    });
+
+    const initialColor = parseColor(currentColor);
+    if (initialColor) { const initialHsv = rgbToHsv(initialColor.r, initialColor.g, initialColor.b); h = initialHsv.h; s = initialHsv.s; v = initialHsv.v; a = initialColor.a; }
+    updateUI();
+
+    dialog.querySelector('.btn.confirm').onclick = () => { const { r, g, b } = hsvToRgb(h, s, v); callback(`rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`); dialog.close(); };
+    dialog.querySelector('.btn.cancel').onclick = () => dialog.close();
+
+    renderCustomPalette(); // Renderiza a paleta ao abrir
+    dialog.showModal();
+}
+
+// --- Funções de Conversão de Cor ---
+function rgbToHsv(r, g, b) { r /= 255, g /= 255, b /= 255; let max = Math.max(r, g, b), min = Math.min(r, g, b), h, s, v = max, d = max - min; s = max == 0 ? 0 : d / max; if (max == min) { h = 0; } else { switch (max) { case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; case b: h = (r - g) / d + 4; break; } h /= 6; } return { h, s, v }; }
+function hsvToRgb(h, s, v) { let r, g, b, i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s); switch (i % 6) { case 0: r = v, g = t, b = p; break; case 1: r = q, g = v, b = p; break; case 2: r = p, g = v, b = t; break; case 3: r = p, g = q, b = v; break; case 4: r = t, g = p, b = v; break; case 5: r = v, g = p, b = q; break; } return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) }; }
+function rgbToHex(r, g, b, a) { const toHex = (c) => ('0' + Math.round(c).toString(16)).slice(-2); let hex = `#${toHex(r)}${toHex(g)}${toHex(b)}`; if (a < 1) { hex += toHex(a * 255); } return hex; }
+function parseColor(colorString) { if (colorString.startsWith('#')) { let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])([a-f\d])?$/i; colorString = colorString.replace(shorthandRegex, (m, r, g, b, a) => r + r + g + g + b + b + (a ? a + a : '')); let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})?$/i.exec(colorString); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16), a: result[4] !== undefined ? (parseInt(result[4], 16) / 255) : 1 } : null; } let match = colorString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/); if (match) { return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]), a: match[4] !== undefined ? parseFloat(match[4]) : 1 }; } return { r: 255, g: 0, b: 0, a: 1 }; }
 
 export function debounce(func, wait) {
     let timeout;
@@ -891,9 +1096,16 @@ function addTemplateItemToEditor(dialog, name = '', color = '#333') {
     itemEl.className = 'editor-item';
     itemEl.innerHTML = `
         <input type="text" value="${name}" placeholder="Nome do item">
-        <input type="color" value="${color}">
+        <div class="color-picker-trigger" style="background-color: ${color};" data-color="${color}" title="Clique para alterar a cor"></div>
         <button class="remove-btn" title="Remover">-</button>
     `;
+    const colorTrigger = itemEl.querySelector('.color-picker-trigger');
+    colorTrigger.addEventListener('click', () => {
+        showCustomColorPickerDialog(colorTrigger.dataset.color, (newColor) => {
+            colorTrigger.style.backgroundColor = newColor;
+            colorTrigger.dataset.color = newColor;
+        });
+    });
     itemEl.querySelector('.remove-btn').onclick = () => {
         itemEl.remove();
         updateItemCount(dialog);
@@ -937,7 +1149,7 @@ function saveTemplateFromEditor(dialog, type) {
 
     const items = Array.from(dialog.querySelectorAll('.editor-container .editor-item')).map(item => ({
         name: item.querySelector('input[type="text"]').value.trim() || 'Item sem nome',
-        color: item.querySelector('input[type="color"]').value
+        color: item.querySelector('.color-picker-trigger').dataset.color
     }));
 
     if (items.length === 0) {
