@@ -738,15 +738,14 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
     const isBoard = type === 'board';
     const dialogId = isBoard ? 'board-template-dialog' : 'tag-template-dialog';
 
-    // CORREÇÃO: Remove qualquer diálogo antigo para evitar conflitos de estrutura.
+    // CORREÇÃO DEFINITIVA: Remove qualquer diálogo antigo para evitar conflitos.
     const oldDialog = document.getElementById(dialogId);
     if (oldDialog) {
         oldDialog.remove();
     }
 
-    // Sempre cria um novo diálogo para garantir a estrutura correta.
+    // Cria o novo diálogo. A função createTemplateEditorDialog agora o adiciona ao body.
     const dialog = createTemplateEditorDialog(type);
-    document.body.appendChild(dialog);
     makeDraggable(dialog);
 
     const title = isBoard ? 'Template de Quadro' : 'Conjunto de Etiquetas';
@@ -805,7 +804,7 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
         dialog.querySelector('.template-name-input').value = template.name;
         dialog.querySelector('.template-desc-input').value = template.description || '';
         const items = isBoard ? template.columns : template.tags;
-        items.forEach(it => addTemplateItemToEditor(dialog, it.name, it.color));
+    if (items) items.forEach(it => addTemplateItemToEditor(dialog, it.name, it.color));
     } else {
         addTemplateItemToEditor(dialog, `Nova ${item}`, isBoard ? '#e74c3c' : '#3498db');
     }
@@ -813,7 +812,7 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
     // Configura os botões
     dialog.querySelector('.btn-add-item').onclick = () => addTemplateItemToEditor(dialog);
     dialog.querySelector('.btn-save-template').onclick = () => saveTemplateFromEditor(dialog, type);
-    dialog.querySelector('.btn-cancel').onclick = () => dialog.close();
+    dialog.querySelector('.btn.cancel').onclick = () => dialog.close();
     dialog.querySelector('.btn-choose-icon').onclick = () => {
         showIconPickerDialog(selectedIcon => {
             dialog.querySelector('.template-icon-input').value = selectedIcon;
@@ -832,6 +831,9 @@ function createTemplateEditorDialog(type) {
 
     const title = isBoard ? 'Template de Quadro' : 'Conjunto de Etiquetas';
     const item = isBoard ? 'Coluna' : 'Etiqueta';
+
+    // Adiciona o diálogo ao corpo da página.
+    document.body.appendChild(dialog);
 
     dialog.innerHTML = `
         <h3 class="drag-handle dialog-title">Criar ${title}</h3>
@@ -867,6 +869,7 @@ function createTemplateEditorDialog(type) {
             <button class="btn confirm btn-save-template">Salvar</button>
         </div>
     `;
+
     return dialog;
 }
 

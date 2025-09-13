@@ -154,22 +154,6 @@ document.getElementById('my-groups')?.addEventListener('click', (e) => {
             break;
     }
 });
-    // --- ABA "GERENCIAR GRUPO" ---
-// Lógica de troca de abas internas (Grupos que Criei / Grupos que Participo)
-document.querySelectorAll('.group-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        // Remover classe active de todas as abas e conteúdos
-        document.querySelectorAll('.group-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.group-content').forEach(c => c.classList.remove('active'));
-        
-        // Adicionar classe active à aba clicada
-        tab.classList.add('active');
-        
-        // Mostrar o conteúdo correspondente
-        const target = tab.dataset.target;
-        document.getElementById(target).classList.add('active');
-    }); // Esta lógica substitui a função switchGroupTab
-});
     document.getElementById('edit-group-form')?.addEventListener('submit', saveGroupChanges);
 document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
     const editDialog = document.getElementById('edit-group-dialog');
@@ -243,6 +227,14 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
     document.getElementById('btn-new-tag-template')?.addEventListener('click', () => {
         // Chama a função universal, passando o contexto 'group'
         showTemplateEditorDialog('tag', { ownerType: 'group' });
+    });
+
+    // Listener para atualizar a lista de templates de grupo quando um é salvo
+    window.addEventListener('templatesUpdated', () => {
+        // Verifica se a aba de templates de grupo está ativa para recarregar
+        if (document.getElementById('group-templates')?.classList.contains('active')) {
+            loadGroupTemplates();
+        }
     });
 
     
@@ -435,6 +427,16 @@ function showMeetingDialog() {
     const newSaveBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
     newSaveBtn.addEventListener('click', saveMeeting);
+
+    // Adiciona o listener de cancelamento
+    const cancelBtn = document.getElementById('cancel-meeting-btn');
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    newCancelBtn.addEventListener('click', () => {
+        showDialogMessage(dialog, 'Agendamento cancelado.', 'info');
+        dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
+        setTimeout(() => dialog.close(), 1500);
+    });
 
     initCustomSelects();
     dialog.showModal();
@@ -1081,46 +1083,33 @@ async function addServer() {
 }
 
 // ===== FUNÇÕES DE GRUPOS (ATUALIZADAS) =====
-
 function renderGroups() {
-    const adminGroupsContainer = document.querySelector('#admin-groups .groups-grid');
-    const memberGroupsContainer = document.querySelector('#member-groups .groups-grid');
-    
-    if (!adminGroupsContainer || !memberGroupsContainer) return;
-    
-    // Limpar os containers
-    adminGroupsContainer.innerHTML = '';
-    memberGroupsContainer.innerHTML = '';
-    
-    // Separar grupos por tipo (admin vs membro)
-    const adminGroups = groups.filter(group => group.adminId === currentUser.id);
-    const memberGroups = groups.filter(group => group.adminId !== currentUser.id);
-    
-    // Renderizar grupos de administrador
+    const adminContainer = document.getElementById('admin-groups-grid');
+    const memberContainer = document.getElementById('member-groups-grid');
+    if (!adminContainer || !memberContainer) return;
+
+    adminContainer.innerHTML = '';
+    memberContainer.innerHTML = '';
+
+    const adminGroups = groups.filter(g => g.adminId === currentUser.id);
+    const memberGroups = groups.filter(g => g.adminId !== currentUser.id);
+
     if (adminGroups.length === 0) {
-        adminGroupsContainer.innerHTML = '<p class="no-groups-message">Você não administra nenhum grupo.</p>';
+        adminContainer.innerHTML = '<p class="no-groups-message">Você não administra nenhum grupo.</p>';
     } else {
         adminGroups.forEach(group => {
             const groupCard = createGroupCard(group);
-            adminGroupsContainer.appendChild(groupCard);
+            adminContainer.appendChild(groupCard);
         });
     }
-    
-    // Renderizar grupos em que é membro
+
     if (memberGroups.length === 0) {
-        memberGroupsContainer.innerHTML = '<p class="no-groups-message">Você não participa de nenhum grupo como membro.</p>';
+        memberContainer.innerHTML = '<p class="no-groups-message">Você não participa de nenhum grupo como membro.</p>';
     } else {
         memberGroups.forEach(group => {
             const groupCard = createGroupCard(group);
-            memberGroupsContainer.appendChild(groupCard);
+            memberContainer.appendChild(groupCard);
         });
-    }
-    
-    // Ativar a primeira aba por padrão se houver conteúdo
-    const activeTab = document.querySelector('.group-tab.active');
-    if (!activeTab) {
-        document.querySelector('.group-tab').classList.add('active');
-        document.querySelector('.group-content').classList.add('active');
     }
 }
 
@@ -1933,56 +1922,6 @@ function sendMessageToMember(memberId) {
     });
 }
 
-// Função para mostrar diálogo de adicionar participante
-function showAddParticipantDialog() {
-    const dialog = document.getElementById('add-participant-dialog');
-    if (!dialog) {
-        console.error('Diálogo de adicionar participante não encontrado');
-        return;
-    }
-    
-    const select = document.getElementById('participant-select');
-    if (!select) {
-        console.error('Elemento participant-select não encontrado');
-        return;
-    }
-    
-    // Limpar seleção anterior
-    select.innerHTML = '';
-    
-    // Obter todos os usuários
-    const users = getAllUsers();
-    const currentUser = getCurrentUser();
-    
-    // Filtrar usuários que ainda não estão no grupo
-    const availableUsers = users.filter(user => 
-        user.id !== currentUser.id && 
-        !currentGroup.memberIds.includes(user.id)
-    );
-    
-    if (availableUsers.length === 0) {
-        select.innerHTML = '<option value="">Nenhum usuário disponível</option>';
-        select.disabled = true;
-    } else {
-        select.disabled = false;
-        availableUsers.forEach(user => {
-            const option = document.createElement('option');
-            option.value = user.id;
-            option.textContent = user.name;
-            select.appendChild(option);
-        });
-    }
-    
-    // Limpar feedback
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (feedbackEl) {
-        feedbackEl.textContent = '';
-        feedbackEl.className = 'feedback';
-    }
-    
-    dialog.showModal();
-}
-
 // Adicione esta função para enviar convites:
 function sendGroupInvitation(groupId, userId, inviter) {
     const group = getGroup(groupId);
@@ -2057,6 +1996,48 @@ function loadGroupMembers(group) {
             sendMessageToMember(memberId);
         });
     });
+}
+
+/**
+ * Exibe o diálogo para adicionar um novo participante ao grupo atual.
+ * Popula o seletor com usuários que ainda não são membros.
+ */
+function showAddParticipantDialog() {
+    const dialog = document.getElementById('add-participant-dialog');
+    if (!dialog) {
+        console.error('Diálogo de adicionar participante não encontrado');
+        return;
+    }
+    
+    const select = document.getElementById('participant-select');
+    if (!select) {
+        console.error('Elemento participant-select não encontrado');
+        return;
+    }
+    
+    select.innerHTML = ''; // Limpa seleção anterior
+    
+    const availableUsers = allUsers.filter(user => 
+        user.id !== currentUser.id && 
+        !currentGroup.memberIds.includes(user.id)
+    );
+    
+    if (availableUsers.length === 0) {
+        select.innerHTML = '<option value="">Nenhum usuário disponível para adicionar</option>';
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+        select.innerHTML = '<option value="">Selecione um usuário</option>';
+        availableUsers.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.name;
+            select.appendChild(option);
+        });
+    }
+    
+    initCustomSelects(); // Garante que o seletor seja estilizado
+    dialog.showModal();
 }
 
 /**

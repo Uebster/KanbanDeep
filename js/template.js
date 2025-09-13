@@ -83,7 +83,9 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
     
     gridElement.querySelectorAll('.btn-use-template').forEach(btn => btn.onclick = (e) => useBoardTemplate(e.target.closest('.template-card').dataset.id));
     if (isEditable) {
-        gridElement.querySelectorAll('.btn-edit-board').forEach(btn => btn.onclick = (e) => showBoardTemplateDialog(e.target.closest('.template-card').dataset.id));
+        gridElement.querySelectorAll('.btn-edit-board').forEach(btn => btn.onclick = (e) => {
+            showTemplateEditorDialog('board', { ownerType: 'user' }, e.target.closest('.template-card').dataset.id);
+        });
         gridElement.querySelectorAll('.btn-delete-board').forEach(btn => btn.onclick = (e) => deleteBoardTemplate(e.target.closest('.template-card').dataset.id));
     }
 }
@@ -330,7 +332,7 @@ function showTemplateContextMenu(event, template, type) {
         { 
             label: 'Editar', 
             icon: '✏️', 
-            action: () => type === 'board' ? showBoardTemplateDialog(template.id) : showTagTemplateDialog(template.id) 
+            action: () => showTemplateEditorDialog(type, { ownerType: 'user' }, template.id) 
         },
         { 
             label: 'Excluir', 

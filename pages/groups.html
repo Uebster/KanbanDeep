@@ -51,17 +51,21 @@
         </nav>
 
         <div class="tab-content active" id="my-groups">
-            <!-- O botão foi movido para o lado do título da página, se necessário, ou pode ser integrado de outra forma -->
-            <div class="groups-nav">
-                <button class="group-tab active" data-target="admin-groups">Grupos que Administro</button>
-                <button class="group-tab" data-target="member-groups">Grupos que Participo</button>
+            <div class="actions" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="btn-create-group" class="btn confirm"><span>➕</span> Criar Novo Grupo</button>
             </div>
-            <div id="admin-groups" class="group-content active">
-                <div class="groups-grid"></div>
-            </div>
-            <div id="member-groups" class="group-content">
-                <div class="groups-grid"></div>
-            </div>
+            <section class="form-section">
+                <div class="section-header">
+                    <h2>Grupos que Administro</h2>
+                </div>
+                <div id="admin-groups-grid" class="groups-grid"></div>
+            </section>
+            <section class="form-section">
+                <div class="section-header">
+                    <h2>Grupos que Participo</h2>
+                </div>
+                <div id="member-groups-grid" class="groups-grid"></div>
+            </section>
         </div>
 
         <div class="tab-content" id="create-group">
@@ -218,73 +222,80 @@
     <!-- Diálogos -->
     <dialog id="edit-group-dialog" class="draggable">
         <h3 class="drag-handle">Editar Grupo</h3>
-        <form id="edit-group-form">
-            <div class="form-group">
-                <label for="edit-group-icon">Ícone do Grupo:</label>
-                <div class="icon-input-group">
-                    <input type="text" id="edit-group-icon" class="icon-display" readonly>
-                    <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm edit">Escolher</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="edit-group-name">Nome do Grupo:</label>
-                <input type="text" id="edit-group-name" required>
-            </div>
-            <div class="form-group">
-                <label for="edit-group-description">Descrição:</label>
-                <textarea id="edit-group-description" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="edit-group-access">Acesso:</label>
-                <div class="custom-select">
-                    <select id="edit-group-access">
-                        <option value="public">Público</option>
-                        <option value="private">Privado</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="edit-group-tag-template">Conjunto de Etiquetas Padrão:</label>
-                <div class="custom-select">
-                    <select id="edit-group-tag-template"></select>
-                </div>
-            </div>
-            <div class="form-section">
-                <h3>Relatórios Automáticos</h3>
-                <div class="form-group">
-                    <label for="edit-group-report-frequency">Frequência:</label>
-                    <div class="custom-select">
-                        <select id="edit-group-report-frequency">
-                            <option value="none">Nenhum</option>
-                            <option value="daily">Diário</option>
-                            <option value="weekly">Semanal</option>
-                            <option value="monthly">Mensal</option>
-                        </select>
+        <form id="edit-group-form" class="form-layout">
+            <div class="form-column">
+                <div class="form-section">
+                    <h3>Informações do Grupo</h3>
+                    <div class="form-group">
+                        <label for="edit-group-icon">Ícone:</label>
+                        <div class="icon-input-group">
+                            <input type="text" id="edit-group-icon" class="icon-display" readonly>
+                            <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm edit">Escolher</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-group-name">Nome do Grupo:</label>
+                        <input type="text" id="edit-group-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-group-description">Descrição:</label>
+                        <textarea id="edit-group-description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-group-access">Acesso:</label>
+                        <div class="custom-select">
+                            <select id="edit-group-access">
+                                <option value="public">Público</option>
+                                <option value="private">Privado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-group-tag-template">Conjunto de Etiquetas Padrão:</label>
+                        <div class="custom-select">
+                            <select id="edit-group-tag-template"></select>
+                        </div>
                     </div>
                 </div>
-                <div id="edit-group-report-day-of-week-container" class="form-group hidden">
-                    <label for="edit-group-report-day-of-week">Dia da Semana:</label>
-                    <div class="custom-select">
-                        <select id="edit-group-report-day-of-week">
-                            <option value="1">Segunda-feira</option>
-                            <option value="2">Terça-feira</option>
-                            <option value="3">Quarta-feira</option>
-                            <option value="4">Quinta-feira</option>
-                            <option value="5">Sexta-feira</option>
-                            <option value="6">Sábado</option>
-                            <option value="0">Domingo</option>
-                        </select>
+            </div>
+            <div class="form-column">
+                <div class="form-section">
+                    <h3>Participantes</h3>
+                    <div id="group-members-list"></div>
+                    <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;">Adicionar Participante</button>
+                </div>
+                <div class="form-section">
+                    <h3>Relatórios Automáticos</h3>
+                    <div class="form-group">
+                        <label for="edit-group-report-frequency">Frequência:</label>
+                        <div class="custom-select">
+                            <select id="edit-group-report-frequency">
+                                <option value="none">Nenhum</option>
+                                <option value="daily">Diário</option>
+                                <option value="weekly">Semanal</option>
+                                <option value="monthly">Mensal</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="edit-group-report-day-of-week-container" class="form-group hidden">
+                        <label for="edit-group-report-day-of-week">Dia da Semana:</label>
+                        <div class="custom-select">
+                            <select id="edit-group-report-day-of-week">
+                                <option value="1">Segunda-feira</option>
+                                <option value="2">Terça-feira</option>
+                                <option value="3">Quarta-feira</option>
+                                <option value="4">Quinta-feira</option>
+                                <option value="5">Sexta-feira</option>
+                                <option value="6">Sábado</option>
+                                <option value="0">Domingo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="edit-group-report-day-of-month-container" class="form-group hidden">
+                        <label for="edit-group-report-day-of-month">Dia do Mês:</label>
+                        <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
                     </div>
                 </div>
-                <div id="edit-group-report-day-of-month-container" class="form-group hidden">
-                    <label for="edit-group-report-day-of-month">Dia do Mês:</label>
-                    <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
-                </div>
-            </div>
-            <div class="form-section">
-                <h3>Participantes</h3>
-                <div id="group-members-list"></div>
-                <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;">Adicionar Participante</button>
             </div>
             <div class="feedback"></div>
         </form>
@@ -353,9 +364,21 @@
             <label for="meeting-date">Data:</label>
             <input type="date" id="meeting-date">
         </div>
+        <div class="form-group">
+            <label for="meeting-time">Hora:</label>
+            <input type="time" id="meeting-time">
+        </div>
+        <div class="form-group">
+            <label for="meeting-location">Local (Opcional):</label>
+            <input type="text" id="meeting-location" placeholder="Ex: Sala de Conferência, Link do Meet">
+        </div>
+        <div class="form-group">
+            <label for="meeting-description">Descrição (Opcional):</label>
+            <textarea id="meeting-description" rows="2" placeholder="Pauta da reunião..."></textarea>
+        </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn cancel" onclick="this.closest('dialog').close()">Cancelar</button>
+            <button id="cancel-meeting-btn" class="btn cancel">Cancelar</button>
             <button id="save-meeting-btn" class="btn confirm">Agendar e Notificar</button>
         </div>
     </dialog>

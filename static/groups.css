@@ -352,6 +352,11 @@ body {
   border: 1px solid var(--primary);
   border-radius: 8px;
   padding: 20px;
+  margin-bottom: 25px;
+}
+
+.form-section:last-of-type {
+    margin-bottom: 0;
 }
 .stats-sections {
   display: flex;
@@ -817,4 +822,9 @@ body {
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 500;
+}
+
+/* Aumenta a largura do diálogo de edição para acomodar as duas colunas */
+#edit-group-dialog {
+    max-width: 900px;
 }
