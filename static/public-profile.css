@@ -1,80 +1,40 @@
 /* static/public-profile.css */
-body {
-    min-height: 100vh;
-    padding: 20px; /* Adiciona espaçamento em todos os lados */
-}
 
-/* Cabeçalho */
-#main-header {
-    margin-bottom: 20px; /* Remove margem lateral/superior, pois o body já tem padding */
-}
-
-/* Layout Principal */
-.profile-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    max-width: 1200px;
-    margin: 0 auto; /* Centraliza o layout principal */
-}
-
-@media (max-width: 900px) {
-    .profile-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Cartão Principal */
+/* Adiciona o estilo do card principal que estava faltando */
 .card {
     background-color: var(--bg-card);
     border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    padding: 40px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
     width: 100%;
+    max-width: 1200px; /* Largura para acomodar as colunas */
+    margin: 20px auto;
+    border: 1px solid var(--primary);
 }
 
-/* Seções do Perfil */
-.form-section {
-    margin-bottom: 30px;
-    padding: 25px;
-    background-color: rgba(0,0,0,0.1);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-}
-
-.form-section h3 {
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid var(--primary);
-    color: var(--primary);
-    font-size: 1.3rem;
-}
-
-/* Avatar e Informações Básicas */
-.avatar-container {
+/* Cabeçalho do Perfil */
+.profile-header {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    margin-bottom: 25px;
+    gap: 30px;
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
 }
 
 .avatar-preview {
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), #2b6cb0);
-    border: 4px solid var(--primary);
+    background-color: var(--bg-page);
+    border: 3px solid var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.3s ease;
-}
-
-.avatar-preview:hover {
-    transform: scale(1.05);
+    flex-shrink: 0;
 }
 
 .avatar-preview img {
@@ -83,306 +43,208 @@ body {
     object-fit: cover;
 }
 
-.avatar-preview-text {
-    font-size: 3.5rem;
+.avatar-preview span {
+    font-size: 4rem;
     font-weight: bold;
-    color: white;
-}
-
-/* Informações do Usuário */
-#profile-username {
-    font-size: 1.8rem;
     color: var(--primary);
-    margin-bottom: 10px;
 }
 
-#profile-name {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 15px;
+.profile-info-main {
+    flex-grow: 1;
+}
+
+.profile-info-main h2 {
+    margin-bottom: 5px;
+    padding-bottom: 0;
+}
+
+.profile-info-main p {
+    color: var(--text-muted);
+    margin: 0;
 }
 
 #profile-bio {
-    font-size: 1.1rem;
-    line-height: 1.6;
-    color: var(--text-muted);
-    margin-bottom: 25px;
+    margin-top: 10px;
+    font-style: italic;
 }
 
-/* Estatísticas */
+.profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 200px;
+}
+
+/* Estatísticas do Perfil */
 .profile-stats {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin-top: 25px;
+    grid-template-columns: repeat(2, 1fr); /* Grade 2x2 */
+    gap: 1px;
+    background-color: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .stat-item {
-    text-align: center;
-    padding: 15px;
     background-color: var(--bg-page);
-    border-radius: 10px;
-    transition: transform 0.2s ease;
-}
-
-.stat-item:hover {
-    transform: translateY(-3px);
+    padding: 15px;
+    text-align: center;
 }
 
 .stat-number {
+    display: block;
     font-size: 1.8rem;
     font-weight: bold;
-    display: block;
     color: var(--primary);
 }
 
 .stat-label {
     font-size: 0.9rem;
     color: var(--text-muted);
-    margin-top: 5px;
 }
 
-/* Informações Pessoais e Contatos */
-#personal-info-section p,
-#contacts-section p {
-    margin-bottom: 12px;
-    line-height: 1.6;
+/* Seções de Conteúdo */
+.profile-content-section {
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 20px;
 }
 
-#personal-info-section strong,
-#contacts-section strong {
-    color: var(--primary);
+.profile-content-section h3 {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
 }
 
-/* Ações de Relacionamento */
-#relationship-actions {
+.section-content-wrapper {
+    min-height: 50px; /* Garante que a seção tenha uma altura mínima mesmo com placeholder */
+}
+
+.privacy-placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 6px;
+}
+
+/* Layout de Colunas (CORRIGIDO) */
+.profile-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px; /* Espaçamento consistente */
+    margin-top: 25px;
+}
+
+.form-column { display: flex; flex-direction: column; gap: 25px; }
+
+/* Grid de Amigos em Comum */
+.mutual-friends-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 20px;
-    justify-content: center; /* Centraliza os botões */
-}
-
-/* Grupos Públicos */
-.groups-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
 }
 
-.group-item {
-    background-color: var(--bg-page);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.group-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    border-color: var(--primary);
-}
-
-.group-item h4 {
-    color: var(--primary);
-    margin-bottom: 10px;
-    font-size: 1.1rem;
-}
-
-.group-item p {
-    color: var(--text-muted);
-    line-height: 1.5;
-}
-
-/* Amigos em Comum */
-.mutual-friends-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
-}
-
 .mutual-friend-item {
-    display: block;
-    text-decoration: none;
-    transition: transform 0.2s ease;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    transition: transform 0.2s;
 }
 
 .mutual-friend-item:hover {
     transform: scale(1.1);
+    border-color: var(--primary);
 }
 
 .mutual-friend-avatar {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    background-color: var(--primary);
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    font-size: 1.5rem;
     font-weight: bold;
-    overflow: hidden;
-    border: 2px solid var(--bg-card);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    background-size: cover;
-    background-position: center;
-}
-
-.btn-secondary {
-    background-color: var(--border);
-    color: var(--text);
-}
-
-.btn-danger {
-    background-color: var(--error);
     color: white;
+    background-color: var(--primary);
 }
 
-/* Modal de Avatar */
-#avatar-modal {
-    text-align: center;
-}
-
-#avatar-modal .modal-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+/* Grid de Grupos (reutiliza estilo de groups.css) */
+.groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Mantém consistência com boards-grid */
     gap: 20px;
 }
 
-#modal-avatar {
-    max-width: 300px;
-    max-height: 300px;
+/* Grid de Quadros */
+.boards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.board-card {
+    background-color: var(--bg-page);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-/* Ajustes para modo claro */
-body.light-mode .form-section {
-    background-color: rgba(0,0,0,0.05);
-}
-
-body.light-mode .stat-item,
-body.light-mode .group-item {
-    background-color: #f8f9fa;
-    border-color: #dee2e6;
-}
-
-/* Animações */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.card {
-    animation: fadeIn 0.5s ease;
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-    .card {
-        padding: 25px;
-    }
-    
-    .form-section {
-        padding: 20px;
-    }
-    
-    .profile-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .groups-container {
-        grid-template-columns: 1fr;
-    }
-    
-    #relationship-actions {
-        flex-direction: column;
-    }
-    
-    #relationship-actions .btn {
-        width: 100%;
-    }
-}
-
-@media (max-width: 480px) {
-    .avatar-preview {
-        width: 120px;
-        height: 120px;
-    }
-    
-    .avatar-preview-text {
-        font-size: 2.5rem;
-    }
-    
-    #profile-username {
-        font-size: 1.5rem;
-    }
-    
-    #profile-name {
-        font-size: 1.2rem;
-    }
-}
-
-/* Estilos para o textarea no diálogo */
-#friend-request-modal textarea {
-    width: 100%;
-    padding: 12px;
-    margin-top: 12px;
-    border-radius: 6px;
-    background-color: var(--bg-page);
-    color: var(--text);
-    font-family: var(--app-font-family);
-    font-size: 1rem;
-    resize: vertical;
-    min-height: 100px;
-}
-
-#friend-request-modal textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(76, 212, 230, 0.3);
-}
-
-/* Estilos para feedback no diálogo */
-#friend-request-modal .feedback {
-    margin: 15px 0;
-    padding: 10px;
-    border-radius: 6px;
-    text-align: center;
-    display: none;
-}
-
-#friend-request-modal .feedback.show {
-    display: block;
-}
-
-#friend-request-modal .feedback.success {
-    background-color: rgba(46, 204, 113, 0.2);
-    color: #2ecc71;
-}
-
-#friend-request-modal .feedback.info {
-    background-color: rgba(52, 152, 219, 0.2);
-    color: #3498db;
-}
-/* Estilo para o textarea no diálogo de mensagem */
-.form-group textarea {
-    width: 100%;
-    padding: 12px;
+    padding: 20px;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    background-color: var(--bg-page);
-    color: var(--text);
-    font-size: 1rem;
-    transition: border-color 0.3s;
-    resize: vertical;
-    min-height: 100px;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
 }
-.form-group textarea:focus {
+
+.board-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     border-color: var(--primary);
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(76, 212, 230, 0.3);
+}
+
+.board-card .board-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.board-card .board-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.board-card .board-description {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    flex-grow: 1; /* Empurra as estatísticas para baixo */
+}
+
+.board-card .board-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: auto; /* Garante que fique no final */
+}
+
+/* Modal de Avatar */
+.avatar-modal {
+    padding: 0;
+    border: none;
+    background: none;
+    max-width: 80vw;
+    max-height: 80vh;
+}
+.avatar-modal img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 12px;
+    border: 2px solid var(--primary);
 }

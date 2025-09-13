@@ -10,149 +10,107 @@
 <body>
     <div id="message-container"></div>
     
-        <!-- ===== INÍCIO DO CABEÇALHO GLOBAL ===== -->
-<header id="main-header">
-    <!-- Menu de Perfil (Esquerda) -->
-    <div class="menu-container">
-        <button id="user-avatar-btn" class="avatar-btn">
-            <img id="user-avatar" src="" alt="Avatar do Usuário">
-        </button>
+    <!-- Cabeçalho Padrão -->
+    <header id="main-header">
+        <div class="menu-container">
+            <button id="user-avatar-btn" class="avatar-btn">
+                <img id="user-avatar" src="" alt="Avatar do Usuário">
+            </button>
             <div id="profile-dropdown" class="dropdown">            
                 <button id="switch-user-btn">🔁 Trocar Perfil</button>
                 <button id="user-profile-btn">👤 Meu Perfil</button>
-                <button id="kanban-btn">🎨 Meus Quadros</button>
-                <button id="my-groups-btn">👥 Meus Grupos</button>
+                <button id="kanban-btn">📋 Meus Quadros</button>
                 <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
+                <button id="my-groups-btn">👥 Meus Grupos</button>
                 <button id="templates-btn">🎨 Gerenciar Templates</button>
                 <button id="notifications-btn">🔔 Notificações</button>
                 <hr>
                 <button id="exit-btn">🚪 Sair</button>
             </div>
-    </div>
-
-    <!-- Menu de Ações (Direita) -->
-    <div class="menu-container">
-        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
-        <div id="actions-dropdown" class="dropdown">
-            <button id="undo-btn">↩️ Desfazer</button>
-            <button id="redo-btn">↪️ Refazer</button>
         </div>
-    </div>
-</header>
-<!-- ===== FIM DO CABEÇALHO GLOBAL ===== -->
-    
+        <h1 id="page-title">Perfil Público</h1>
+        <div class="menu-container">
+            <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+            <div id="actions-dropdown" class="dropdown"></div>
+        </div>
+    </header>
+
     <main class="card">
-        <div class="profile-layout">
-            <!-- Coluna Esquerda -->
-            <div>
-                <div class="form-section">
-                    <div class="avatar-container">
-                        <div class="avatar-preview" id="avatar-preview">
-                            <img id="avatar-image" src="" alt="Avatar">
-                            <span id="avatar-text" class="avatar-preview-text"></span>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <h2 id="profile-username"></h2>
-                        <p id="profile-name"></p>
-                        <p id="profile-bio"></p>
-                    </div>
-
-                    <div class="profile-stats">
-                        <div class="stat-item">
-                            <span id="stats-boards" class="stat-number">0</span>
-                            <span class="stat-label">Quadros</span>
-                        </div>
-                        <div class="stat-item">
-                            <span id="stats-followers" class="stat-number">0</span>
-                            <span class="stat-label">Seguidores</span>
-                        </div>
-                        <div class="stat-item">
-                            <span id="stats-following" class="stat-number">0</span>
-                            <span class="stat-label">Seguindo</span>
-                        </div>
-                        <div class="stat-item">
-                            <span id="stats-groups" class="stat-number">0</span>
-                            <span class="stat-label">Grupos</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Informações Pessoais (conforme privacidade) -->
-                <div class="form-section" id="personal-info-section">
-                    <h3>Informações Pessoais</h3>
-                    <!-- Conteúdo dinâmico -->
-                </div>
-
-                <!-- Contatos (conforme privacidade) -->
-                <div class="form-section" id="contacts-section">
-                    <h3>Contatos</h3>
-                    <!-- Conteúdo dinâmico -->
+        <!-- Cabeçalho do Perfil -->
+        <div class="profile-header">
+            <div class="profile-avatar-container">
+                <div id="avatar-preview" class="avatar-preview">
+                    <img id="avatar-image" src="" alt="Avatar do Usuário">
+                    <span id="avatar-text"></span>
                 </div>
             </div>
+            <div class="profile-info-main">
+                <h2 id="profile-name"></h2>
+                <p id="profile-username"></p>
+                <p id="profile-bio"></p>
+            </div>
+            <div class="profile-actions" id="relationship-actions">
+                <!-- Botões de relacionamento (amizade, seguir) renderizados pelo JS -->
+            </div>
+        </div>
 
-            <!-- Coluna Direita -->
-            <div>
-                <!-- Ações de Relacionamento -->
-                <div class="form-section">
-                    <div id="relationship-actions">
-                        <!-- Botões dinâmicos conforme estado do relacionamento -->
-                    </div>
-                    <div id="group-invite-section" style="display: none;">
-                        <button id="group-invite-btn" class="btn btn-secondary">Convidar para Grupo</button>
-                    </div>
-                </div>
-
-                <!-- Amigos em Comum -->
-                <section id="mutual-friends-section" class="form-section" style="display: none;">
-                    <h3>Amigos em Comum</h3>
-                    <div id="mutual-friends-container" class="mutual-friends-container">
-                        <!-- Avatares dos amigos em comum serão renderizados aqui -->
+        <!-- Layout de 2 Colunas para o Conteúdo (CORRIGIDO) -->
+        <div class="profile-layout">
+            <div class="form-column">
+                <section id="stats-section" class="profile-content-section">
+                    <h3>Estatísticas</h3>
+                    <div class="profile-stats">
+                        <div class="stat-item"><span id="stats-boards" class="stat-number">0</span><span class="stat-label">Quadros</span></div>
+                        <div class="stat-item"><span id="stats-followers" class="stat-number">0</span><span class="stat-label">Seguidores</span></div>
+                        <div class="stat-item"><span id="stats-following" class="stat-number">0</span><span class="stat-label">Seguindo</span></div>
+                        <div class="stat-item"><span id="stats-groups" class="stat-number">0</span><span class="stat-label">Grupos</span></div>
                     </div>
                 </section>
-
-                <!-- Grupos Públicos -->
-<section id="public-groups-section" class="form-section">
-    <h3>Grupos Públicos</h3>
-    <div id="public-groups-container" class="groups-container">
-        <!-- Grupos serão carregados dinamicamente aqui -->
-    </div>
-</section>
+                <section id="personal-info-section" class="profile-content-section">
+                    <h3>Informações Pessoais</h3>
+                    <div id="personal-info-content" class="section-content-wrapper"></div>
+                </section>
+                <section id="contacts-section" class="profile-content-section">
+                    <h3>Contatos</h3>
+                    <div id="contact-info-content" class="section-content-wrapper"></div>
+                </section>
+            </div>
+            <div class="form-column">
+                <section id="public-groups-section" class="profile-content-section">
+                    <h3>Grupos Públicos</h3>
+                    <div id="public-groups-container" class="groups-grid"></div>
+                </section>
+                <section id="mutual-friends-section" class="profile-content-section" style="display: none;">
+                    <h3>Amigos em Comum</h3>
+                    <div id="mutual-friends-container" class="mutual-friends-grid"></div>
+                </section>
+                <section id="public-boards-section" class="profile-content-section">
+                    <h3>Quadros Públicos</h3>
+                    <div id="public-boards-container" class="boards-grid"></div>
+                </section>
             </div>
         </div>
+
+        <!-- Seção de Ação (largura total) -->
+        <section id="group-invite-section" class="profile-content-section" style="display: none; margin-top: 25px;">
+            <h3>Convidar para Grupo</h3>
+            <p>Você administra grupos e pode convidar este usuário para participar.</p>
+            <button id="group-invite-btn" class="btn confirm">Convidar para um Grupo</button>
+        </section>
     </main>
 
-    <!-- Modal para Avatar -->
-    <dialog id="avatar-modal">
-        <div class="modal-content">
-            <img id="modal-avatar" src="" alt="Avatar em tamanho maior">
-            <button class="btn btn-secondary" onclick="this.closest('dialog').close()">Fechar</button>
-        </div>
-    </dialog>
-
-    <!-- Modal para Enviar Mensagem com Solicitação de Amizade -->
-<dialog id="friend-request-modal" class="draggable">
-    <div class="drag-handle" style="cursor: move; padding: 10px; margin: -25px -25px 20px -25px; background: #333; color: white;">
-        <h3 style="margin: 0;">Enviar Solicitação de Amizade</h3>
-    </div>
-    <div style="padding: 0 25px 25px 25px;">
-        <div class="form-group">
-            <label for="friend-request-message">Mensagem (opcional):</label>
-            <textarea 
-                id="friend-request-message" 
-                placeholder="Escreva uma mensagem de apresentação..." 
-                rows="4"
-                style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-page); color: var(--text); font-family: var(--app-font-family); resize: vertical; min-height: 100px;"
-            ></textarea>
-        </div>
+    <!-- Diálogos -->
+    <dialog id="avatar-modal" class="avatar-modal"><img id="modal-avatar" src="" alt="Avatar ampliado"></dialog>
+    <dialog id="friend-request-modal" class="draggable">
+        <h3 class="drag-handle">Enviar Solicitação de Amizade</h3>
+        <p>Você pode enviar uma mensagem junto com sua solicitação.</p>
+        <textarea id="friend-request-message" rows="3" placeholder="Olá! Gostaria de me conectar com você."></textarea>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary" id="cancel-friend-request-btn">Cancelar</button>
-            <button class="btn btn-primary" id="send-friend-request-btn">Enviar Solicitação</button>
+            <button id="cancel-friend-request-btn" class="btn cancel">Cancelar</button>
+            <button id="send-friend-request-btn" class="btn confirm">Enviar</button>
         </div>
-    </div>
-</dialog>
+    </dialog>
 
     <script type="module" src="../js/main.js"></script>
 </body>

@@ -8,7 +8,8 @@ import {
     getNotifications,
     saveNotifications,  
     getUserProfile,
-    getAllGroups 
+    getAllGroups,
+    getFullBoardData 
 } from './storage.js';
 import { showDialogMessage, initDraggableElements, showConfirmationDialog, showFloatingMessage } from './ui-controls.js';
 import { 
@@ -67,7 +68,15 @@ function loadUserData() {
     // Informações básicas
     document.getElementById('profile-username').textContent = `@${viewedUser.username}`;
     document.getElementById('profile-name').textContent = viewedUser.name;
-    document.getElementById('profile-bio').textContent = viewedUser.bio || 'Sem biografia';
+    
+    // Privacidade da Biografia
+    const bioEl = document.getElementById('profile-bio');
+    if (viewedUser.privacy === 'private' && currentUser.id !== viewedUser.id) {
+        bioEl.textContent = 'A biografia deste usuário é privada.';
+        bioEl.style.fontStyle = 'italic';
+    } else {
+        bioEl.textContent = viewedUser.bio || 'Sem biografia.';
+    }
     
     // Estatísticas
     document.getElementById('stats-boards').textContent = viewedUser.boards?.length || 0;
@@ -83,6 +92,9 @@ function loadUserData() {
     
     // Grupos públicos
     loadPublicGroups();
+
+    // Quadros públicos
+    loadPublicBoards();
 }
 
 function loadMutualFriends() {
@@ -129,12 +141,14 @@ function loadMutualFriends() {
 }
 
 function loadPersonalInfo() {
-    const section = document.getElementById('personal-info-section');
-    section.innerHTML = '<h3>Informações Pessoais</h3>';
+    const content = document.getElementById('personal-info-content');
+    content.innerHTML = '';
+    let hasContent = false;
     
     if (canViewPersonalInfo()) {
         if (viewedUser.birthdate) {
-            section.innerHTML += `<p><strong>Nascimento:</strong> ${new Date(viewedUser.birthdate).toLocaleDateString('pt-BR')}</p>`;
+            content.innerHTML += `<p><strong>Nascimento:</strong> ${new Date(viewedUser.birthdate).toLocaleDateString('pt-BR')}</p>`;
+            hasContent = true;
         }
         if (viewedUser.gender) {
             const genderMap = {
@@ -144,33 +158,146 @@ function loadPersonalInfo() {
                 'other': 'Outro',
                 'prefer-not-to-say': 'Prefiro não informar'
             };
-            section.innerHTML += `<p><strong>Gênero:</strong> ${genderMap[viewedUser.gender] || viewedUser.gender}</p>`;
+            content.innerHTML += `<p><strong>Gênero:</strong> ${genderMap[viewedUser.gender] || viewedUser.gender}</p>`;
+            hasContent = true;
         }
         if (viewedUser.location) {
-            section.innerHTML += `<p><strong>Localização:</strong> ${viewedUser.location}</p>`;
+            content.innerHTML += `<p><strong>Localização:</strong> ${viewedUser.location}</p>`;
+            hasContent = true;
+        }
+        if (!hasContent) {
+            content.innerHTML = '<p class="privacy-placeholder">ℹ️ Nenhuma informação pessoal fornecida.</p>';
         }
     } else {
-        section.innerHTML += '<p>As informações pessoais estão privadas</p>';
+        content.innerHTML = '<p class="privacy-placeholder">🔒 As informações pessoais deste usuário são privadas.</p>';
     }
 }
 
 function loadContactInfo() {
-    const section = document.getElementById('contacts-section');
-    section.innerHTML = '<h3>Contatos</h3>';
-    
+    const content = document.getElementById('contact-info-content');
+    content.innerHTML = '';
+    let hasContent = false;
+
     if (canViewContactInfo()) {
         if (viewedUser.email) {
-            section.innerHTML += `<p><strong>Email:</strong> ${viewedUser.email}</p>`;
+            content.innerHTML += `<p><strong>Email:</strong> ${viewedUser.email}</p>`;
+            hasContent = true;
         }
         if (viewedUser.whatsapp) {
-            section.innerHTML += `<p><strong>WhatsApp:</strong> ${viewedUser.whatsapp}</p>`;
+            content.innerHTML += `<p><strong>WhatsApp:</strong> ${viewedUser.whatsapp}</p>`;
+            hasContent = true;
         }
         if (viewedUser.linkedin) {
-            section.innerHTML += `<p><strong>LinkedIn:</strong> <a href="${viewedUser.linkedin}" target="_blank">${viewedUser.linkedin}</a></p>`;
+            content.innerHTML += `<p><strong>LinkedIn:</strong> <a href="${viewedUser.linkedin}" target="_blank">${viewedUser.linkedin}</a></p>`;
+            hasContent = true;
+        }
+        if (!hasContent) {
+            content.innerHTML = '<p class="privacy-placeholder">ℹ️ Nenhuma informação de contato fornecida.</p>';
         }
     } else {
-        section.innerHTML += '<p>As informações de contato estão privadas</p>';
+        content.innerHTML = '<p class="privacy-placeholder">🔒 As informações de contato são visíveis apenas para amigos.</p>';
     }
+}
+
+function loadPublicGroups() {
+    const container = document.getElementById('public-groups-container');
+    if (!container) return;
+
+    if (!canViewSocialInfo()) {
+        container.innerHTML = '<p class="privacy-placeholder">🔒 A lista de grupos é visível apenas para amigos.</p>';
+        document.getElementById('public-groups-section').style.display = 'block';
+        return;
+    }
+
+    const allGroups = getAllGroups();
+    const publicGroups = allGroups.filter(group => 
+        group.access === 'public' && 
+        group.memberIds && 
+        group.memberIds.includes(viewedUser.id)
+    );
+
+    container.innerHTML = ''; // Limpa conteúdo anterior
+
+    if (publicGroups.length === 0) {
+        container.innerHTML = '<p class="privacy-placeholder">ℹ️ Este usuário não participa de nenhum grupo público.</p>';
+        return;
+    }
+
+    publicGroups.forEach(group => {
+        const groupCard = document.createElement('div');
+        // Reutiliza os estilos de .board-card para consistência visual
+        groupCard.className = 'board-card';
+        groupCard.dataset.groupId = group.id;
+        groupCard.title = `Clique para ver o grupo "${group.name}"`;
+
+        // Calcular estatísticas do grupo
+        const memberCount = group.memberIds ? group.memberIds.length : 0;
+        const taskCount = (group.boardIds || []).reduce((total, boardId) => {
+            const board = getFullBoardData(boardId);
+            if (!board) return total;
+            return total + board.columns.reduce((boardTotal, column) => boardTotal + column.cards.length, 0);
+        }, 0);
+
+        groupCard.innerHTML = `
+            <div class="board-icon">${group.icon || '👥'}</div>
+            <h4 class="board-name">${group.name}</h4>
+            <p class="board-description">${group.description || 'Sem descrição.'}</p>
+            <div class="board-stats">
+                <span>${memberCount} membros</span>
+                <span>${taskCount} tarefas</span>
+            </div>
+        `;
+        groupCard.addEventListener('click', () => {
+            localStorage.setItem('openTab', 'statistics');
+            localStorage.setItem('groupId', group.id);
+            window.location.href = 'groups.html';
+        });
+        container.appendChild(groupCard);
+    });
+}
+
+function loadPublicBoards() {
+    const container = document.getElementById('public-boards-container');
+    if (!container) return;
+
+    if (!canViewSocialInfo()) {
+        container.innerHTML = '<p class="privacy-placeholder">🔒 A lista de quadros é visível apenas para amigos.</p>';
+        return;
+    }
+
+    const userBoards = (viewedUser.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+    const publicBoards = userBoards.filter(board => board.visibility === 'public');
+
+    container.innerHTML = '';
+
+    if (publicBoards.length === 0) {
+        container.innerHTML = '<p class="privacy-placeholder">ℹ️ Este usuário não possui quadros públicos.</p>';
+        return;
+    }
+
+    publicBoards.forEach(board => {
+        const boardCard = document.createElement('div');
+        boardCard.className = 'board-card';
+        boardCard.dataset.boardId = board.id;
+        boardCard.title = `Clique para ver o quadro "${board.title}"`;
+
+        const totalTasks = board.columns.reduce((acc, col) => acc + col.cards.length, 0);
+
+        boardCard.innerHTML = `
+            <div class="board-icon">${board.icon || '📋'}</div>
+            <h4 class="board-name">${board.title}</h4>
+            <p class="board-description">${board.description || 'Sem descrição.'}</p>
+            <div class="board-stats">
+                <span>${board.columns.length} colunas</span>
+                <span>${totalTasks} tarefas</span>
+            </div>
+        `;
+        boardCard.addEventListener('click', () => {
+            localStorage.setItem(`currentBoardId_${currentUser.id}`, board.id);
+            window.location.href = 'kanban.html';
+        });
+        container.appendChild(boardCard);
+    });
 }
 
 function canViewPersonalInfo() {
@@ -183,6 +310,13 @@ function canViewPersonalInfo() {
 function canViewContactInfo() {
     // Lógica similar à anterior, pode ter configurações diferentes por tipo de informação
     return canViewPersonalInfo(); // Por enquanto usando mesma lógica
+}
+
+function canViewSocialInfo() {
+    if (currentUser.id === viewedUser.id) return true;
+    if (viewedUser.privacy === 'public') return true;
+    if (viewedUser.privacy === 'friends' && relationshipStatus.isFriend) return true;
+    return false;
 }
 
 function setupEventListeners() {
@@ -222,7 +356,7 @@ function checkRelationshipStatus() {
 
 function updateRelationshipButtons() {
     const container = document.getElementById('relationship-actions');
-    container.innerHTML = '';
+    let buttonsHtml = '';
     
     if (currentUser.id === viewedUser.id) {
         container.innerHTML = '<p>Este é o seu perfil</p>';
@@ -230,29 +364,46 @@ function updateRelationshipButtons() {
     }
     
     if (relationshipStatus.isFriend) {
-        container.innerHTML = `
-            <button class="btn btn-primary" id="message-btn">✉️ Enviar Mensagem</button>
-            <button class="btn btn-danger" id="unfriend-btn">🗑️ Desfazer Amizade</button>
+        buttonsHtml = `
+            <button class="btn" id="message-btn">✉️ Mensagem</button>
+            <button class="btn danger" id="unfriend-btn">🗑️ Desfazer Amizade</button>
+            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
         `;
+    } else if (relationshipStatus.friendRequestPending) {
+        buttonsHtml = `
+            <button class="btn cancel" id="cancel-request-btn">⏳ Cancelar</button>
+            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
+        `;
+    } else {
+        buttonsHtml = `
+            <button class="btn confirm" id="friend-request-btn">🤝 Add Amigo</button>
+            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
+        `;
+    }
+
+    // Adiciona o botão de denunciar
+    buttonsHtml += `
+        <hr style="width:100%; border-color: var(--border); margin: 10px 0 5px;">
+        <button class="btn danger" id="report-user-btn">🚩 Denunciar</button>
+    `;
+
+    container.innerHTML = buttonsHtml;
+
+    // Anexa os listeners novamente
+    if (relationshipStatus.isFriend) {
         document.getElementById('unfriend-btn').addEventListener('click', unfriendUser);
         document.getElementById('message-btn').addEventListener('click', sendMessage);
+        document.getElementById('follow-btn').addEventListener('click', toggleFollow);
     } else if (relationshipStatus.friendRequestPending) {
-        container.innerHTML = `
-            <button class="btn btn-secondary" id="cancel-request-btn">⏳ Solicitação Pendente</button>
-            <button class="btn btn-primary" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
-        `;
         document.getElementById('cancel-request-btn').addEventListener('click', cancelFriendRequest);
         document.getElementById('follow-btn').addEventListener('click', toggleFollow);
     } else {
-        container.innerHTML = `
-            <button class="btn btn-primary" id="friend-request-btn">🤝 Solicitar Amizade</button>
-            <button class="btn btn-primary" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
-        `;
         document.getElementById('friend-request-btn').addEventListener('click', () => {
             document.getElementById('friend-request-modal').showModal();
         });
         document.getElementById('follow-btn').addEventListener('click', toggleFollow);
     }
+    document.getElementById('report-user-btn')?.addEventListener('click', reportUser);
 }
 
 // Modifique a função sendFriendRequest
@@ -316,13 +467,24 @@ function cancelFriendRequest() {
 
 function toggleFollow() {
     if (relationshipStatus.isFollowing) {
-        // Deixar de seguir
-        if (currentUser.following && currentUser.following.includes(viewedUser.id)) {
-            currentUser.following = currentUser.following.filter(id => id !== viewedUser.id);
-        }
-        if (viewedUser.followers && viewedUser.followers.includes(currentUser.id)) {
-            viewedUser.followers = viewedUser.followers.filter(id => id !== currentUser.id);
-        }
+        showConfirmationDialog(
+            `Tem certeza que deseja deixar de seguir ${viewedUser.name}?`,
+            (dialog) => {
+                if (currentUser.following && currentUser.following.includes(viewedUser.id)) {
+                    currentUser.following = currentUser.following.filter(id => id !== viewedUser.id);
+                }
+                if (viewedUser.followers && viewedUser.followers.includes(currentUser.id)) {
+                    viewedUser.followers = viewedUser.followers.filter(id => id !== currentUser.id);
+                }
+                updateUser(currentUser.id, currentUser);
+                updateUser(viewedUser.id, viewedUser);
+                relationshipStatus.isFollowing = false;
+                document.getElementById('stats-followers').textContent = viewedUser.followers ? viewedUser.followers.length : 0;
+                updateRelationshipButtons();
+                showDialogMessage(dialog, `Você deixou de seguir ${viewedUser.name}.`, 'info');
+                return true;
+            }
+        );
     } else {
         // Seguir
         if (!currentUser.following) currentUser.following = [];
@@ -338,19 +500,12 @@ function toggleFollow() {
         
         // Enviar notificação de seguimento
         addFollowNotification(currentUser.name, currentUser.id, viewedUser.id);
+        updateUser(currentUser.id, currentUser);
+        updateUser(viewedUser.id, viewedUser);
+        relationshipStatus.isFollowing = true;
+        document.getElementById('stats-followers').textContent = viewedUser.followers ? viewedUser.followers.length : 0;
+        updateRelationshipButtons();
     }
-    
-    // Atualizar os usuários no armazenamento
-    updateUser(currentUser.id, currentUser);
-    updateUser(viewedUser.id, viewedUser);
-    
-    // Atualizar o estado e a interface
-    relationshipStatus.isFollowing = !relationshipStatus.isFollowing;
-    
-    // Atualizar a contagem de seguidores na UI
-    document.getElementById('stats-followers').textContent = viewedUser.followers ? viewedUser.followers.length : 0;
-    
-    updateRelationshipButtons();
 }
 
 function sendMessage() {
@@ -400,15 +555,37 @@ function sendMessage() {
 }
 
 function unfriendUser() {
-    // Remover da lista de amigos
-    currentUser.friends = currentUser.friends.filter(id => id !== viewedUser.id);
-    viewedUser.friends = viewedUser.friends.filter(id => id !== currentUser.id);
-    
-    updateUser(currentUser.id, currentUser);
-    updateUser(viewedUser.id, viewedUser);
-    
-    relationshipStatus.isFriend = false;
-    updateRelationshipButtons();
+    showConfirmationDialog(
+        `Tem certeza que deseja desfazer a amizade com ${viewedUser.name}?`,
+        (dialog) => {
+            // Remover da lista de amigos
+            currentUser.friends = currentUser.friends.filter(id => id !== viewedUser.id);
+            viewedUser.friends = viewedUser.friends.filter(id => id !== currentUser.id);
+            
+            updateUser(currentUser.id, currentUser);
+            updateUser(viewedUser.id, viewedUser);
+            
+            relationshipStatus.isFriend = false;
+            updateRelationshipButtons();
+            showDialogMessage(dialog, 'Amizade desfeita.', 'info');
+            return true;
+        }
+    );
+}
+
+function reportUser() {
+    showConfirmationDialog(
+        `Você tem certeza que deseja denunciar ${viewedUser.name}? Uma notificação será enviada para a administração para análise.`,
+        (dialog) => {
+            // Em uma aplicação real, isso enviaria um evento para o backend.
+            // Por enquanto, apenas exibimos uma mensagem de sucesso.
+            console.log(`Usuário ${viewedUser.name} (ID: ${viewedUser.id}) denunciado por ${currentUser.name} (ID: ${currentUser.id}).`);
+            showDialogMessage(dialog, 'Denúncia enviada. Agradecemos sua colaboração em manter a comunidade segura.', 'success');
+            return true;
+        },
+        null,
+        'Sim, Denunciar'
+    );
 }
 
 function checkGroupInviteCapability() {

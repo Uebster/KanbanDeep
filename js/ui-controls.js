@@ -517,6 +517,9 @@ function handleHeaderMouseMove(e) {
         // Esconde o header se o mouse estiver fora da área de ativação.
         header.classList.remove('show-header');
         document.body.classList.remove('header-is-visible');
+        // CORREÇÃO: Garante que todos os dropdowns sejam fechados ao esconder o header.
+        // Isso evita que o header "desça" com um menu já aberto.
+        document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
     }
 }
 

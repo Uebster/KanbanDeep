@@ -440,8 +440,9 @@ function renderBoardSelector() {
         
         // CORREÇÃO: Insere a mensagem antes do elemento <select> (que está escondido).
         // O seletor é um filho direto do dropdown, o que evita o erro "NotFoundError"
-        // que ocorria ao tentar inserir antes de um botão aninhado.
-        boardsDropdown.insertBefore(message, selector);
+        // que ocorria ao tentar inserir antes de um elemento que não é filho direto.
+        const referenceNode = selector.closest('.custom-select');
+        boardsDropdown.insertBefore(message, referenceNode);
     } else {
         // Mostra o select e remove mensagem se existir
         selector.style.display = 'block';
@@ -768,6 +769,13 @@ function showBoardDialog(boardId = null) {
     const groupContainer = document.getElementById('board-group-container');
     const groupSelect = document.getElementById('board-group-select');
 
+    // Popula o select de visibilidade dinamicamente
+    visibilitySelect.innerHTML = `
+        <option value="private">Privado (só você vê)</option>
+        <option value="friends">Amigos (só amigos veem)</option>
+        <option value="public">Público (todos veem)</option>
+    `;
+
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
     const allGroups = getAllGroups();
     const creatableInGroups = allGroups.filter(g => {
@@ -776,11 +784,17 @@ function showBoardDialog(boardId = null) {
         return isAdmin || canCreate;
     });
 
+    // Adiciona a opção de Grupo apenas se o usuário puder criar em algum
+    if (creatableInGroups.length > 0) {
+        visibilitySelect.innerHTML += `<option value="group">Grupo (membros do grupo veem)</option>`;
+    }
+
     visibilitySelect.onchange = () => {
         const selectedVisibility = visibilitySelect.value;
         if (selectedVisibility === 'group') {
+            // Esta verificação é uma segurança extra, mas a opção não deveria existir se não houver grupos.
             if (creatableInGroups.length === 0) {
-                showDialogMessage(dialog, 'Você não tem permissão para criar quadros em nenhum grupo.', 'error');
+                showDialogMessage(dialog, 'Você não tem permissão para criar quadros em nenhum grupo.', 'warning');
                 visibilitySelect.value = board ? board.visibility : 'private'; // Reverte
                 groupContainer.style.display = 'none';
             } else {
