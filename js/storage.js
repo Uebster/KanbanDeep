@@ -264,20 +264,20 @@ export function saveGroup(groupData) {
 // --- Templates do Sistema (Hardcoded) ---
 export function getSystemBoardTemplates() {
     // Seus dados de template de quadro aqui
-    return [
-        { id: 'system-kanban', name: 'Kanban Padrão', icon: '📋', description: 'A fazer, Em Andamento, Concluído, Em Teste', columns: [ { name: 'A fazer', color: '#e74c3c' }, { name: 'Em Andamento', color: '#f39c12' }, { name: 'Concluído', color: '#2ecc71' }, { name: 'Em Teste', color: '#9b59b6' } ] },
-        { id: 'system-lazer', name: 'Lazer', icon: '🎮', description: 'Quero Fazer, Preciso Fazer, Feito', columns: [ { name: 'Quero Fazer', color: '#e74c3c' }, { name: 'Preciso Fazer', color: '#f39c12' }, { name: 'Feito', color: '#2ecc71' } ] },
-        { id: 'system-mercado', name: 'Mercado', icon: '🛒', description: 'Condimentos, Snacks, Higiene e Limpeza, Comprado', columns: [ { name: 'Condimentos', color: '#3498db' }, { name: 'Snacks', color: '#e67e22' }, { name: 'Higiene e Limpeza', color: '#f1c40f' }, { name: 'Comprado', color: '#2ecc71' } ] },
-        { id: 'system-trabalho', name: 'Trabalho', icon: '💼', description: 'Backlog, Em andamento, Revisão/Teste, Entregue', columns: [ { name: 'Backlog', color: '#95a5a6' }, { name: 'Em andamento', color: '#3498db' }, { name: 'Revisão/Teste', color: '#9b59b6' }, { name: 'Entregue', color: '#2ecc71' } ] },
-        { id: 'system-estudos', name: 'Estudos', icon: '📚', description: 'Atividades, Trabalhos, Provas, Entregue', columns: [ { name: 'Atividades', color: '#e84393' }, { name: 'Trabalhos', color: '#6c5ce7' }, { name: 'Provas', color: '#e74c3c' }, { name: 'Entregue', color: '#3498db' } ] }
+     return [
+        { id: 'system-kanban', name: 'templates.system.kanban.name', icon: '📋', description: 'templates.system.kanban.desc', columns: [ { name: 'A fazer', color: '#e74c3c' }, { name: 'Em Andamento', color: '#f39c12' }, { name: 'Concluído', color: '#2ecc71' }, { name: 'Em Teste', color: '#9b59b6' } ] },
+        { id: 'system-leisure', name: 'templates.system.leisure.name', icon: '🎮', description: 'templates.system.leisure.desc', columns: [ { name: 'Quero Fazer', color: '#e74c3c' }, { name: 'Preciso Fazer', color: '#f39c12' }, { name: 'Feito', color: '#2ecc71' } ] },
+        { id: 'system-market', name: 'templates.system.market.name', icon: '🛒', description: 'templates.system.market.desc', columns: [ { name: 'Condimentos', color: '#3498db' }, { name: 'Snacks', color: '#e67e22' }, { name: 'Higiene e Limpeza', color: '#f1c40f' }, { name: 'Comprado', color: '#2ecc71' } ] },
+        { id: 'system-work', name: 'templates.system.work.name', icon: '💼', description: 'templates.system.work.desc', columns: [ { name: 'Backlog', color: '#95a5a6' }, { name: 'Em andamento', color: '#3498db' }, { name: 'Revisão/Teste', color: '#9b59b6' }, { name: 'Entregue', color: '#2ecc71' } ] },
+        { id: 'system-studies', name: 'templates.system.studies.name', icon: '📚', description: 'templates.system.studies.desc', columns: [ { name: 'Atividades', color: '#e84393' }, { name: 'Trabalhos', color: '#6c5ce7' }, { name: 'Provas', color: '#e74c3c' }, { name: 'Entregue', color: '#3498db' } ] }
     ];
 }
 export function getSystemTagTemplates() {
     // Seus dados de template de etiqueta aqui
     return [
-        { id: 'system-tags-prio', name: 'Padrão 1', icon: '🔥', description: 'Etiquetas do sistema.', tags: [ { name: 'Tag A', color: '#e74c3c' }, { name: 'Tag B', color: '#f39c12' }, { name: 'Tag C', color: '#3498db' }, { name: 'Tag D', color: '#d622cdff' }, 
+        { id: 'system-tags-prio', name: 'templates.system.tags.default1.name', icon: '🔥', description: 'templates.system.tags.default.desc', tags: [ { name: 'Tag A', color: '#e74c3c' }, { name: 'Tag B', color: '#f39c12' }, { name: 'Tag C', color: '#3498db' }, { name: 'Tag D', color: '#d622cdff' }, 
           { name: 'Tag E', color: '#1019a5ff' }, { name: 'Tag F', color: '#694d1fff' }, { name: 'Tag G', color: '#a7f091ff' }, { name: 'Tag H', color: '#57800bff' } ] },
-        { id: 'system-tags-status', name: 'Padrão 2', icon: '📊', description: 'Etiquetas do sistema.', tags: [ { name: 'Tag E', color: '#34dbd3ff' }, { name: 'Tag F', color: '#2ecc71' }, { name: 'Tag G', color: '#e74c3c' }, { name: 'Tag H', color: '#9b59b6' },
+        { id: 'system-tags-status', name: 'templates.system.tags.default2.name', icon: '📊', description: 'templates.system.tags.default.desc', tags: [ { name: 'Tag E', color: '#34dbd3ff' }, { name: 'Tag F', color: '#2ecc71' }, { name: 'Tag G', color: '#e74c3c' }, { name: 'Tag H', color: '#9b59b6' },
           { name: 'Tag E', color: '#611d16ff' }, { name: 'Tag F', color: '#f39c12' }, { name: 'Tag G', color: '#3498db' }, { name: 'Tag H', color: '#d622cdff' }
          ] }
     ];

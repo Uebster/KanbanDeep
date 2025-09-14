@@ -8,6 +8,7 @@ import {
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog } from './ui-controls.js';
+import { t, initTranslations, applyTranslations, loadLanguage } from './translations.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
 // ===== ESTADO GLOBAL DO MÓDULO =====
@@ -35,6 +36,29 @@ let originalShowAssignment = null;
 let originalShowCardDetails = null;
 let kanbanIsSaved = true;
 
+function translatePreferencesDialog() {
+    const dialog = document.getElementById('preferences-dialog');
+    if (!dialog) return;
+
+    // Helper function to safely set text content if the element exists.
+    const safeSetText = (selector, translationKey) => {
+        const element = dialog.querySelector(selector);
+        if (element) {
+            element.textContent = t(translationKey);
+        }
+    };
+
+    safeSetText('h3', 'preferences.title');
+    safeSetText('label[for="pref-theme"]', 'preferences.theme');
+    safeSetText('label[for="pref-language"]', 'preferences.language');
+    safeSetText('label[for="pref-font-family"]', 'preferences.font');
+    safeSetText('label[for="pref-font-size"]', 'preferences.fontSize');
+    // Corrected selector for the color palette label
+    safeSetText('label[data-i18n="preferences.primaryColor"]', 'preferences.primaryColor');
+    safeSetText('legend[data-i18n="preferences.displayOnBoard"]', 'preferences.displayOnBoard');
+    safeSetText('legend[data-i18n="preferences.displayOnCard"]', 'preferences.displayOnCard');
+    safeSetText('label[for="pref-default-tag-template"]', 'preferences.defaultTagSet');
+}
 // ===== INICIALIZAÇÃO =====
 
 // A lógica de inicialização agora está DENTRO da função exportada.
@@ -43,11 +67,14 @@ export async function initKanbanPage() {
 
     currentUser = getCurrentUser();
     if (!currentUser) {
-        showFloatingMessage('Usuário não logado. Redirecionando...', 'error');
+        showFloatingMessage(t('ui.userNotLoggedIn'), 'error');
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
         return;
     }
     
+    await initTranslations(); // Carrega o idioma antes de tudo
+
+    // Movemos para cá para garantir que as traduções estejam prontas para o tooltip do avatar
     if (currentUser) {
         updateUserAvatar(currentUser);
     }
@@ -118,7 +145,7 @@ function setupEventListeners() {
     document.getElementById('add-board-btn')?.addEventListener('click', () => showBoardDialog());
 document.getElementById('add-column-btn')?.addEventListener('click', () => {
     if (!currentBoard) {
-        showFloatingMessage('É preciso ter um quadro selecionado para criar colunas.', 'error');
+        showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
         return;
     }
     showColumnDialog();
@@ -126,11 +153,11 @@ document.getElementById('add-column-btn')?.addEventListener('click', () => {
 
 document.getElementById('add-card-btn')?.addEventListener('click', () => {
     if (!currentBoard) {
-        showFloatingMessage('Crie ou selecione um quadro primeiro.', 'error');
+        showFloatingMessage(t('kanban.feedback.noBoardSelected'), 'error');
         return;
     }
     if (currentBoard.columns.length === 0) {
-        showFloatingMessage('É necessário criar ao menos uma coluna antes de adicionar um cartão.', 'error');
+        showFloatingMessage(t('kanban.feedback.noColumnForCard'), 'error');
         return;
     }
     showCardDialog(null, currentBoard.columns[0].id);
@@ -202,7 +229,7 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
 function showSearchDialog() {
     const dialog = document.getElementById('search-dialog');
     if (!currentBoard) {
-        showFloatingMessage('Selecione um quadro para procurar cartões.', 'error');
+        showFloatingMessage(t('kanban.feedback.selectBoardForSearch'), 'error');
         return;
     }
 
@@ -240,19 +267,19 @@ function showSearchDialog() {
     }
 
     // Popula Criador
-    creatorSelect.innerHTML = '<option value="">Qualquer um</option>';
+    creatorSelect.innerHTML = `<option value="">${t('kanban.dialog.search.anyCreator')}</option>`;
     relevantUsers.forEach(user => {
         creatorSelect.innerHTML += `<option value="${user.id}">${user.name}</option>`;
     });
 
     // Popula Atribuído a
-    assigneeSelect.innerHTML = '<option value="">Qualquer um</option>';
+    assigneeSelect.innerHTML = `<option value="">${t('kanban.dialog.search.anyAssignee')}</option>`;
     relevantUsers.forEach(user => {
         assigneeSelect.innerHTML += `<option value="${user.id}">${user.name}</option>`;
     });
 
     // Popula Etiquetas (lógica mantida, mas simplificada)
-    tagSelect.innerHTML = '<option value="">Todas</option>';
+    tagSelect.innerHTML = `<option value="">${t('kanban.dialog.search.allTags')}</option>`;
     [...boardTags].sort().forEach(tag => {
         tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
     });
@@ -342,7 +369,7 @@ function applySearchFilters() {
         });
     });
 
-    showFloatingMessage(`${visibleCount} cartões encontrados.`, 'info');
+    showFloatingMessage(t('kanban.feedback.cardsFound', { count: visibleCount }), 'info');
     document.getElementById('search-dialog').close();
 }
 
@@ -360,7 +387,7 @@ function resetSearchFilters() {
         cardEl.style.display = 'block';
     });
 
-    showFloatingMessage('Filtros removidos.', 'info');
+    showFloatingMessage(t('kanban.feedback.filtersCleared'), 'info');
     dialog.close();
 }
 
@@ -431,9 +458,9 @@ function renderBoardSelector() {
         // Cria e adiciona mensagem
         const message = document.createElement('p');
         message.className = 'no-boards-message';
-        message.textContent = currentBoardFilter === 'personal' 
-            ? 'Nenhum quadro pessoal.' 
-            : 'Nenhum quadro de grupo.';
+        message.textContent = currentBoardFilter === 'personal'
+            ? t('kanban.feedback.noPersonalBoards')
+            : t('kanban.feedback.noGroupBoards');
         message.style.padding = '10px';
         message.style.color = 'var(--text-muted)';
         message.style.textAlign = 'center';
@@ -502,8 +529,8 @@ function renderBoardSelector() {
 
 function renderCurrentBoard() {
     if (!currentBoard) {
-        document.getElementById('kanban-title').textContent = 'Nenhum quadro selecionado';
-        document.getElementById('columns-container').innerHTML = '<p>Crie ou selecione um quadro para começar.</p>';
+        document.getElementById('kanban-title').textContent = t('kanban.feedback.noBoardSelectedTitle');
+        document.getElementById('columns-container').innerHTML = `<p>${t('kanban.feedback.noBoardSelected')}</p>`;
         return;
     }
 
@@ -553,12 +580,12 @@ function createColumnElement(column) {
     columnEl.innerHTML = `
         <div class="column-header" draggable="true">
             <h3>${column.title}</h3>
-            <button class="paste-card-btn" style="display: none;" title="Colar Cartão">📋</button>
+            <button class="paste-card-btn" style="display: none;" title="${t('kanban.button.pasteCard')}">📋</button>
         </div>
         <div class="cards-container" data-column-id="${column.id}">
             ${column.cards.map(card => createCardElement(card).outerHTML).join('')}
         </div>
-        <button class="add-card-btn">+ Adicionar Cartão</button>
+        <button class="add-card-btn">+ ${t('kanban.button.addCard')}</button>
     `;
 
     columnEl.querySelector('.add-card-btn').addEventListener('click', () => {
@@ -590,19 +617,19 @@ function createCardElement(card) {
     let dueDateHtml = '';
     if (card.dueDate) {
         const date = new Date(card.dueDate);
-        dueDateHtml = `<span class="card-due-date-display" title="${date.toLocaleString('pt-BR')}">${date.toLocaleDateString('pt-BR')}</span>`;
+        dueDateHtml = `<span class="card-due-date-display" title="${t('kanban.card.dueDateTitle', { date: date.toLocaleString() })}">${date.toLocaleDateString()}</span>`;
     }
 
     // Constrói a caixa de status
     const statusCheck = card.isComplete ? '✔' : '';
-    const statusBoxHtml = `<div class="card-status-box" title="${card.isComplete ? 'Concluído' : 'Ativo'}">${statusCheck}</div>`;
+    const statusBoxHtml = `<div class="card-status-box" title="${card.isComplete ? t('kanban.card.statusCompleted') : t('kanban.card.statusActive')}">${statusCheck}</div>`;
 
     // Constrói o avatar do usuário atribuído (se houver)
     let assignedToHtml = '';
     const assignee = card.assignedTo ? allUsers.find(u => u.id === card.assignedTo) : null;
     if (assignee) {
         if (assignee.avatar) {
-            assignedToHtml = `<img src="${assignee.avatar}" alt="${assignee.name}" class="card-assignee-avatar" title="Atribuído a: ${assignee.name}">`;
+            assignedToHtml = `<img src="${assignee.avatar}" alt="${assignee.name}" class="card-assignee-avatar" title="${t('kanban.card.assignedToTitle', { name: assignee.name })}">`;
         } else {
             const initials = assignee.name.charAt(0).toUpperCase();
             // Usar uma cor de fundo consistente baseada no ID do usuário
@@ -619,9 +646,9 @@ function createCardElement(card) {
     const creator = allUsers.find(u => u.id === card.creatorId);
     const hoverInfoHtml = `
         <div class="card-hover-info">
-            <p><strong>Descrição:</strong> ${card.description || 'Nenhuma'}</p>
-            ${creator ? `<p><strong>Criador:</strong> ${creator.name}</p>` : ''}
-            ${assignee ? `<p><strong>Atribuído a:</strong> ${assignee.name}</p>` : ''}
+            <p><strong>${t('kanban.card.hover.description')}</strong> ${card.description || t('kanban.card.hover.noDescription')}</p>
+            ${creator ? `<p><strong>${t('kanban.card.hover.creator')}</strong> ${creator.name}</p>` : ''}
+            ${assignee ? `<p><strong>${t('kanban.card.hover.assignedTo')}</strong> ${assignee.name}</p>` : ''}
         </div>
     `;
 
@@ -663,7 +690,7 @@ function showEditDialog() {
     deleteBtn.disabled = true;
 
     // Popula o select de quadros
-    boardSelect.innerHTML = '<option value="">Selecione um quadro</option>';
+    boardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
     boards.forEach(board => {
         boardSelect.innerHTML += `<option value="${board.id}">${board.title}</option>`;
     });
@@ -672,7 +699,7 @@ function showEditDialog() {
         const boardId = boardSelect.value;
         columnGroup.style.display = 'none';
         cardGroup.style.display = 'none';
-        columnSelect.innerHTML = '<option value="">Todas as colunas</option>';
+        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
         if (!boardId) {
             editBtn.disabled = true;
             deleteBtn.disabled = true;
@@ -692,7 +719,7 @@ function showEditDialog() {
     columnSelect.onchange = () => {
         const columnId = columnSelect.value;
         cardGroup.style.display = 'none';
-        cardSelect.innerHTML = '<option value="">Todos os cartões</option>';
+        cardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectCardPlaceholder')}</option>`;
         if (!columnId) return;
 
         // CORREÇÃO: Busca a coluna dentro do quadro selecionado no diálogo, não no quadro atual.
@@ -764,7 +791,7 @@ function showBoardDialog(boardId = null) {
     dialog.dataset.editingId = boardId;
 
     // A linha que causava o erro agora vai funcionar:
-    document.getElementById('board-dialog-title').textContent = board ? 'Editar Quadro' : 'Criar Novo Quadro';
+    document.getElementById('board-dialog-title').textContent = board ? t('kanban.dialog.board.editTitle') : t('kanban.dialog.board.createTitle');
     
     const visibilitySelect = document.getElementById('board-visibility');
     const groupContainer = document.getElementById('board-group-container');
@@ -772,9 +799,9 @@ function showBoardDialog(boardId = null) {
 
     // Popula o select de visibilidade dinamicamente
     visibilitySelect.innerHTML = `
-        <option value="private">Privado (só você vê)</option>
-        <option value="friends">Amigos (só amigos veem)</option>
-        <option value="public">Público (todos veem)</option>
+        <option value="private">${t('kanban.dialog.board.visibilityPrivate')}</option>
+        <option value="friends">${t('kanban.dialog.board.visibilityFriends')}</option>
+        <option value="public">${t('kanban.dialog.board.visibilityPublic')}</option>
     `;
 
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
@@ -787,7 +814,7 @@ function showBoardDialog(boardId = null) {
 
     // Adiciona a opção de Grupo apenas se o usuário puder criar em algum
     if (creatableInGroups.length > 0) {
-        visibilitySelect.innerHTML += `<option value="group">Grupo (membros do grupo veem)</option>`;
+        visibilitySelect.innerHTML += `<option value="group">${t('kanban.dialog.board.visibilityGroup')}</option>`;
     }
 
     visibilitySelect.onchange = () => {
@@ -795,7 +822,7 @@ function showBoardDialog(boardId = null) {
         if (selectedVisibility === 'group') {
             // Esta verificação é uma segurança extra, mas a opção não deveria existir se não houver grupos.
             if (creatableInGroups.length === 0) {
-                showDialogMessage(dialog, 'Você não tem permissão para criar quadros em nenhum grupo.', 'warning');
+                showDialogMessage(dialog, t('kanban.feedback.noGroupCreatePermission'), 'warning');
                 visibilitySelect.value = board ? board.visibility : 'private'; // Reverte
                 groupContainer.style.display = 'none';
             } else {
@@ -835,7 +862,7 @@ function showBoardDialog(boardId = null) {
     // Se estiver editando um quadro de grupo, mostra o seletor
     if (board && board.visibility === 'group' && board.groupId) {
         groupContainer.style.display = 'block';
-        groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || 'Grupo desconhecido'}</option>`;
+        groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.dialog.board.unknownGroup')}</option>`;
         groupSelect.disabled = true; // Não pode mudar o grupo de um quadro existente
         visibilitySelect.disabled = true;
     } else {
@@ -847,14 +874,14 @@ function showBoardDialog(boardId = null) {
     const userTemplates = getUserBoardTemplates(currentUser.id);
     const systemTemplates = getSystemBoardTemplates();
     
-    templateSelect.innerHTML = '<option value="">Começar com um quadro vazio</option>';
+    templateSelect.innerHTML = `<option value="">${t('kanban.dialog.board.templateEmpty')}</option>`;
     if (userTemplates.length > 0) {
-        templateSelect.innerHTML += '<optgroup label="Meus Templates">';
+        templateSelect.innerHTML += `<optgroup label="${t('kanban.dialog.board.myTemplates')}">`;
         userTemplates.forEach(t => templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
         templateSelect.innerHTML += '</optgroup>';
     }
     if (systemTemplates.length > 0) {
-        templateSelect.innerHTML += '<optgroup label="Templates do Sistema">';
+        templateSelect.innerHTML += `<optgroup label="${t('kanban.dialog.board.systemTemplates')}">`;
         systemTemplates.forEach(t => templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
         templateSelect.innerHTML += '</optgroup>';
     }
@@ -877,12 +904,12 @@ function handleSaveBoard() {
     const templateId = document.getElementById('board-template-select').value;
 
     if (!title && !templateId) {
-        showDialogMessage(dialog, 'O título é obrigatório.', 'error');
+        showDialogMessage(dialog, t('kanban.dialog.titleRequired'), 'error');
         return;
     }
 
     showConfirmationDialog(
-        'Deseja salvar as alterações neste quadro?',
+        t('kanban.confirm.saveBoard'),
         (confirmationDialog) => {
             saveState(); // Salva o estado para o Desfazer
             const boardId = dialog.dataset.editingId;
@@ -902,7 +929,7 @@ function handleSaveBoard() {
             } else { // Criando um novo quadro
                 const allTemplates = [...getUserBoardTemplates(currentUser.id), ...getSystemBoardTemplates()];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
-                if (selectedTemplate && !title) title = `${selectedTemplate.name} (Cópia)`;
+                if (selectedTemplate && !title) title = `${selectedTemplate.name} ${t('kanban.board.copySuffix')}`;
                 const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) : [];
                 const newBoardData = { 
                     title, 
@@ -917,7 +944,7 @@ function handleSaveBoard() {
                 if (visibility === 'group') {
                     const groupId = document.getElementById('board-group-select').value;
                     if (!groupId) {
-                        showDialogMessage(confirmationDialog, 'Selecione um grupo para o quadro.', 'error');
+                        showDialogMessage(confirmationDialog, t('kanban.feedback.selectGroupForBoard'), 'error');
                         return false; // Impede o fechamento do diálogo
                     }
                     newBoardData.groupId = groupId;
@@ -937,7 +964,7 @@ function handleSaveBoard() {
             }
 
             if (savedBoard) {
-              showDialogMessage(confirmationDialog, 'Quadro salvo com sucesso!', 'success');
+              showDialogMessage(confirmationDialog, t('kanban.feedback.boardSaved'), 'success');
 
               // --- CORREÇÃO: Se um quadro de grupo foi criado, muda o filtro ---
               // Verifica se é um quadro novo (boardId é nulo) e se tem um groupId
@@ -958,7 +985,7 @@ function handleSaveBoard() {
 
 function showColumnDialog(columnId = null) {
     if (!currentBoard) {
-        showFloatingMessage('Selecione um quadro antes de adicionar uma coluna.', 'error');
+        showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
         return;
     }
     const dialog = document.getElementById('column-dialog');
@@ -999,12 +1026,12 @@ function handleSaveColumn() {
     const dialog = document.getElementById('column-dialog');
     const title = document.getElementById('column-title-input').value.trim();
     if (!title) {
-        showDialogMessage(dialog, 'O nome da coluna é obrigatório.', 'error');
+        showDialogMessage(dialog, t('kanban.dialog.titleRequired'), 'error');
         return;
     }
 
     showConfirmationDialog(
-        'Deseja salvar as alterações nesta coluna?',
+        t('kanban.confirm.saveColumn'),
         (confirmationDialog) => {
             saveState(); // Salva o estado para o Desfazer
             const columnId = dialog.dataset.editingId;
@@ -1029,7 +1056,7 @@ function handleSaveColumn() {
                     saveBoard(boardData);
                 }
             }
-            showDialogMessage(confirmationDialog, 'Coluna salva com sucesso!', 'success');
+            showDialogMessage(confirmationDialog, t('kanban.feedback.columnSaved'), 'success');
             showSuccessAndRefresh(dialog, currentBoard.id);
             return true;
         }
@@ -1167,12 +1194,12 @@ function showCardDialog(cardId = null, columnId) {
         });
     } else {
         // Caso não haja nenhum template, mostra uma mensagem
-        tagSelect.innerHTML = '<option value="">Nenhum conjunto de etiquetas disponível</option>';
+        tagSelect.innerHTML = `<option value="">${t('kanban.dialog.card.noTagSets')}</option>`;
     }
     
     // Popula o select "Atribuir a:" com nomes de usuários
     const assigneeSelect = document.getElementById('card-assigned-to');
-    assigneeSelect.innerHTML = '<option value="">Ninguém</option>';
+    assigneeSelect.innerHTML = `<option value="">${t('kanban.dialog.card.noAssignee')}</option>`;
 
     let assignableUsers = new Map();
     assignableUsers.set(currentUser.id, currentUser); // Sempre pode atribuir a si mesmo
@@ -1219,10 +1246,10 @@ function showCardDialog(cardId = null, columnId) {
 function handleSaveCard() {
     const title = document.getElementById('card-title-input').value.trim();
     const dialog = document.getElementById('card-dialog');
-    if (!title) { showDialogMessage(dialog, 'O título é obrigatório.', 'error'); return; }
+    if (!title) { showDialogMessage(dialog, t('kanban.dialog.titleRequired'), 'error'); return; }
 
     showConfirmationDialog(
-        'Deseja salvar as alterações neste cartão?',
+        t('kanban.confirm.saveCard'),
         (confirmationDialog) => {
             const cardId = dialog.dataset.editingId;
             const newColumnId = document.getElementById('card-column-select').value;
@@ -1274,7 +1301,7 @@ function handleSaveCard() {
             }
 
             saveState(); // Salva o estado APÓS as modificações
-            showDialogMessage(confirmationDialog, 'Cartão salvo com sucesso!', 'success');
+            showDialogMessage(confirmationDialog, t('kanban.feedback.cardSaved'), 'success');
             showSuccessAndRefresh(dialog, currentBoard.id);
             return true;
         }
@@ -1284,13 +1311,13 @@ function handleSaveCard() {
 // ===== LÓGICA DE EXPORTAÇÃO E IMPRESSÃO =====
 
 function handleExportImage() {
-    showFloatingMessage('Preparando imagem para exportação...', 'info');
+    showFloatingMessage(t('kanban.feedback.preparingExport'), 'info');
     const boardArea = document.getElementById('main-area');
     
     // Para esta função funcionar, a biblioteca html2canvas precisa ser importada no seu HTML:
     // <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     if (typeof html2canvas === 'undefined') {
-        showFloatingMessage('Erro: Biblioteca html2canvas não encontrada.', 'error');
+        showFloatingMessage(t('kanban.feedback.exportError'), 'error');
         console.error("html2canvas não está carregada. Adicione o script ao seu HTML.");
         return;
     }
@@ -1306,7 +1333,7 @@ function handleExportImage() {
         link.click();
     }).catch(err => {
         console.error("Erro ao exportar imagem:", err);
-        showFloatingMessage('Falha ao exportar imagem.', 'error');
+        showFloatingMessage(t('kanban.feedback.exportFail'), 'error');
     });
 }
 
@@ -1336,7 +1363,7 @@ function handlePrintBoard() {
     printWindow.document.write(`
         <html>
             <head>
-                <title>Imprimir Quadro - ${boardTitle}</title>
+                <title>${t('kanban.print.title', { title: boardTitle })}</title>
                 <style>
                     body { font-family: Segoe UI, sans-serif; background-color: white !important; color: black; -webkit-print-color-adjust: exact; color-adjust: exact; }
                     #main-area { padding: 20px; }
@@ -1353,7 +1380,7 @@ function handlePrintBoard() {
             </head>
             <body>
                 <div id="main-area">${boardAreaClone.innerHTML}</div>
-                <div class="print-footer">Impresso por: ${userName} em ${printDate}</div>
+                <div class="print-footer">${t('kanban.print.printedBy', { name: userName, date: printDate })}</div>
             </body>
         </html>
     `);
@@ -1579,14 +1606,14 @@ function createCardContextMenu(event, cardEl) {
     const { card } = findCardAndColumn(cardId);
     
     const menuItems = [
-        { label: 'Editar', icon: '✏️', action: () => showCardDialog(cardId) },
-        { label: 'Detalhes', icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
-        { label: card.isComplete ? 'Marcar como Pendente' : 'Marcar como Concluído', icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
+        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => showCardDialog(cardId) },
+        { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
+        { label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
         { isSeparator: true },
-        { label: 'Copiar Cartão', icon: '📋', action: () => handleCopyCard(cardId) },
-        { label: 'Recortar Cartão', icon: '✂️', action: () => handleCutCard(cardId) },
+        { label: t('kanban.contextMenu.card.copy'), icon: '📋', action: () => handleCopyCard(cardId) },
+        { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId) },
         { isSeparator: true },
-        { label: 'Excluir', icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true },
+        { label: t('kanban.contextMenu.card.delete'), icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true },
     ];
 
     showContextMenu(event, menuItems);
@@ -1599,12 +1626,12 @@ function createColumnContextMenu(event, columnEl) {
     const columnId = columnEl.dataset.columnId;
 
     const menuItems = [
-        { label: 'Editar', icon: '✏️', action: () => showColumnDialog(columnId) },
-        { label: 'Detalhes', icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
-        { label: 'Recortar Coluna', icon: '✂️', action: () => handleCutColumn(columnId) },
-        { label: 'Copiar Coluna', icon: '📋', action: () => handleCopyColumn(columnId) },
+        { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => showColumnDialog(columnId) },
+        { label: t('kanban.contextMenu.column.details'), icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
+        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId) },
+        { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId) },
         { isSeparator: true },
-        { label: 'Excluir', icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true },
+        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true },
     ];
 
     showContextMenu(event, menuItems);
@@ -1624,28 +1651,28 @@ function showDetailsDialog(cardId = null, columnId = null) {
 
     if (cardId) {
         const { card } = findCardAndColumn(cardId);
-        titleEl.textContent = `Detalhes do Cartão: ${card.title}`;
+        titleEl.textContent = t('kanban.dialog.details.cardTitle', { title: card.title });
         
         const creator = allUsers.find(u => u.id === card.creatorId);
         const assignee = allUsers.find(u => u.id === card.assignedTo);
         
         let detailsHtml = '<ul>';
-        if (creator) detailsHtml += `<li><strong>Criador:</strong> ${creator.name}</li>`;
-        if (assignee) detailsHtml += `<li><strong>Atribuído a:</strong> ${assignee.name}</li>`;
-        detailsHtml += `<li><strong>Status:</strong> ${card.isComplete ? 'Concluído' : 'Ativo'}</li>`;
-        if (card.dueDate) detailsHtml += `<li><strong>Vencimento:</strong> ${new Date(card.dueDate).toLocaleString('pt-BR')}</li>`;
-        if (card.tags && card.tags.length > 0) detailsHtml += `<li><strong>Etiquetas:</strong> ${card.tags.join(', ')}</li>`;
-        if (card.description) detailsHtml += `<li><strong>Descrição:</strong><p>${card.description.replace(/\n/g, '<br>')}</p></li>`;
+        if (creator) detailsHtml += `<li><strong>${t('kanban.dialog.details.creator')}</strong> ${creator.name}</li>`;
+        if (assignee) detailsHtml += `<li><strong>${t('kanban.dialog.details.assignee')}</strong> ${assignee.name}</li>`;
+        detailsHtml += `<li><strong>${t('kanban.dialog.details.status')}</strong> ${card.isComplete ? t('kanban.dialog.details.statusCompleted') : t('kanban.dialog.details.statusActive')}</li>`;
+        if (card.dueDate) detailsHtml += `<li><strong>${t('kanban.dialog.details.dueDate')}</strong> ${new Date(card.dueDate).toLocaleString()}</li>`;
+        if (card.tags && card.tags.length > 0) detailsHtml += `<li><strong>${t('kanban.dialog.details.tags')}</strong> ${card.tags.join(', ')}</li>`;
+        if (card.description) detailsHtml += `<li><strong>${t('kanban.dialog.details.description')}</strong><p>${card.description.replace(/\n/g, '<br>')}</p></li>`;
         detailsHtml += '</ul>';
         
         contentEl.innerHTML = detailsHtml;
 
     } else if (columnId) {
         const column = findColumn(columnId);
-        titleEl.textContent = `Detalhes da Coluna: ${column.title}`;
+        titleEl.textContent = t('kanban.dialog.details.columnTitle', { title: column.title });
         
         let detailsHtml = '<ul>';
-        if (column.description) detailsHtml += `<li><strong>Descrição/Instrução:</strong><p>${column.description.replace(/\n/g, '<br>')}</p></li>`;
+        if (column.description) detailsHtml += `<li><strong>${t('kanban.dialog.details.description')}</strong><p>${column.description.replace(/\n/g, '<br>')}</p></li>`;
         // No futuro, poderíamos adicionar criador, etc. à coluna
         detailsHtml += '</ul>';
         
@@ -1670,7 +1697,7 @@ function switchBoard(e) {
 
 function handleDeleteColumnFromMenu(columnId){
     showConfirmationDialog(
-        'Tem certeza que deseja excluir esta coluna e todos os seus cartões?',
+        t('kanban.confirm.deleteColumn'),
         (confirmationDialog) => {
             const boardData = getBoard(currentBoard.id);
             boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
@@ -1679,12 +1706,12 @@ function handleDeleteColumnFromMenu(columnId){
             currentBoard = getFullBoardData(currentBoard.id);
             renderCurrentBoard();
             saveState(); // Salva o estado APÓS a modificação
-            showDialogMessage(confirmationDialog, 'Coluna excluída com sucesso.', 'success');
+            showDialogMessage(confirmationDialog, t('kanban.feedback.columnDeleted'), 'success');
             return true;
         },
         null,
-        'Sim, Excluir',
-        'Não'
+        t('ui.yesDelete'),
+        t('ui.no')
     );
 }
 
@@ -1701,7 +1728,7 @@ function toggleCardComplete(cardId) {
 function handleDeleteBoard() {
     if (!currentBoard) return;
     showConfirmationDialog(
-        `Tem certeza de que deseja excluir o quadro "${currentBoard.title}"?`,
+        t('kanban.confirm.deleteBoard', { boardTitle: currentBoard.title }),
         (dialog) => {
             // Não salva estado para o Desfazer, pois é uma ação destrutiva maior
             undoStack = [];
@@ -1725,12 +1752,12 @@ function handleDeleteBoard() {
             renderBoardSelector();
             initCustomSelects(); // ATUALIZAÇÃO: Garante que o select customizado seja reconstruído.
             renderCurrentBoard();
-            showDialogMessage(dialog, 'Quadro excluído com sucesso.', 'success');
+            showDialogMessage(dialog, t('kanban.feedback.boardDeleted'), 'success');
             return true;
         },
         null,
-        'Sim, Excluir',
-        'Não'
+        t('ui.yesDelete'),
+        t('ui.no')
     );
 }
 
@@ -1738,7 +1765,7 @@ function handleDeleteColumn(columnId) {
     if (!columnId) return;
 
     showConfirmationDialog(
-        'Tem certeza que deseja excluir esta coluna e todos os seus cartões?',
+        t('kanban.confirm.deleteColumn'),
         (confirmationDialog) => {
             const boardData = getBoard(currentBoard.id);
             boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
@@ -1748,18 +1775,18 @@ function handleDeleteColumn(columnId) {
             saveState();
             renderCurrentBoard();
             document.getElementById('column-dialog').close(); // Close the original column dialog
-            showDialogMessage(confirmationDialog, 'Coluna excluída com sucesso.', 'success');
+            showDialogMessage(confirmationDialog, t('kanban.feedback.columnDeleted'), 'success');
             return true;
         },
         null,
-        'Sim, Excluir',
-        'Não'
+        t('ui.yesDelete'),
+        t('ui.no')
     );
 }
 
 function handleDeleteCard(cardId) {
     showConfirmationDialog(
-        'Tem certeza que deseja excluir este cartão?',
+        t('kanban.confirm.deleteCard'),
         (dialog) => {
             const columnData = getColumn(currentBoard.columns.find(c => c.cardIds.includes(cardId)).id);
             columnData.cardIds = columnData.cardIds.filter(id => id !== cardId);
@@ -1768,12 +1795,12 @@ function handleDeleteCard(cardId) {
             currentBoard = getFullBoardData(currentBoard.id);
             renderCurrentBoard();
             saveState();
-            showDialogMessage(dialog, 'Cartão excluído.', 'success');
+            showDialogMessage(dialog, t('kanban.feedback.cardDeleted'), 'success');
             return true;
         },
         null,
-        'Sim, Excluir',
-        'Não'
+        t('ui.yesDelete'),
+        t('ui.no')
     );
 }
 
@@ -1787,7 +1814,7 @@ function saveState() {
 
 function undoAction() {
     if (undoStack.length <= 1) {
-        showFloatingMessage('Nada para desfazer.', 'info');
+        showFloatingMessage(t('kanban.feedback.nothingToUndo'), 'info');
         return;
     }
     const currentState = undoStack.pop();
@@ -1811,7 +1838,7 @@ function undoAction() {
 
 function redoAction() {
     if (redoStack.length === 0) {
-        showFloatingMessage('Nada para refazer.', 'info');
+        showFloatingMessage(t('kanban.feedback.nothingToRedo'), 'info');
         return;
     }
     const nextStateString = redoStack.pop();
@@ -1868,12 +1895,12 @@ function handleCopyCard(cardId) {
             data: { 
                 ...card, 
                 id: null, 
-                title: `${card.title} (Cópia)`,
+                title: `${card.title} ${t('kanban.board.copySuffix')}`,
                 creatorId: currentUser.id, 
                 createdAt: new Date().toISOString() 
             }
         };
-        showFloatingMessage('Cartão copiado!', 'info');
+        showFloatingMessage(t('kanban.feedback.cardCopied'), 'info');
         updatePasteButtons();
     }
 }
@@ -1892,7 +1919,7 @@ function handleCutCard(cardId) {
             sourceColumnId: column.id,
             data: card
         };
-        showFloatingMessage('Cartão recortado. Use o menu de contexto para colar.', 'info');
+        showFloatingMessage(t('kanban.feedback.cardCut'), 'info');
         updatePasteButtons();
     }
 }
@@ -1903,7 +1930,7 @@ function handleCutCard(cardId) {
  */
 function handlePasteCard(targetColumnId) {
     if (!clipboard || clipboard.type !== 'card') {
-        showFloatingMessage('Nenhum cartão para colar.', 'warning');
+        showFloatingMessage(t('kanban.feedback.noCardToPaste'), 'warning');
         return;
     }
 
@@ -1931,7 +1958,7 @@ function handlePasteCard(targetColumnId) {
 
     saveState();
     clipboard = null;
-    showFloatingMessage('Cartão colado com sucesso!', 'success');
+    showFloatingMessage(t('kanban.feedback.cardPasted'), 'success');
     showSuccessAndRefresh(null, currentBoard.id);
 }
 
@@ -1978,7 +2005,7 @@ function handlePaste() {
             const targetColumnId = currentBoard.columns[0].id;
             handlePasteCard(targetColumnId);
         } else {
-            showFloatingMessage('Crie uma coluna para colar o cartão.', 'warning');
+            showFloatingMessage(t('kanban.feedback.createColumnToPaste'), 'warning');
         }
     } else if (clipboard && clipboard.type === 'column') {
         handlePasteColumn();
@@ -2001,11 +2028,11 @@ function handleCopyColumn(columnId) {
             data: {
                 ...columnToCopy,
                 id: null, // Reseta o ID da coluna
-                title: `${columnToCopy.title} (Cópia)`,
+                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`,
                 cards: cardsToCopy // Armazena os dados completos dos cartões a serem criados
             }
         };
-        showFloatingMessage('Coluna copiada!', 'info');
+        showFloatingMessage(t('kanban.feedback.columnCopied'), 'info');
         // Não precisa de updatePasteButtons, pois a colagem de coluna é via Ctrl+V
     }
 }
@@ -2020,14 +2047,14 @@ function handleCutColumn(columnId) {
             sourceBoardId: currentBoard.id,
             data: columnToCut
         };
-        showFloatingMessage('Coluna recortada! Use Ctrl+V para colar em outro quadro.', 'info');
+        showFloatingMessage(t('kanban.feedback.columnCut'), 'info');
     }
 }
 
 // Adicione esta função se ela não existir, ou substitua a antiga
 async function saveBoardAsTemplate() {
     if (!currentBoard) {
-        showFloatingMessage('Nenhum quadro selecionado para salvar como template.', 'warning');
+        showFloatingMessage(t('kanban.feedback.noBoardForTemplate'), 'warning');
         return;
     }
 
@@ -2035,10 +2062,10 @@ async function saveBoardAsTemplate() {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Salvar Quadro como Template</h3>
+        <h3 class="drag-handle">${t('kanban.dialog.template.title')}</h3>
         <div class="form-group">
-            <label for="template-name-input">Nome do Template:</label>
-            <input type="text" id="template-name-input" value="${currentBoard.title} (Template)">
+            <label for="template-name-input">${t('kanban.dialog.template.nameLabel')}</label>
+            <input type="text" id="template-name-input" value="${currentBoard.title}">
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
@@ -2060,13 +2087,13 @@ async function saveBoardAsTemplate() {
     confirmBtn.addEventListener('click', () => {
         const templateName = nameInput.value.trim();
         if (!templateName) {
-            showDialogMessage(dialog, 'O nome do template é obrigatório.', 'error');
+            showDialogMessage(dialog, t('kanban.dialog.templateNameRequired'), 'error');
             return;
         }
 
         const existingTemplates = getUserBoardTemplates(currentUser.id);
         if (existingTemplates.some(t => t.name.toLowerCase() === templateName.toLowerCase())) {
-            showDialogMessage(dialog, 'Já existe um template com este nome.', 'error');
+            showDialogMessage(dialog, t('kanban.feedback.templateNameExists'), 'error');
             return;
         }
 
@@ -2081,14 +2108,14 @@ async function saveBoardAsTemplate() {
         existingTemplates.push(newTemplate);
         saveUserBoardTemplates(currentUser.id, existingTemplates);
 
-        showDialogMessage(dialog, `Template '${newTemplate.name}' salvo com sucesso!`, 'success');
+        showDialogMessage(dialog, t('kanban.feedback.templateSaved', { templateName: newTemplate.name }), 'success');
         setTimeout(() => dialog.close(), 1500);
     });
 }
 
 function handlePasteColumn() {
     if (!clipboard || clipboard.type !== 'column') {
-        showFloatingMessage('Nenhuma coluna para colar.', 'warning');
+        showFloatingMessage(t('kanban.feedback.noColumnToPaste'), 'warning');
         return;
     }
 
@@ -2098,7 +2125,7 @@ function handlePasteColumn() {
 
         // Não pode colar no mesmo quadro de onde recortou
         if (sourceBoardId === currentBoard.id) {
-            showFloatingMessage('Para reordenar colunas no mesmo quadro, apenas arraste e solte.', 'info');
+            showFloatingMessage(t('kanban.feedback.pasteColumnSameBoard'), 'info');
             clipboard = null; // Limpa o clipboard para evitar ações repetidas
             return;
         }
@@ -2115,7 +2142,7 @@ function handlePasteColumn() {
         targetBoard.columnIds.push(sourceColumnId);
         saveBoard(targetBoard);
 
-        showFloatingMessage('Coluna movida com sucesso!', 'success');
+        showFloatingMessage(t('kanban.feedback.columnMoved'), 'success');
 
     } else { // 'copy'
         // Lógica para COPIAR a coluna
@@ -2125,7 +2152,7 @@ function handlePasteColumn() {
         const boardData = getBoard(currentBoard.id);
         boardData.columnIds.push(newColumn.id);
         saveBoard(boardData);
-        showFloatingMessage('Coluna colada com sucesso!', 'success');
+        showFloatingMessage(t('kanban.feedback.columnPasted'), 'success');
     }
 
     saveState(); // Salva o estado para o Desfazer
@@ -2139,16 +2166,16 @@ function handlePreferencesCancel() {
         dialog.close();
     } else {
         showConfirmationDialog(
-            'Descartar alterações não salvas?',
+            t('kanban.confirm.discardChanges'),
             (confirmationDialog) => { // onConfirm
                 restoreKanbanOriginalSettings();
                 dialog.close();
-                showDialogMessage(confirmationDialog, 'Alterações descartadas.', 'info');
+                showDialogMessage(confirmationDialog, t('kanban.feedback.changesDiscarded'), 'info');
                 return true; // Fecha o diálogo de confirmação
             },
             null, // onCancel: Usa o comportamento padrão do ui-controls, que fecha a confirmação e retorna.
-            'Sim, Descartar',
-            'Não'
+            t('ui.yesDiscard'),
+            t('ui.no')
         );
     }
 }
@@ -2159,6 +2186,9 @@ function showPreferencesDialog() { // REFEITA
     const dialog = document.getElementById('preferences-dialog');
     const user = getCurrentUser();
     const prefs = user.preferences || {};
+
+    // Traduz todos os labels do diálogo
+    translatePreferencesDialog();
 
     // Salva o estado original para a função "Cancelar"
     originalPreferences = {
@@ -2224,7 +2254,11 @@ function setupPreferencesControlsListeners(dialog) {
         { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
         { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
         { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) },
-        { id: 'pref-language', action: null },
+        { id: 'pref-language', action: async (e) => {
+            await loadLanguage(e.target.value);
+            applyTranslations(); // Aplica em elementos com data-i18n
+            initCustomSelects(); // Re-inicializa para traduzir as opções dos selects
+        } },
         { id: 'pref-default-tag-template', action: null },
         { id: 'pref-card-show-tags', action: applyCardPreview },
         { id: 'pref-card-show-date', action: applyCardPreview },
@@ -2261,14 +2295,14 @@ function restoreKanbanOriginalSettings() {
 
 function handleSavePreferences(preferencesDialog) {
     showConfirmationDialog(
-        'Deseja salvar as alterações nas preferências?',
+        t('preferences.confirm.save'),
         (confirmationDialog) => { // onConfirm
             if (savePreferencesData()) {
-                showDialogMessage(confirmationDialog, 'Preferências salvas com sucesso!', 'success');
+                showDialogMessage(confirmationDialog, t('kanban.feedback.prefsSaved'), 'success');
                 preferencesDialog.close(); // Fecha o diálogo de preferências
                 return true; // Fecha o diálogo de confirmação
             } else {
-                showDialogMessage(confirmationDialog, 'Erro ao salvar as preferências.', 'error');
+                showDialogMessage(confirmationDialog, t('kanban.feedback.prefsError'), 'error');
                 return false; // Mantém o diálogo de confirmação aberto
             }
         }
@@ -2324,7 +2358,7 @@ function populateTagTemplatesSelect(selectedId = null) {
     const select = document.getElementById('pref-default-tag-template');
     if (!select) return;
     
-    select.innerHTML = '<option value="">Nenhum (padrão do sistema)</option>';
+    select.innerHTML = `<option value="">${t('preferences.tagTemplate.none')}</option>`;
     
     const userTagTemplates = getUserTagTemplates(currentUser.id);
     const systemTagTemplates = getSystemTagTemplates();
@@ -2332,7 +2366,7 @@ function populateTagTemplatesSelect(selectedId = null) {
     // Adicionar templates do usuário
     if (userTagTemplates.length > 0) {
         const optgroupUser = document.createElement('optgroup');
-        optgroupUser.label = 'Meus Conjuntos';
+        optgroupUser.label = t('preferences.tagTemplate.mySets');
         userTagTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
@@ -2346,7 +2380,7 @@ function populateTagTemplatesSelect(selectedId = null) {
     // Adicionar templates do sistema
     if (systemTagTemplates.length > 0) {
         const optgroupSystem = document.createElement('optgroup');
-        optgroupSystem.label = 'Sistema';
+        optgroupSystem.label = t('preferences.tagTemplate.systemSets');
         systemTagTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
@@ -2434,19 +2468,27 @@ function applyCardPreview() {
 }
 
 function applyThemeFromSelect(themeValue) {
-    // Limpa apenas as classes de tema para evitar conflitos
-    document.body.classList.remove('light-mode', 'dark-mode', 'light-gray-mode');
+    document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
 
-    // Aplica a classe correta com base no tema final
-    // 'auto' e 'dark-gray' resultam no tema padrão (:root), então não precisam de classe.
-    switch (themeValue) {
-        case 'light': document.body.classList.add('light-mode'); break;
-        case 'dark': document.body.classList.add('dark-mode'); break;
-        case 'light-gray': document.body.classList.add('light-gray-mode'); break;
+    let themeToApply = themeValue;
+    if (themeToApply === 'auto') {
+        // Para a pré-visualização, 'auto' deve reverter para o padrão visual do sistema, que é 'dark-gray'.
+        // A lógica final de qual tema 'auto' representa é tratada no salvamento e no applyUserTheme.
+        themeToApply = 'dark-gray';
+    }
+    
+    switch (themeToApply) {
+        case 'light': 
+            document.body.classList.add('light-mode'); 
+            break;
+        case 'dark': 
+            document.body.classList.add('dark-mode');
+            break;
+        case 'light-gray': 
+            document.body.classList.add('light-gray-mode'); 
+            break;
         case 'dark-gray':
-        case 'auto':
         default:
-            // Não faz nada, permitindo que o tema padrão (:root) seja aplicado.
             break;
     }
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Templates - KanbanDeep</title>
+    <title data-i18n-title="templates.pageTitle">Gerenciar Templates - KanbanDeep</title>
     <link rel="stylesheet" href="../static/universal.css">
     <link rel="stylesheet" href="../static/templates.css">
 </head>
@@ -15,20 +15,20 @@
                 <img id="user-avatar" src="" alt="Avatar do Usuário">
             </button>
             <div id="profile-dropdown" class="dropdown">            
-                <button id="switch-user-btn">🔁 Trocar Perfil</button>
-                <button id="user-profile-btn">👤 Meu Perfil</button>
-                <button id="my-groups-btn">👥 Meus Grupos</button>
-                <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
-                <button id="kanban-btn">📋 Meus Quadros</button>
-                <button id="notifications-btn">🔔 Notificações</button>
+                <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+                <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+                <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+                <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+                <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
                 <hr>
-                <button id="exit-btn">🚪 Sair</button>
+                <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
             </div>
         </div>
-        <h1 id="page-title">Gerenciar Templates</h1>
+        <h1 id="page-title" data-i18n="templates.pageTitle"></h1>
         <div class="menu-container">
             <!-- Menu de Ações pode ser usado para o botão de Restaurar -->
-            <button id="actions-dropdown-btn" class="btn">⚙️ Opções</button>
+            <button id="actions-dropdown-btn" class="btn" data-i18n="ui.options"></button>
             <div id="actions-dropdown" class="dropdown">
                 <!-- Conteúdo preenchido pelo JS -->
             </div>
@@ -37,22 +37,22 @@
 
     <main class="card">
         <nav class="showcase-navbar">
-            <button class="nav-item active" data-tab="board-templates">Templates de Quadro</button>
-            <button class="nav-item" data-tab="tag-templates">Conjuntos de Etiquetas</button>
+            <button class="nav-item active" data-tab="board-templates" data-i18n="templates.tabs.boardTemplates"></button>
+            <button class="nav-item" data-tab="tag-templates" data-i18n="templates.tabs.tagSets"></button>
         </nav>
 
         <!-- ABA 1: TEMPLATES DE QUADRO -->
         <div id="board-templates" class="tab-content active">
             <section class="template-section">
                 <div class="section-header">
-                    <h2>Meus Templates</h2>
-                    <button id="create-user-board-template" class="btn confirm"><span>➕</span> Novo Template</button>
+                    <h2 data-i18n="templates.userBoard.title"></h2>
+                    <button id="create-user-board-template" class="btn confirm" data-i18n="templates.button.newTemplate"><span>➕</span></button>
                 </div>
                 <div id="user-board-templates-grid" class="templates-grid"></div>
             </section>
             <section class="template-section">
                 <div class="section-header">
-                    <h2>Templates do Sistema</h2>
+                    <h2 data-i18n="templates.systemBoard.title"></h2>
                 </div>
                 <div id="system-board-templates-grid" class="templates-grid"></div>
             </section>
@@ -62,14 +62,14 @@
         <div id="tag-templates" class="tab-content">
             <section class="template-section">
                 <div class="section-header">
-                    <h2>Meus Conjuntos de Etiquetas</h2>
-                    <button id="create-user-tag-template" class="btn confirm"><span>➕</span> Novo Conjunto</button>
+                    <h2 data-i18n="templates.userTag.title"></h2>
+                    <button id="create-user-tag-template" class="btn confirm" data-i18n="templates.button.newSet"><span>➕</span></button>
                 </div>
                 <div id="user-tag-templates-grid" class="templates-grid"></div>
             </section>
             <section class="template-section">
                 <div class="section-header">
-                    <h2>Etiquetas do Sistema</h2>
+                    <h2 data-i18n="templates.systemTag.title"></h2>
                 </div>
                 <div id="system-tag-templates-grid" class="templates-grid"></div>
             </section>

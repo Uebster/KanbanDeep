@@ -18,6 +18,7 @@ import {
     addMessageNotification,
     addGroupInvitationNotification
 } from './notifications.js';
+import { t, initTranslations } from './translations.js';
 
 let currentUser = null;
 let viewedUser = null;
@@ -28,25 +29,27 @@ let relationshipStatus = {
     friendRequestSent: false
 };
 
-export function initPublicProfilePage() {
+export async function initPublicProfilePage() {
     currentUser = getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
         return;
     }
 
+    await initTranslations();
+
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('userId');
     
     if (!userId) {
-        showFloatingMessage('Usuário não especificado', 'error');
+        showFloatingMessage(t('publicProfile.error.userNotSpecified'), 'error');
         setTimeout(() => window.location.href = 'list-users.html', 2000);
         return;
     }
 
     viewedUser = getUserProfile(userId);
     if (!viewedUser) {
-        showFloatingMessage('Usuário não encontrado', 'error');
+        showFloatingMessage(t('publicProfile.error.userNotFound'), 'error');
         setTimeout(() => window.location.href = 'list-users.html', 2000);
         return;
     }
@@ -72,10 +75,10 @@ function loadUserData() {
     // Privacidade da Biografia
     const bioEl = document.getElementById('profile-bio');
     if (viewedUser.privacy === 'private' && currentUser.id !== viewedUser.id) {
-        bioEl.textContent = 'A biografia deste usuário é privada.';
+        bioEl.textContent = t('publicProfile.bio.private');
         bioEl.style.fontStyle = 'italic';
     } else {
-        bioEl.textContent = viewedUser.bio || 'Sem biografia.';
+        bioEl.textContent = viewedUser.bio || t('publicProfile.bio.none');
     }
     
     // Estatísticas
@@ -147,29 +150,29 @@ function loadPersonalInfo() {
     
     if (canViewPersonalInfo()) {
         if (viewedUser.birthdate) {
-            content.innerHTML += `<p><strong>Nascimento:</strong> ${new Date(viewedUser.birthdate).toLocaleDateString('pt-BR')}</p>`;
+            content.innerHTML += `<p><strong>${t('createUser.label.birthdate')}:</strong> ${new Date(viewedUser.birthdate).toLocaleDateString()}</p>`;
             hasContent = true;
         }
         if (viewedUser.gender) {
             const genderMap = {
-                'male': 'Masculino',
-                'female': 'Feminino',
-                'non-binary': 'Não-binário',
-                'other': 'Outro',
-                'prefer-not-to-say': 'Prefiro não informar'
+                'male': t('createUser.gender.male'),
+                'female': t('createUser.gender.female'),
+                'non-binary': t('createUser.gender.nonBinary'),
+                'other': t('createUser.gender.other'),
+                'prefer-not-to-say': t('createUser.gender.preferNotToSay')
             };
-            content.innerHTML += `<p><strong>Gênero:</strong> ${genderMap[viewedUser.gender] || viewedUser.gender}</p>`;
+            content.innerHTML += `<p><strong>${t('createUser.label.gender')}:</strong> ${genderMap[viewedUser.gender] || viewedUser.gender}</p>`;
             hasContent = true;
         }
         if (viewedUser.location) {
-            content.innerHTML += `<p><strong>Localização:</strong> ${viewedUser.location}</p>`;
+            content.innerHTML += `<p><strong>${t('createUser.label.location')}:</strong> ${viewedUser.location}</p>`;
             hasContent = true;
         }
         if (!hasContent) {
-            content.innerHTML = '<p class="privacy-placeholder">ℹ️ Nenhuma informação pessoal fornecida.</p>';
+            content.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.personalInfo.none')}</p>`;
         }
     } else {
-        content.innerHTML = '<p class="privacy-placeholder">🔒 As informações pessoais deste usuário são privadas.</p>';
+        content.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.personalInfo.private')}</p>`;
     }
 }
 
@@ -180,22 +183,22 @@ function loadContactInfo() {
 
     if (canViewContactInfo()) {
         if (viewedUser.email) {
-            content.innerHTML += `<p><strong>Email:</strong> ${viewedUser.email}</p>`;
+            content.innerHTML += `<p><strong>${t('createUser.label.email')}:</strong> ${viewedUser.email}</p>`;
             hasContent = true;
         }
         if (viewedUser.whatsapp) {
-            content.innerHTML += `<p><strong>WhatsApp:</strong> ${viewedUser.whatsapp}</p>`;
+            content.innerHTML += `<p><strong>${t('createUser.label.whatsapp')}:</strong> ${viewedUser.whatsapp}</p>`;
             hasContent = true;
         }
         if (viewedUser.linkedin) {
-            content.innerHTML += `<p><strong>LinkedIn:</strong> <a href="${viewedUser.linkedin}" target="_blank">${viewedUser.linkedin}</a></p>`;
+            content.innerHTML += `<p><strong>${t('createUser.label.linkedin')}:</strong> <a href="${viewedUser.linkedin}" target="_blank">${viewedUser.linkedin}</a></p>`;
             hasContent = true;
         }
         if (!hasContent) {
-            content.innerHTML = '<p class="privacy-placeholder">ℹ️ Nenhuma informação de contato fornecida.</p>';
+            content.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.contactInfo.none')}</p>`;
         }
     } else {
-        content.innerHTML = '<p class="privacy-placeholder">🔒 As informações de contato são visíveis apenas para amigos.</p>';
+        content.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.contactInfo.private')}</p>`;
     }
 }
 
@@ -204,7 +207,7 @@ function loadPublicGroups() {
     if (!container) return;
 
     if (!canViewSocialInfo()) {
-        container.innerHTML = '<p class="privacy-placeholder">🔒 A lista de grupos é visível apenas para amigos.</p>';
+        container.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.groups.private')}</p>`;
         document.getElementById('public-groups-section').style.display = 'block';
         return;
     }
@@ -219,7 +222,7 @@ function loadPublicGroups() {
     container.innerHTML = ''; // Limpa conteúdo anterior
 
     if (publicGroups.length === 0) {
-        container.innerHTML = '<p class="privacy-placeholder">ℹ️ Este usuário não participa de nenhum grupo público.</p>';
+        container.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.groups.none')}</p>`;
         return;
     }
 
@@ -228,7 +231,7 @@ function loadPublicGroups() {
         // Reutiliza os estilos de .board-card para consistência visual
         groupCard.className = 'board-card';
         groupCard.dataset.groupId = group.id;
-        groupCard.title = `Clique para ver o grupo "${group.name}"`;
+        groupCard.title = t('publicProfile.groups.viewGroupTitle', { name: group.name });
 
         // Calcular estatísticas do grupo
         const memberCount = group.memberIds ? group.memberIds.length : 0;
@@ -243,8 +246,8 @@ function loadPublicGroups() {
             <h4 class="board-name">${group.name}</h4>
             <p class="board-description">${group.description || 'Sem descrição.'}</p>
             <div class="board-stats">
-                <span>${memberCount} membros</span>
-                <span>${taskCount} tarefas</span>
+                <span>${t('publicProfile.groups.memberCount', { count: memberCount })}</span>
+                <span>${t('publicProfile.groups.taskCount', { count: taskCount })}</span>
             </div>
         `;
         groupCard.addEventListener('click', () => {
@@ -261,7 +264,7 @@ function loadPublicBoards() {
     if (!container) return;
 
     if (!canViewSocialInfo()) {
-        container.innerHTML = '<p class="privacy-placeholder">🔒 A lista de quadros é visível apenas para amigos.</p>';
+        container.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.boards.private')}</p>`;
         return;
     }
 
@@ -271,7 +274,7 @@ function loadPublicBoards() {
     container.innerHTML = '';
 
     if (publicBoards.length === 0) {
-        container.innerHTML = '<p class="privacy-placeholder">ℹ️ Este usuário não possui quadros públicos.</p>';
+        container.innerHTML = `<p class="privacy-placeholder">${t('publicProfile.boards.none')}</p>`;
         return;
     }
 
@@ -279,7 +282,7 @@ function loadPublicBoards() {
         const boardCard = document.createElement('div');
         boardCard.className = 'board-card';
         boardCard.dataset.boardId = board.id;
-        boardCard.title = `Clique para ver o quadro "${board.title}"`;
+        boardCard.title = t('publicProfile.boards.viewBoardTitle', { title: board.title });
 
         const totalTasks = board.columns.reduce((acc, col) => acc + col.cards.length, 0);
 
@@ -288,8 +291,8 @@ function loadPublicBoards() {
             <h4 class="board-name">${board.title}</h4>
             <p class="board-description">${board.description || 'Sem descrição.'}</p>
             <div class="board-stats">
-                <span>${board.columns.length} colunas</span>
-                <span>${totalTasks} tarefas</span>
+                <span>${t('publicProfile.boards.columnCount', { count: board.columns.length })}</span>
+                <span>${t('publicProfile.boards.taskCount', { count: totalTasks })}</span>
             </div>
         `;
         boardCard.addEventListener('click', () => {
@@ -359,32 +362,32 @@ function updateRelationshipButtons() {
     let buttonsHtml = '';
     
     if (currentUser.id === viewedUser.id) {
-        container.innerHTML = '<p>Este é o seu perfil</p>';
+        container.innerHTML = `<p>${t('publicProfile.actions.isYou')}</p>`;
         return;
     }
     
     if (relationshipStatus.isFriend) {
         buttonsHtml = `
-            <button class="btn" id="message-btn">✉️ Mensagem</button>
-            <button class="btn danger" id="unfriend-btn">🗑️ Desfazer Amizade</button>
-            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
+            <button class="btn" id="message-btn">${t('publicProfile.actions.message')}</button>
+            <button class="btn danger" id="unfriend-btn">${t('publicProfile.actions.unfriend')}</button>
+            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? t('publicProfile.actions.following') : t('publicProfile.actions.follow')}</button>
         `;
     } else if (relationshipStatus.friendRequestPending) {
         buttonsHtml = `
-            <button class="btn cancel" id="cancel-request-btn">⏳ Cancelar</button>
-            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
+            <button class="btn cancel" id="cancel-request-btn">${t('publicProfile.actions.cancelRequest')}</button>
+            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? t('publicProfile.actions.following') : t('publicProfile.actions.follow')}</button>
         `;
     } else {
         buttonsHtml = `
-            <button class="btn confirm" id="friend-request-btn">🤝 Add Amigo</button>
-            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? '✅ Seguindo' : '👁️ Seguir'}</button>
+            <button class="btn confirm" id="friend-request-btn">${t('publicProfile.actions.addFriend')}</button>
+            <button class="btn" id="follow-btn">${relationshipStatus.isFollowing ? t('publicProfile.actions.following') : t('publicProfile.actions.follow')}</button>
         `;
     }
 
     // Adiciona o botão de denunciar
     buttonsHtml += `
         <hr style="width:100%; border-color: var(--border); margin: 10px 0 5px;">
-        <button class="btn danger" id="report-user-btn">🚩 Denunciar</button>
+        <button class="btn danger" id="report-user-btn">${t('publicProfile.actions.report')}</button>
     `;
 
     container.innerHTML = buttonsHtml;
@@ -421,7 +424,7 @@ function sendFriendRequest() {
     relationshipStatus.friendRequestPending = true;
     updateRelationshipButtons();
     
-    showDialogMessage(dialog, 'Solicitação enviada! O usuário foi notificado.', 'success');
+    showDialogMessage(dialog, t('publicProfile.feedback.requestSent'), 'success');
     
     // Desabilitar botões temporariamente
     const sendBtn = document.getElementById('send-friend-request-btn');
@@ -445,7 +448,7 @@ function sendFriendRequest() {
 function cancelFriendRequest() {
     const dialog = document.getElementById('friend-request-modal');
     const feedbackEl = dialog.querySelector('.feedback');
-    showDialogMessage(dialog, 'Solicitação cancelada.', 'info');
+    showDialogMessage(dialog, t('publicProfile.feedback.requestCancelled'), 'info');
     
     // Desabilitar botões temporariamente
     const sendBtn = document.getElementById('send-friend-request-btn');
@@ -468,7 +471,7 @@ function cancelFriendRequest() {
 function toggleFollow() {
     if (relationshipStatus.isFollowing) {
         showConfirmationDialog(
-            `Tem certeza que deseja deixar de seguir ${viewedUser.name}?`,
+            t('publicProfile.confirm.unfollow', { name: viewedUser.name }),
             (dialog) => {
                 if (currentUser.following && currentUser.following.includes(viewedUser.id)) {
                     currentUser.following = currentUser.following.filter(id => id !== viewedUser.id);
@@ -481,7 +484,7 @@ function toggleFollow() {
                 relationshipStatus.isFollowing = false;
                 document.getElementById('stats-followers').textContent = viewedUser.followers ? viewedUser.followers.length : 0;
                 updateRelationshipButtons();
-                showDialogMessage(dialog, `Você deixou de seguir ${viewedUser.name}.`, 'info');
+                showDialogMessage(dialog, t('publicProfile.feedback.unfollowed', { name: viewedUser.name }), 'info');
                 return true;
             }
         );
@@ -512,9 +515,9 @@ function sendMessage() {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Enviar Mensagem para ${viewedUser.name}</h3>
+        <h3 class="drag-handle">${t('publicProfile.messageDialog.title', { name: viewedUser.name })}</h3>
         <div class="form-group">
-            <textarea id="private-message-textarea" placeholder="Escreva sua mensagem..." rows="5"></textarea>
+            <textarea id="private-message-textarea" placeholder="${t('publicProfile.messageDialog.placeholder')}" rows="5"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
@@ -541,13 +544,13 @@ function sendMessage() {
     sendBtn.addEventListener('click', () => {
         const message = textarea.value.trim();
         if (!message) {
-            showDialogMessage(dialog, 'A mensagem não pode estar vazia.', 'error');
+            showDialogMessage(dialog, t('publicProfile.messageDialog.emptyError'), 'error');
             return;
         }
 
         addMessageNotification(currentUser.name, currentUser.id, viewedUser.id, message.length > 50 ? message.substring(0, 50) + '...' : message);
 
-        showDialogMessage(dialog, 'Mensagem enviada com sucesso!', 'success');
+        showDialogMessage(dialog, t('publicProfile.messageDialog.success'), 'success');
         sendBtn.disabled = true;
         cancelBtn.disabled = true;
         setTimeout(closeDialog, 1500);
@@ -556,7 +559,7 @@ function sendMessage() {
 
 function unfriendUser() {
     showConfirmationDialog(
-        `Tem certeza que deseja desfazer a amizade com ${viewedUser.name}?`,
+        t('publicProfile.confirm.unfriend', { name: viewedUser.name }),
         (dialog) => {
             // Remover da lista de amigos
             currentUser.friends = currentUser.friends.filter(id => id !== viewedUser.id);
@@ -567,7 +570,7 @@ function unfriendUser() {
             
             relationshipStatus.isFriend = false;
             updateRelationshipButtons();
-            showDialogMessage(dialog, 'Amizade desfeita.', 'info');
+            showDialogMessage(dialog, t('publicProfile.feedback.unfriended'), 'info');
             return true;
         }
     );
@@ -575,16 +578,16 @@ function unfriendUser() {
 
 function reportUser() {
     showConfirmationDialog(
-        `Você tem certeza que deseja denunciar ${viewedUser.name}? Uma notificação será enviada para a administração para análise.`,
+        t('publicProfile.confirm.report', { name: viewedUser.name }),
         (dialog) => {
             // Em uma aplicação real, isso enviaria um evento para o backend.
             // Por enquanto, apenas exibimos uma mensagem de sucesso.
             console.log(`Usuário ${viewedUser.name} (ID: ${viewedUser.id}) denunciado por ${currentUser.name} (ID: ${currentUser.id}).`);
-            showDialogMessage(dialog, 'Denúncia enviada. Agradecemos sua colaboração em manter a comunidade segura.', 'success');
+            showDialogMessage(dialog, t('publicProfile.feedback.reportSent'), 'success');
             return true;
         },
         null,
-        'Sim, Denunciar'
+        t('ui.yesReport')
     );
 }
 
@@ -604,25 +607,25 @@ function showGroupInviteDialog() {
     const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
 
     if (adminGroups.length === 0) {
-        showFloatingMessage('Você não administra nenhum grupo para poder convidar.', 'warning');
+        showFloatingMessage(t('publicProfile.feedback.noAdminGroups'), 'warning');
         return;
     }
 
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Convidar para Grupo</h3>
-        <p>Selecione um dos seus grupos para convidar <strong>${viewedUser.name}</strong>.</p>
+        <h3 class="drag-handle">${t('publicProfile.inviteDialog.title')}</h3>
+        <p>${t('publicProfile.inviteDialog.description', { name: `<strong>${viewedUser.name}</strong>` })}</p>
         <div class="form-group">
-            <label for="group-invite-select">Seus Grupos:</label>
+            <label for="group-invite-select">${t('publicProfile.inviteDialog.selectLabel')}</label>
             <select id="group-invite-select">
                 ${adminGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
             </select>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-secondary">Cancelar</button>
-            <button class="btn btn-primary">Enviar Convite</button>
+            <button class="btn btn-secondary">${t('ui.cancel')}</button>
+            <button class="btn btn-primary">${t('publicProfile.inviteDialog.sendButton')}</button>
         </div>
     `;
 
@@ -646,19 +649,19 @@ function showGroupInviteDialog() {
         const group = adminGroups.find(g => g.id === groupId);
 
         if (!group) {
-            showDialogMessage(dialog, 'Grupo inválido selecionado.', 'error');
+            showDialogMessage(dialog, t('publicProfile.inviteDialog.invalidGroup'), 'error');
             return;
         }
 
         if (group.memberIds && group.memberIds.includes(viewedUser.id)) {
-            showDialogMessage(dialog, `${viewedUser.name} já é membro deste grupo.`, 'info');
+            showDialogMessage(dialog, t('publicProfile.inviteDialog.alreadyMember', { name: viewedUser.name }), 'info');
             return;
         }
 
         // Envia a notificação de convite
         addGroupInvitationNotification(group.name, group.id, currentUser.name, currentUser.id, viewedUser.id);
 
-        showDialogMessage(dialog, `Convite para o grupo "${group.name}" enviado!`, 'success');
+        showDialogMessage(dialog, t('publicProfile.inviteDialog.success', { groupName: group.name }), 'success');
         confirmBtn.disabled = true;
         cancelBtn.disabled = true;
         setTimeout(closeDialog, 2000);

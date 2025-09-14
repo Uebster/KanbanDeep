@@ -14,15 +14,17 @@ import {
     showFloatingMessage, 
     showConfirmationDialog, 
     showDialogMessage, 
-    updateUserAvatar 
+    updateUserAvatar,
+    initCustomSelects
 } from './ui-controls.js';
+import { t, initTranslations } from './translations.js';
 
 let notifications = [];
 let currentFilter = 'all';
 let currentTimeFilter = 'all';
 
 // Função de inicialização exportada
-export function initNotificationsPage() {
+export async function initNotificationsPage() {
     const currentUser = getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
@@ -33,10 +35,13 @@ export function initNotificationsPage() {
         updateUserAvatar(currentUser);
     }
 
+    await initTranslations();
+
     setupEventListeners();
     loadNotifications();
     renderNotifications();
     updateNotificationBadge();
+    initCustomSelects();
 }
 
 function setupEventListeners() {
@@ -116,7 +121,7 @@ function renderNotifications() {
     const displayableNotifications = notifications.filter(n => n.status !== 'pending');
 
     if (displayableNotifications.length === 0) {
-        notificationsList.innerHTML = '<p class="no-notifications">Nenhuma notificação encontrada.</p>';
+        notificationsList.innerHTML = `<p class="no-notifications">${t('notifications.list.noneFound')}</p>`;
         return;
     }
     
@@ -144,9 +149,9 @@ function createNotificationElement(notification) {
             <div class="notification-title">${notification.title}</div>
             <div class="notification-message">${notification.message}</div>
             <div class="notification-meta">
-                ${(notification.board || data.boardName) ? `<span>Quadro: ${notification.board || data.boardName}</span>` : ''}
-                ${(notification.group || data.groupName) ? `<span>Grupo: ${notification.group || data.groupName}</span>` : ''}
-                ${notification.sender ? `<span>De: ${notification.sender}</span>` : ''}
+                ${(notification.board || data.boardName) ? `<span>${t('notifications.item.boardLabel')} ${notification.board || data.boardName}</span>` : ''}
+                ${(notification.group || data.groupName) ? `<span>${t('notifications.item.groupLabel')} ${notification.group || data.groupName}</span>` : ''}
+                ${notification.sender ? `<span>${t('notifications.item.fromLabel')} ${notification.sender}</span>` : ''}
             </div>
         </div>
         <div class="notification-date">${date}</div>
@@ -154,7 +159,7 @@ function createNotificationElement(notification) {
             ${notification.status === 'pending' ? 
                 `<button class="btn btn-sm btn-primary accept-btn" data-id="${notification.id}">Aceitar</button>
                  <button class="btn btn-sm btn-secondary reject-btn" data-id="${notification.id}">Recusar</button>` : 
-                `<button class="btn btn-sm btn-primary view-btn" data-id="${notification.id}">Ver</button>`
+                `<button class="btn btn-sm btn-primary view-btn" data-id="${notification.id}">${t('notifications.button.view')}</button>`
             }
         </div>
     `;
@@ -201,13 +206,13 @@ function formatDate(dateString) {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 1) {
-        return 'Hoje, ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return t('ui.today') + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 2) {
-        return 'Ontem, ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return t('ui.yesterday') + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays <= 7) {
-        return `Há ${diffDays-1} dias`;
+        return t('ui.daysAgo', { count: diffDays - 1 });
     } else {
-        return date.toLocaleDateString('pt-BR');
+        return date.toLocaleDateString([]);
     }
 }
 
@@ -276,7 +281,7 @@ function filterCardNotifications() {
     }
     
     if (filteredNotifications.length === 0) {
-        cardNotificationsList.innerHTML = '<p class="no-notifications">Nenhuma notificação de cartão encontrada para este filtro.</p>';
+        cardNotificationsList.innerHTML = `<p class="no-notifications">${t('notifications.cards.noneFound')}</p>`;
         return;
     }
     
@@ -308,7 +313,7 @@ function filterMeetingNotifications() {
     }
     
     if (filteredNotifications.length === 0) {
-        meetingNotificationsList.innerHTML = '<p class="no-notifications">Nenhuma notificação de reunião encontrada.</p>';
+        meetingNotificationsList.innerHTML = `<p class="no-notifications">${t('notifications.meetings.noneFound')}</p>`;
         return;
     }
     
@@ -327,7 +332,7 @@ function renderFriendRequests() {
     requestsList.innerHTML = '';
     
     if (friendRequests.length === 0) {
-        requestsList.innerHTML = '<p class="no-requests">Nenhuma solicitação de amizade pendente.</p>';
+        requestsList.innerHTML = `<p class="no-requests">${t('notifications.friends.nonePending')}</p>`;
         return;
     }
     
@@ -345,8 +350,8 @@ function renderFriendRequests() {
                 <div class="request-message">${request.message}</div>
             </div>
             <div class="request-actions">
-                <button class="btn btn-sm btn-primary accept-btn" data-id="${request.id}">Aceitar</button>
-                <button class="btn btn-sm btn-secondary reject-btn" data-id="${request.id}">Recusar</button>
+                <button class="btn btn-sm btn-primary accept-btn" data-id="${request.id}">${t('notifications.button.accept')}</button>
+                <button class="btn btn-sm btn-secondary reject-btn" data-id="${request.id}">${t('notifications.button.reject')}</button>
             </div>
         `;
         
@@ -367,7 +372,7 @@ function renderGroupRequests() {
     requestsList.innerHTML = '';
     
     if (groupNotifications.length === 0) {
-        requestsList.innerHTML = '<p class="no-requests">Nenhum convite ou solicitação de grupo pendente.</p>';
+        requestsList.innerHTML = `<p class="no-requests">${t('notifications.groups.nonePending')}</p>`;
         return;
     }
     
@@ -376,7 +381,7 @@ function renderGroupRequests() {
         requestEl.className = 'request-item';
         requestEl.dataset.id = request.id;
         
-        const title = request.type === 'group_request' ? request.sender : (request.data?.groupName || 'Grupo');
+        const title = request.type === 'group_request' ? request.sender : (request.data?.groupName || t('kanban.boardFilter.groups'));
 
         requestEl.innerHTML = `
             <div class="request-avatar">
@@ -387,8 +392,8 @@ function renderGroupRequests() {
                 <div class="request-message">${request.message}</div>
             </div>
             <div class="request-actions">
-                <button class="btn btn-sm btn-primary accept-btn" data-id="${request.id}">Aceitar</button>
-                <button class="btn btn-sm btn-secondary reject-btn" data-id="${request.id}">Recusar</button>
+                <button class="btn btn-sm btn-primary accept-btn" data-id="${request.id}">${t('notifications.button.accept')}</button>
+                <button class="btn btn-sm btn-secondary reject-btn" data-id="${request.id}">${t('notifications.button.reject')}</button>
             </div>
         `;
         
@@ -408,18 +413,18 @@ function markAllAsRead() {
     renderNotifications();
     updateNotificationBadge();
     
-    showFloatingMessage('Todas as notificações marcadas como lidas', 'success');
+    showFloatingMessage(t('notifications.feedback.allRead'), 'success');
 }
 
 function deleteAllReadNotifications() {
     const readNotifications = notifications.filter(n => n.read);
     if (readNotifications.length === 0) {
-        showFloatingMessage('Não há notificações lidas para excluir.', 'info');
+        showFloatingMessage(t('notifications.feedback.noneReadToDelete'), 'info');
         return;
     }
 
     showConfirmationDialog(
-        `Tem certeza que deseja excluir permanentemente ${readNotifications.length} notificações lidas? Esta ação não pode ser desfeita.`,
+        t('notifications.confirm.deleteAllRead', { count: readNotifications.length }),
         (dialog) => {
             const currentUser = getCurrentUser();
             if (!currentUser) return false;
@@ -431,11 +436,11 @@ function deleteAllReadNotifications() {
             renderNotifications();
             updateNotificationBadge();
 
-            showDialogMessage(dialog, 'Notificações lidas foram excluídas.', 'success');
+            showDialogMessage(dialog, t('notifications.feedback.allReadDeleted'), 'success');
             return true;
         },
-        null, // onCancel
-        'Sim, Excluir'
+        null,
+        t('ui.yesDelete')
     );
 }
 
@@ -460,7 +465,7 @@ function acceptNotification(notificationId) {
     if (!currentUser) return;
     
     showConfirmationDialog(
-        `Tem certeza que deseja aceitar esta solicitação?`,
+        t('notifications.confirm.accept'),
         async (dialog) => {
             try {
                 // Marcar como lida e processar aceitação
@@ -471,7 +476,7 @@ function acceptNotification(notificationId) {
                 if (notification.type === 'friend_request') {
                     // Adicionar amizade bidirecional
                     await addFriend(currentUser.id, notification.senderId);
-                    showDialogMessage(dialog, 'Solicitação de amizade aceita!', 'success');
+                    showDialogMessage(dialog, t('notifications.feedback.friendRequestAccepted'), 'success');
                 } else if (notification.type === 'group_request') {
                     // Adicionar o solicitante (não o admin) ao grupo
                     const group = getGroup(notification.data.groupId);
@@ -487,10 +492,10 @@ function acceptNotification(notificationId) {
                                 userToAdd.groupIds.push(group.id);
                                 saveUserProfile(userToAdd);
                             }
-                            showDialogMessage(dialog, `${userToAdd.name} foi adicionado ao grupo!`, 'success');
+                            showDialogMessage(dialog, t('notifications.feedback.userAddedToGroup', { name: userToAdd.name }), 'success');
                         }
                     } else {
-                        showDialogMessage(dialog, 'Erro: Grupo ou usuário não encontrado.', 'error');
+                        showDialogMessage(dialog, t('notifications.feedback.groupOrUserNotFound'), 'error');
                     }
                 } else if (notification.type === 'group_invitation') {
                     // Lógica para convites de grupo
@@ -507,7 +512,7 @@ function acceptNotification(notificationId) {
                             saveUserProfile(userProfile);
                         }
                         
-                        showDialogMessage(dialog, 'Convite de grupo aceito!', 'success');
+                        showDialogMessage(dialog, t('notifications.feedback.groupInviteAccepted'), 'success');
                     }
                 }
                 
@@ -520,7 +525,7 @@ function acceptNotification(notificationId) {
                 return true;
             } catch (error) {
                 console.error('Erro ao aceitar notificação:', error);
-                showDialogMessage(dialog, 'Erro ao processar a solicitação.', 'error');
+                showDialogMessage(dialog, t('notifications.feedback.requestError'), 'error');
                 return false;
             }
         }
@@ -535,7 +540,7 @@ function rejectNotification(notificationId) {
     if (!currentUser) return;
     
     showConfirmationDialog(
-        'Tem certeza que deseja recusar esta solicitação?',
+        t('notifications.confirm.reject'),
         (dialog) => {
             // Marcar como lida e processar recusa
             notification.read = true;
@@ -547,7 +552,7 @@ function rejectNotification(notificationId) {
             renderGroupRequests(); // ATUALIZAÇÃO: Renderiza também a lista de grupos
             updateNotificationBadge();
             
-            showDialogMessage(dialog, 'Solicitação recusada.', 'info');
+            showDialogMessage(dialog, t('notifications.feedback.requestRejected'), 'info');
             return true;
         }
     );
@@ -578,24 +583,24 @@ function viewNotification(notificationId) {
             <div class="details-title">${notification.title}</div>
             <div class="details-message">${notification.message}</div>
             <div class="details-meta">
-                ${notification.board ? `<div><strong>Quadro:</strong> ${notification.board}</div>` : ''}
-                ${notification.group ? `<div><strong>Grupo:</strong> ${notification.group}</div>` : ''}
-                ${notification.sender ? `<div><strong>De:</strong> ${notification.sender}</div>` : ''}
-                ${notification.meetingDate ? `<div><strong>Data da reunião:</strong> ${formatDate(notification.meetingDate)}</div>` : ''}
-                <div><strong>Recebida em:</strong> ${formatDate(notification.date)}</div>
+                ${notification.board ? `<div><strong>${t('notifications.item.boardLabel')}</strong> ${notification.board}</div>` : ''}
+                ${notification.group ? `<div><strong>${t('notifications.item.groupLabel')}</strong> ${notification.group}</div>` : ''}
+                ${notification.sender ? `<div><strong>${t('notifications.item.fromLabel')}</strong> ${notification.sender}</div>` : ''}
+                ${notification.meetingDate ? `<div><strong>${t('notifications.details.meetingDate')}</strong> ${formatDate(notification.meetingDate)}</div>` : ''}
+                <div><strong>${t('notifications.details.receivedAt')}</strong> ${formatDate(notification.date)}</div>
             </div>
         </div>
     `;
     
     // Configurar botão de ação
     if (notification.type.includes('card_')) {
-        actionBtn.textContent = 'Ir para o Quadro';
+        actionBtn.textContent = t('notifications.details.buttonGoToBoard');
         actionBtn.style.display = 'block';
     } else if (notification.type.includes('message_')) {
-        actionBtn.textContent = 'Responder';
+        actionBtn.textContent = t('notifications.details.buttonReply');
         actionBtn.style.display = 'block';
     } else if (notification.type === 'report') {
-        actionBtn.textContent = 'Ver Relatório';
+        actionBtn.textContent = t('notifications.details.buttonViewReport');
         actionBtn.style.display = 'block';
     } else {
         actionBtn.style.display = 'none';
@@ -616,12 +621,12 @@ function handleNotificationDialogAction() {
         // Para cartões, redireciona para o kanban e armazena o ID do cartão para foco
         // A lógica de encontrar o boardId precisa ser melhorada no futuro
         localStorage.setItem('focusCardId', notification.data.cardId);
-        showFloatingMessage(`Redirecionando para o quadro...`, 'info');
+        showFloatingMessage(t('notifications.feedback.redirectToBoard'), 'info');
         window.location.href = 'kanban.html';
 
     } else if (notification.type.includes('message_')) {
         // Para mensagens, redireciona para o perfil público do remetente
-        showFloatingMessage(`Abrindo perfil de ${notification.sender}...`, 'info');
+        showFloatingMessage(t('notifications.feedback.openingProfile', { name: notification.sender }), 'info');
         window.location.href = `public-profile.html?userId=${notification.senderId}`;
 
     } else if (notification.type === 'report' && notification.data.groupName) {
@@ -676,8 +681,8 @@ export function addFriendRequestNotification(senderName, senderId, receiverId) {
     const notification = {
         id: 'friend-request-' + Date.now() + '-' + receiverId,
         type: 'friend_request',
-        title: 'Solicitação de Amizade',
-        message: `${senderName} quer ser seu amigo(a)`,
+        title: t('notifications.types.friendRequest.title'),
+        message: t('notifications.types.friendRequest.message', { name: senderName }),
         sender: senderName,
         senderId: senderId,
         date: new Date().toISOString(),
@@ -694,8 +699,8 @@ export function addFriendAcceptedNotification(accepterName, accepterId, original
     const notification = {
         id: 'friend-accepted-' + Date.now() + '-' + originalSenderId,
         type: 'friend_accepted',
-        title: 'Solicitação de Amizade Aceita',
-        message: `${accepterName} aceitou sua solicitação de amizade.`,
+        title: t('notifications.types.friendAccepted.title'),
+        message: t('notifications.types.friendAccepted.message', { name: accepterName }),
         sender: accepterName,
         senderId: accepterId,
         date: new Date().toISOString(),
@@ -712,8 +717,8 @@ export function addFollowNotification(senderName, senderId, receiverId) {
     const notification = {
         id: 'follow-' + Date.now() + '-' + receiverId,
         type: 'follow',
-        title: 'Novo Seguidor',
-        message: `${senderName} começou a seguir você`,
+        title: t('notifications.types.follow.title'),
+        message: t('notifications.types.follow.message', { name: senderName }),
         sender: senderName,
         senderId: senderId,
         date: new Date().toISOString(),
@@ -732,8 +737,8 @@ export function addGroupInvitationNotification(groupName, groupId, adminName, ad
     const notification = {
         id: 'group-invite-' + Date.now() + '-' + userId,
         type: 'group_invitation',
-        title: 'Convite para Grupo',
-        message: `${adminName} convidou você para o grupo "${groupName}"`,
+        title: t('notifications.types.groupInvite.title'),
+        message: t('notifications.types.groupInvite.message', { name: adminName, groupName: groupName }),
         date: new Date().toISOString(),
         read: false,
         status: 'pending',
@@ -753,8 +758,8 @@ export function addGroupLeaveNotification(groupName, leaverName, adminId) {
     const notification = {
         id: 'group-leave-' + Date.now() + '-' + adminId,
         type: 'group_leave',
-        title: 'Membro Saiu do Grupo',
-        message: `${leaverName} saiu do grupo "${groupName}"`,
+        title: t('notifications.types.groupLeave.title'),
+        message: t('notifications.types.groupLeave.message', { name: leaverName, groupName: groupName }),
         date: new Date().toISOString(),
         read: false,
         status: 'unread'
@@ -768,8 +773,8 @@ export function addGroupRemovalNotification(groupName, adminName, userId) {
     const notification = {
         id: 'group-removal-' + Date.now() + '-' + userId,
         type: 'group_removal',
-        title: 'Removido do Grupo',
-        message: `${adminName} removeu você do grupo "${groupName}"`,
+        title: t('notifications.types.groupRemoval.title'),
+        message: t('notifications.types.groupRemoval.message', { name: adminName, groupName: groupName }),
         date: new Date().toISOString(),
         read: false,
         status: 'unread'
@@ -783,8 +788,8 @@ export function addMessageNotification(senderName, senderId, receiverId, message
     const notification = {
         id: 'message-' + Date.now() + '-' + receiverId,
         type: 'message',
-        title: 'Nova Mensagem',
-        message: `${senderName}: ${messagePreview}`,
+        title: t('notifications.types.message.title'),
+        message: t('notifications.types.message.message', { name: senderName, preview: messagePreview }),
         sender: senderName,
         senderId: senderId,
         date: new Date().toISOString(),
@@ -801,8 +806,8 @@ export function addCardAssignmentNotification(assignerName, assigneeId, cardTitl
     const notification = {
         id: 'card-assign-' + Date.now() + '-' + assigneeId,
         type: 'card_assignment',
-        title: 'Nova Tarefa Atribuída',
-        message: `${assignerName} atribuiu o cartão "${cardTitle}" a você no quadro "${boardTitle}".`,
+        title: t('notifications.types.cardAssignment.title'),
+        message: t('notifications.types.cardAssignment.message', { assignerName: assignerName, cardTitle: cardTitle, boardTitle: boardTitle }),
         sender: assignerName,
         date: new Date().toISOString(),
         read: false,
@@ -824,23 +829,23 @@ export function addCardDueNotification(userId, cardTitle, boardName, cardId, due
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     let type = 'card_due_today';
-    let message = `O cartão "${cardTitle}" vence hoje`;
+    let message = t('notifications.types.cardDueToday.message', { cardTitle: cardTitle });
     
     if (diffDays < 0) {
         type = 'card_overdue';
-        message = `O cartão "${cardTitle}" está atrasado`;
+        message = t('notifications.types.cardOverdue.message', { cardTitle: cardTitle });
     } else if (diffDays <= 7) {
         type = 'card_due_week';
-        message = `O cartão "${cardTitle}" vence em ${diffDays} dias`;
+        message = t('notifications.types.cardDueWeek.message', { cardTitle: cardTitle, days: diffDays });
     } else if (diffDays <= 30) {
         type = 'card_due_month';
-        message = `O cartão "${cardTitle}" vence em ${Math.ceil(diffDays/7)} semanas`;
+        message = t('notifications.types.cardDueMonth.message', { cardTitle: cardTitle, weeks: Math.ceil(diffDays/7) });
     }
     
     const notification = {
         id: `card-due-${cardId}`,
         type: type,
-        title: 'Alerta de Vencimento',
+        title: t('notifications.types.dueDate.title'),
         message: message,
         date: new Date().toISOString(),
         read: false,
@@ -851,7 +856,7 @@ export function addCardDueNotification(userId, cardTitle, boardName, cardId, due
 
 export function addMeetingNotification(meetingTitle, groupName, meetingDate) {
     addNotificationToUser(currentUser.id, { // Notifica o usuário atual
-        type: 'meeting', title: 'Reunião Agendada', message: `${meetingTitle} no grupo ${groupName}`,
+        type: 'meeting', title: t('notifications.types.meeting.title'), message: t('notifications.types.meeting.message', { title: meetingTitle, groupName: groupName }),
         group: groupName,
         meetingDate: meetingDate
     });
@@ -859,16 +864,16 @@ export function addMeetingNotification(meetingTitle, groupName, meetingDate) {
 
 export function addReportNotification(userId, period, groupName) {
     const periodNames = {
-        daily: 'diário',
-        weekly: 'semanal',
-        monthly: 'mensal'
+        daily: t('ui.daily'),
+        weekly: t('ui.weekly'),
+        monthly: t('ui.monthly')
     };
     
     const notification = {
         id: `report-${groupName}-${Date.now()}`,
         type: 'report',
-        title: 'Relatório de Grupo Disponível',
-        message: `O relatório ${periodNames[period]} do grupo "${groupName}" foi gerado.`,
+        title: t('notifications.types.report.title'),
+        message: t('notifications.types.report.message', { period: periodNames[period], groupName: groupName }),
         date: new Date().toISOString(),
         read: false,
         data: { groupName, period }
@@ -880,8 +885,8 @@ export function addGroupRequestNotification(groupName, groupId, userName, userId
     const notification = {
         id: 'group-request-' + Date.now(),
         type: 'group_request',
-        title: 'Solicitação para Grupo',
-        message: `${userName} quer entrar no grupo "${groupName}"`,
+        title: t('notifications.types.groupRequest.title'),
+        message: t('notifications.types.groupRequest.message', { name: userName, groupName: groupName }),
         sender: userName,
         senderId: userId,
         date: new Date().toISOString(),

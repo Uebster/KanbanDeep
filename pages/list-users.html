@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-title="listUsers.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,28 +13,43 @@
   <div class="container">
     <!-- Cabeçalho -->
     <header>
-      <h1>Usuários Cadastrados</h1>
-      <div>
-        <button id="toggleTheme" class="btn">Alternar Tema</button>
-        <button id="btn-exit-app" class="btn danger">Sair do App</button>
+      <h1 data-i18n="listUsers.header"></h1>
+      <div class="header-actions">
+        <div class="custom-select">
+          <select id="language-selector">
+            <option value="pt-BR" data-i18n="preferences.language.pt"></option>
+            <option value="en-US" data-i18n="preferences.language.en"></option>
+            <option value="es-ES" data-i18n="preferences.language.es"></option>
+            <option value="fr-FR" data-i18n="preferences.language.fr"></option>
+            <option value="de-DE" data-i18n="preferences.language.de"></option>
+            <option value="it-IT" data-i18n="preferences.language.it"></option>
+          </select>
+        </div>
+        <div class="custom-select">
+            <select id="theme-select">
+                <option value="dark-gray" data-i18n="preferences.theme.darkGray"></option>
+                <option value="dark" data-i18n="preferences.theme.dark"></option>
+                <option value="light-gray" data-i18n="preferences.theme.lightGray"></option>
+                <option value="light" data-i18n="preferences.theme.light"></option>
+            </select>
+        </div>
+        <button id="btn-exit-app" class="btn danger" data-i18n="listUsers.button.exit"></button>
       </div>
     </header>
 
     <!-- Área de ações -->
     <div class="actions-top">
-      <button id="btn-new-user" class="btn btn-primary">
-        <span>+</span> Criar Novo Usuário
-      </button>
+      <button id="btn-new-user" class="btn confirm" data-i18n="listUsers.button.newUser"><span>+</span></button>
     </div>
 
     <!-- Tabela de usuários -->
     <table id="users-table" class="users-table">
       <thead>
         <tr>
-          <th>Avatar</th>
-          <th>Nome</th>
-          <th>Último Acesso</th>
-          <th>Ações</th>
+          <th data-i18n="listUsers.table.avatar"></th>
+          <th data-i18n="listUsers.table.name"></th>
+          <th data-i18n="listUsers.table.lastLogin"></th>
+          <th data-i18n="listUsers.table.actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -47,15 +62,15 @@
 
     <!-- Diálogos -->
     <dialog id="login-dialog" class="draggable">
-      <h3 class="drag-handle">Login</h3>
+      <h3 class="drag-handle" data-i18n="listUsers.loginDialog.title"></h3>
       <div class="form-group">
-        <label for="login-password">Senha:</label>
-        <input type="password" id="login-password" required placeholder="Digite a senha para confirmar">
+        <label for="login-password" data-i18n="listUsers.loginDialog.password"></label>
+        <input type="password" id="login-password" required data-i18n-placeholder="listUsers.deleteDialog.passwordPlaceholder">
       </div>
       <div class="feedback"></div>
       <div class="modal-actions">
-        <button id="login-submit" class="btn confirm">Entrar</button>
-        <button id="login-cancel" class="btn cancel">Cancelar</button>
+        <button id="login-submit" class="btn confirm" data-i18n="listUsers.loginDialog.submit"></button>
+        <button id="login-cancel" class="btn cancel" data-i18n="ui.cancel"></button>
       </div>
     </dialog>
 

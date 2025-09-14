@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-title="profile.pageTitle">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,19 +18,19 @@
                 <img id="user-avatar" src="" alt="Avatar do Usuário">
             </button>
             <div id="profile-dropdown" class="dropdown">            
-                <button id="switch-user-btn">🔁 Trocar Perfil</button>
-                <button id="kanban-btn">📋 Meus Quadros</button>
-                <button id="my-groups-btn">👥 Meus Grupos</button>
-                <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
-                <button id="templates-btn">🎨 Gerenciar Templates</button>
-                <button id="notifications-btn">🔔 Notificações</button>
+                <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+                <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+                <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+                <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+                <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
+                <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
                 <hr>
-                <button id="exit-btn">🚪 Sair</button>
+                <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
             </div>
         </div>
 
         <!-- Título Centralizado (substituindo o menu de quadros) -->
-        <h1 id="page-title" style="flex-grow: 1; text-align: center;">Perfil do Usuário</h1>
+        <h1 id="page-title" data-i18n="profile.pageTitle" style="flex-grow: 1; text-align: center;"></h1>
 
         <!-- Espaço vazio na direita para manter a estrutura (sem menu de ações) -->
         <div class="menu-container" style="visibility: hidden;"><button class="avatar-btn"></button></div>
@@ -43,33 +43,33 @@
         <!-- Coluna 1: Identidade e Conta -->
         <div class="form-column">
           <div class="form-section">
-            <h2>Perfil</h2>
+            <h2 data-i18n="profile.section.profile"></h2>
             <div class="avatar-container">
               <div class="avatar-preview" id="avatar-preview">
                 <span id="avatar-text" class="avatar-preview-text">?</span>
                 <img id="avatar-image" src="" alt="Avatar Preview" style="display: none;">
               </div>
               <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
-              <button type="button" id="btn-upload-avatar" class="btn"><span>📷</span> Alterar Avatar</button>
+              <button type="button" id="btn-upload-avatar" class="btn" data-i18n="profile.button.changeAvatar"><span>📷</span></button>
             </div>
             <div class="form-group">
-              <label for="name" class="required">Nome Completo</label>
-              <input type="text" id="name" required placeholder="Digite seu nome completo">
+              <label for="name" class="required" data-i18n="createUser.label.fullName"></label>
+              <input type="text" id="name" required data-i18n-placeholder="createUser.placeholder.fullName">
             </div>
             <div class="form-group">
-              <label for="username" class="required">Nome de Usuário</label>
-              <input type="text" id="username" required placeholder="Seu nome de usuário">
+              <label for="username" class="required" data-i18n="createUser.label.username"></label>
+              <input type="text" id="username" required data-i18n-placeholder="createUser.placeholder.username">
             </div>
             <div class="form-group">
-              <label for="bio">Biografia</label>
-              <textarea id="bio" rows="5" placeholder="Conte um pouco sobre você..."></textarea>
+              <label for="bio" data-i18n="createUser.label.bio"></label>
+              <textarea id="bio" rows="5" data-i18n-placeholder="createUser.placeholder.bio"></textarea>
             </div>
           </div>
           <div class="form-section">
-            <h2>Conta e Segurança</h2>
+            <h2 data-i18n="profile.section.accountSecurity"></h2>
             <div class="account-actions">
-              <button type="button" id="change-password-account" class="btn"><span>🔑</span> Alterar Senha</button>
-              <button type="button" id="btn-delete-account" class="btn danger"><span>🗑️</span> Excluir Conta</button>
+              <button type="button" id="change-password-account" class="btn" data-i18n="profile.button.changePassword"><span>🔑</span></button>
+              <button type="button" id="btn-delete-account" class="btn danger" data-i18n="profile.button.deleteAccount"><span>🗑️</span></button>
             </div>
           </div>
         </div>
@@ -77,53 +77,53 @@
         <!-- Coluna 2: Detalhes e Preferências Gerais -->
         <div class="form-column">
           <div class="form-section">
-            <h2>Informações Pessoais</h2>
+            <h2 data-i18n="createUser.section.personalInfo"></h2>
             <div class="form-group">
-              <label for="birthdate">Data de Nascimento</label>
+              <label for="birthdate" data-i18n="createUser.label.birthdate"></label>
               <input type="date" id="birthdate">
             </div>
             <div class="form-group">
-              <label for="gender">Gênero</label>
+              <label for="gender" data-i18n="createUser.label.gender"></label>
               <div class="custom-select">
                 <select id="gender">
-                  <option value="">Selecionar</option>
-                  <option value="male">Masculino</option>
-                  <option value="female">Feminino</option>
-                  <option value="non-binary">Não-binário</option>
-                  <option value="other">Outro</option>
-                  <option value="prefer-not-to-say">Prefiro não informar</option>
+                  <option value="" data-i18n="createUser.gender.select"></option>
+                  <option value="male" data-i18n="createUser.gender.male"></option>
+                  <option value="female" data-i18n="createUser.gender.female"></option>
+                  <option value="non-binary" data-i18n="createUser.gender.nonBinary"></option>
+                  <option value="other" data-i18n="createUser.gender.other"></option>
+                  <option value="prefer-not-to-say" data-i18n="createUser.gender.preferNotToSay"></option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label for="location">Localização</label>
-              <input type="text" id="location" placeholder="Cidade, Estado">
+              <label for="location" data-i18n="createUser.label.location"></label>
+              <input type="text" id="location" data-i18n-placeholder="createUser.placeholder.location">
             </div>
           </div>
           <div class="form-section">
-            <h2>Contatos</h2>
+            <h2 data-i18n="createUser.section.contacts"></h2>
             <div class="form-group">
-              <label for="email">E-mail</label>
-              <input type="email" id="email" placeholder="seu.email@exemplo.com">
+              <label for="email" data-i18n="createUser.label.email"></label>
+              <input type="email" id="email" data-i18n-placeholder="createUser.placeholder.email">
             </div>
             <div class="form-group">
-              <label for="whatsapp">WhatsApp</label>
-              <input type="tel" id="whatsapp" placeholder="(00) 00000-0000">
+              <label for="whatsapp" data-i18n="createUser.label.whatsapp"></label>
+              <input type="tel" id="whatsapp" data-i18n-placeholder="createUser.placeholder.whatsapp">
             </div>
             <div class="form-group">
-              <label for="linkedin">LinkedIn</label>
-              <input type="url" id="linkedin" placeholder="https://linkedin.com/in/seu-perfil">
+              <label for="linkedin" data-i18n="createUser.label.linkedin"></label>
+              <input type="url" id="linkedin" data-i18n-placeholder="createUser.placeholder.linkedin">
             </div>
           </div>
           <!-- SEÇÃO MOVIDA PARA A COLUNA 2 -->
           <div class="form-section">
-            <h2>Conteúdo Padrão</h2>
+            <h2 data-i18n="profile.section.defaultContent"></h2>
             <div class="form-group">
-              <label for="default-tag-template">Conjunto de Etiquetas Padrão</label>
+              <label for="default-tag-template" data-i18n="preferences.defaultTagSet"></label>
               <div class="custom-select">
                 <select id="default-tag-template"></select>
               </div>
-              <button type="button" id="manage-templates-btn" class="btn" style="width: 100%; margin-top: 15px;">Gerenciar Templates</button>
+              <button type="button" id="manage-templates-btn" class="btn" style="width: 100%; margin-top: 15px;" data-i18n="kanban.profileMenu.manageTemplates"></button>
             </div>
           </div>
         </div>
@@ -131,34 +131,37 @@
         <!-- Coluna 3: Preferências de Visualização -->
         <div class="form-column">
           <div class="form-section">
-            <h2>Preferências</h2>
+            <h2 data-i18n="preferences.title"></h2>
             <div class="form-group">
-              <label for="language">Idioma</label>
+              <label for="language" data-i18n="preferences.language"></label>
               <div class="custom-select">
                 <select id="language">
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="en-US">Inglês (EUA)</option>
-                  <option value="es-ES">Español (España)</option>
+                  <option value="pt-BR" data-i18n="preferences.language.pt"></option>
+                  <option value="en-US" data-i18n="preferences.language.en"></option>
+                  <option value="es-ES" data-i18n="preferences.language.es"></option>
+                  <option value="fr-FR" data-i18n="preferences.language.fr"></option>
+                  <option value="de-DE" data-i18n="preferences.language.de"></option>
+                  <option value="it-IT" data-i18n="preferences.language.it"></option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label for="theme">Tema</label>
+              <label for="theme" data-i18n="preferences.theme"></label>
               <div class="custom-select">
                 <select id="theme">
-                  <option value="auto">Padrão do Sistema</option>
-                  <option value="dark">Escuro (Preto)</option>
-                  <option value="dark-gray">Cinza Escuro</option>
-                  <option value="light-gray">Cinza Claro</option>
-                  <option value="light">Claro (Branco)</option>
+                  <option value="auto" data-i18n="preferences.theme.systemDefault"></option>
+                  <option value="dark" data-i18n="preferences.theme.dark"></option>
+                  <option value="dark-gray" data-i18n="preferences.theme.darkGray"></option>
+                  <option value="light-gray" data-i18n="preferences.theme.lightGray"></option>
+                  <option value="light" data-i18n="preferences.theme.light"></option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label for="font-family">Fonte da Interface</label>
+              <label for="font-family" data-i18n="preferences.font"></label>
               <div class="custom-select">
                 <select id="font-family">
-                  <option value="Segoe UI, Inter, sans-serif">Padrão (Segoe/Inter)</option>
+                  <option value="Segoe UI, Inter, sans-serif" data-i18n="profile.font.default"></option>
                   <option value="Roboto, sans-serif">Roboto</option>
                   <option value="Open Sans, sans-serif">Open Sans</option>
                   <option value="Lato, sans-serif">Lato</option>
@@ -182,18 +185,18 @@
               </div>
             </div>
             <div class="form-group">
-              <label for="font-size">Tamanho da Fonte</label>
+              <label for="font-size" data-i18n="preferences.fontSize"></label>
               <div class="custom-select">
                 <select id="font-size">
-                  <option value="small">Pequeno</option>
-                  <option value="medium">Médio</option>
-                  <option value="large">Grande</option>
-                  <option value="x-large">Extra Grande</option>
+                  <option value="small" data-i18n="fontSize.small"></option>
+                  <option value="medium" data-i18n="fontSize.medium"></option>
+                  <option value="large" data-i18n="fontSize.large"></option>
+                  <option value="x-large" data-i18n="fontSize.xLarge"></option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label>Cor Primária</label>
+              <label data-i18n="preferences.primaryColor"></label>
               <div id="color-palette-container" class="color-palette">
                 <div class="color-swatch special" data-action="remove-primary" title="Nenhuma">🚫</div>
                 <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão"></div>
@@ -211,20 +214,20 @@
             </div>
           </div>
           <div class="form-section">
-            <h2>Exibição no Kanban</h2>
+            <h2 data-i18n="profile.section.kanbanDisplay"></h2>
             <fieldset class="form-group">
-                <legend>Exibir no Quadro</legend>
-                <label class="checkbox-container">Mostrar Ícone do Quadro <input type="checkbox" id="pref-board-show-icon"><span class="checkmark"></span></label>
-                <label class="checkbox-container">Mostrar Título do Quadro <input type="checkbox" id="pref-board-show-title"><span class="checkmark"></span></label>
-                <label class="checkbox-container">Cabeçalho Inteligente <input type="checkbox" id="pref-smart-header"><span class="checkmark"></span></label>
+                <legend data-i18n="preferences.displayOnBoard"></legend>
+                <label class="checkbox-container" data-i18n="preferences.showBoardIcon"> <input type="checkbox" id="pref-board-show-icon"><span class="checkmark"></span></label>
+                <label class="checkbox-container" data-i18n="preferences.showBoardTitle"> <input type="checkbox" id="pref-board-show-title"><span class="checkmark"></span></label>
+                <label class="checkbox-container" data-i18n="preferences.smartHeader"> <input type="checkbox" id="pref-smart-header"><span class="checkmark"></span></label>
             </fieldset>
             <fieldset class="form-group">
-                <legend>Exibir no Cartão</legend>
-                <label class="checkbox-container">Mostrar Etiquetas <input type="checkbox" id="pref-card-show-tags"><span class="checkmark"></span></label>
-                <label class="checkbox-container">Mostrar Data de Vencimento <input type="checkbox" id="pref-card-show-date"><span class="checkmark"></span></label>
-                <label class="checkbox-container">Mostrar Status (Concluído) <input type="checkbox" id="pref-card-show-status"><span class="checkmark"></span></label>
-                <label class="checkbox-container">Mostrar Usuário Atribuído <input type="checkbox" id="pref-card-show-assignment"><span class="checkmark"></span></label>
-                <label class="checkbox-container">Mostrar Detalhes <input type="checkbox" id="pref-card-show-details"><span class="checkmark"></span></label>
+                <legend data-i18n="preferences.displayOnCard"></legend>
+                <label class="checkbox-container" data-i18n="preferences.showTags"> <input type="checkbox" id="pref-card-show-tags"><span class="checkmark"></span></label>
+                <label class="checkbox-container" data-i18n="preferences.showDueDate"> <input type="checkbox" id="pref-card-show-date"><span class="checkmark"></span></label>
+                <label class="checkbox-container" data-i18n="preferences.showStatus"> <input type="checkbox" id="pref-card-show-status"><span class="checkmark"></span></label>
+                <label class="checkbox-container" data-i18n="preferences.showAssignee"> <input type="checkbox" id="pref-card-show-assignment"><span class="checkmark"></span></label>
+                <label class="checkbox-container" data-i18n="preferences.showDetailsOnHover"> <input type="checkbox" id="pref-card-show-details"><span class="checkmark"></span></label>
             </fieldset>
           </div>
         </div>
@@ -232,29 +235,29 @@
 
       <!-- Seção de Privacidade -->
       <div class="form-section privacy-full-width">
-        <h2>Privacidade do Perfil</h2>
+        <h2 data-i18n="profile.section.privacy"></h2>
         <div class="privacy-options">
-          <div class="privacy-option" data-value="public"><h4>🌍 Público</h4><p>Qualquer pessoa pode ver seu perfil.</p></div>
-          <div class="privacy-option" data-value="friends"><h4>🧑‍🤝‍🧑 Amigos</h4><p>Apenas seus amigos podem ver.</p></div>
-          <div class="privacy-option selected" data-value="private"><h4>🔒 Privado</h4><p>Apenas você pode ver seu perfil.</p></div>
+          <div class="privacy-option" data-value="public"><h4 data-i18n="profile.privacy.public.title"></h4><p data-i18n="profile.privacy.public.desc"></p></div>
+          <div class="privacy-option" data-value="friends"><h4 data-i18n="profile.privacy.friends.title"></h4><p data-i18n="profile.privacy.friends.desc"></p></div>
+          <div class="privacy-option selected" data-value="private"><h4 data-i18n="profile.privacy.private.title"></h4><p data-i18n="profile.privacy.private.desc"></p></div>
         </div>
       </div>
 
       <!-- Seção de Grupos -->
       <div class="form-section groups-full-width">
-        <h2>Meus Grupos</h2>
+        <h2 data-i18n="kanban.profileMenu.myGroups"></h2>
         <div id="groups-container" class="groups-list">
-          <p class="no-groups-message">Você não participa de nenhum grupo.</p>
+          <p class="no-groups-message" data-i18n="profile.feedback.noGroups"></p>
         </div>
         <div class="group-section-actions">
-            <button type="button" id="manage-groups-btn" class="btn">Gerenciar Grupos</button>
-            <button type="button" id="btn-join-group" class="btn"><span>🔍</span> Procurar Grupos</button>
+            <button type="button" id="manage-groups-btn" class="btn" data-i18n="profile.button.manageGroups"></button>
+            <button type="button" id="btn-join-group" class="btn" data-i18n="profile.button.findGroups"><span>🔍</span></button>
         </div>
       </div>
 
             <div class="actions">
-        <button type="button" id="btn-cancel" class="btn cancel"><span>❌</span> Cancelar</button>
-        <button type="button" id="btn-save" class="btn confirm"><span>💾</span> Salvar Alterações</button>
+        <button type="button" id="btn-cancel" class="btn cancel" data-i18n="ui.cancel"><span>❌</span></button>
+        <button type="button" id="btn-save" class="btn confirm" data-i18n="profile.button.saveChanges"><span>💾</span></button>
             </div>
         </form>
     </main>

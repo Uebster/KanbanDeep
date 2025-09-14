@@ -7,7 +7,8 @@ import {
     updateUser,
     validateMasterPassword
 } from './auth.js';
-import { showFloatingMessage, initDraggableElements, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, showConfirmationDialog, showDialogMessage, initCustomSelects } from './ui-controls.js';
+import { loadLanguage, applyTranslations, t } from './translations.js';
 
 // ===== ESTADO GLOBAL E FUNÇÕES =====
 let users = [];
@@ -15,11 +16,17 @@ let selectedUserIdForAction = null;
 let currentLoginAction = 'login'; // 'login' ou 'edit'
 
 // A lógica de inicialização agora está dentro de uma função exportada
-export function initListUsersPage() {
-    applyTheme();
+export async function initListUsersPage() {
+    const lang = localStorage.getItem('appLanguage') || 'pt-BR';
+    await loadLanguage(lang);
+    applyTranslations();
+    setupThemeSelector(); // Configura o tema ANTES de renderizar
+    applyTheme(); // Aplica o tema inicial
     loadAndRenderUsers();
-    setupEventListeners(); // Chamada única
+    setupEventListeners();
     initDraggableElements();
+    document.getElementById('language-selector').value = lang;
+    initCustomSelects();
 }
 
 // O restante do arquivo continua igual, com as funções sendo chamadas pela initListUsersPage
@@ -28,11 +35,11 @@ function loadAndRenderUsers() {
         users = getAllUsers();
         renderUsersTable();
         if (users.length === 0) {
-            showFeedback('Nenhum usuário cadastrado. Clique em "Criar Novo Usuário" para começar.', 'info');
+            showFeedback(t('listUsers.feedback.noUsers'), 'info');
         }
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
-        showFeedback('Ocorreu um erro ao carregar a lista de usuários.', 'error');
+        showFeedback(t('listUsers.feedback.errorLoading'), 'error');
     }
 }
 
@@ -40,7 +47,12 @@ function setupEventListeners() {
     document.getElementById('btn-new-user').addEventListener('click', () => {
         window.location.href = 'create-user.html';
     });
-    document.getElementById('toggleTheme').addEventListener('click', toggleTheme);
+
+    const langSelector = document.getElementById('language-selector');
+    if (langSelector) {
+        langSelector.value = localStorage.getItem('appLanguage') || 'pt-BR';
+        langSelector.addEventListener('change', handleLanguageChange);
+    }
 
     const loginDialog = document.getElementById('login-dialog');
     document.getElementById('login-submit').addEventListener('click', handleLogin);
@@ -57,14 +69,14 @@ function setupEventListeners() {
     
     document.getElementById('btn-exit-app')?.addEventListener('click', () => {
         showConfirmationDialog(
-            'Tem certeza que deseja fechar a aplicação?',
+            t('listUsers.confirm.exitApp'),
             (dialog) => { // onConfirm
-                showDialogMessage(dialog, 'Fechando...', 'success');
+                showDialogMessage(dialog, t('listUsers.feedback.closing'), 'success');
                 setTimeout(() => window.close(), 1000);
                 return true;
             },
-            null, // Usa o comportamento padrão para cancelar
-            'Sim, Sair'
+            null,
+            t('ui.yesExit')
         );
     });
 }
@@ -75,7 +87,7 @@ function renderUsersTable() {
 
     if (users.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="4" style="text-align: center;">Nenhum usuário cadastrado.</td>`;
+        tr.innerHTML = `<td colspan="4" style="text-align: center;">${t('listUsers.table.noUsers')}</td>`;
         tbody.appendChild(tr);
         return;
     }
@@ -92,11 +104,11 @@ function renderUsersTable() {
                 </div>
             </td>
             <td>${user.name}</td>
-            <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Nunca'}</td>
+            <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : t('listUsers.table.lastLoginNever')}</td>
             <td class="actions">
-                <button class="btn login btn-login">🔑 Login</button>
-                <button class="btn edit btn-edit">✏️ Editar</button>
-                <button class="btn danger btn-delete">🗑️ Excluir</button>
+                <button class="btn login btn-login">${t('listUsers.button.login')}</button>
+                <button class="btn edit btn-edit">${t('listUsers.button.edit')}</button>
+                <button class="btn danger btn-delete">${t('listUsers.button.delete')}</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -126,14 +138,14 @@ function handleLogin() {
     const user = users.find(u => u.id === selectedUserIdForAction);
 
     if (!user) {
-        showDialogMessage(loginDialog, 'Usuário não encontrado.', 'error');
+        showDialogMessage(loginDialog, t('listUsers.feedback.userNotFound'), 'error');
         return;
     }
 
     if (user.password === password || validateMasterPassword(password)) {
         // --- SUCESSO NO LOGIN ---
-        // 1. Mostra a mensagem de sucesso DENTRO do diálogo
-        showDialogMessage(loginDialog, `Bem-vindo(a), ${user.name}!`, 'success');
+        // 1. Mostra a mensagem de sucesso DENTRO do diálogo - CORRIGIDO
+        showDialogMessage(loginDialog, t('listUsers.feedback.welcome', { userName: user.name }), 'success');
         
         // 2. Desabilita os botões para evitar cliques duplos
         loginDialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
@@ -157,7 +169,7 @@ function handleLogin() {
 
     } else {
         // --- ERRO DE SENHA ---
-        showDialogMessage(loginDialog, 'Senha incorreta. Tente novamente.', 'error');
+        showDialogMessage(loginDialog, t('ui.incorrectPassword'), 'error');
         passwordInput.value = '';
         passwordInput.focus();
     }
@@ -170,15 +182,15 @@ function openDeleteConfirmDialog(userId) {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Excluir Usuário</h3>
-        <p>Para excluir "${user.name}", por favor, digite a senha do usuário ou a senha mestra.</p>
+        <h3 class="drag-handle">${t('listUsers.deleteDialog.title')}</h3>
+        <p>${t('listUsers.deleteDialog.confirm', { userName: user.name })}</p>
         <div class="form-group" style="margin-top: 15px;">
-            <input type="password" id="dynamic-confirm-password" placeholder="Digite a senha para confirmar" style="width: 100%;" autocomplete="current-password">
+            <input type="password" id="dynamic-confirm-password" placeholder="${t('listUsers.deleteDialog.passwordPlaceholder')}" style="width: 100%;" autocomplete="current-password">
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-             <button class="btn btn-neon danger">Excluir Permanentemente</button>
-            <button class="btn btn-neon cancel">Cancelar</button>
+             <button class="btn btn-neon danger">${t('ui.deletePermanently')}</button>
+            <button class="btn btn-neon cancel">${t('ui.cancel')}</button>
         </div>
     `;
 
@@ -195,20 +207,20 @@ function openDeleteConfirmDialog(userId) {
     };
 
     cancelBtn.addEventListener('click', () => {
-        showDialogMessage(dialog, 'Operação cancelada.', 'info');
+        showDialogMessage(dialog, t('ui.operationCancelled'), 'info');
         setTimeout(closeDialog, 1500);
     });
 
     const handleConfirm = () => {
         const password = passwordInput.value;
         if (!password) {
-            showDialogMessage(dialog, 'A senha é obrigatória para confirmar.', 'error');
+            showDialogMessage(dialog, t('listUsers.deleteDialog.passwordRequired'), 'error');
             return;
         }
 
         if (user.password === password || validateMasterPassword(password)) {
             deleteUser(user.id);
-            showDialogMessage(dialog, `Usuário "${user.name}" excluído.`, 'success');
+            showDialogMessage(dialog, t('listUsers.deleteDialog.success', { userName: user.name }), 'success');
             confirmBtn.disabled = true;
             cancelBtn.disabled = true;
             setTimeout(() => {
@@ -216,7 +228,7 @@ function openDeleteConfirmDialog(userId) {
                 loadAndRenderUsers();
             }, 1500);
         } else {
-            showDialogMessage(dialog, 'Senha incorreta. Tente novamente.', 'error');
+            showDialogMessage(dialog, t('ui.incorrectPassword'), 'error');
             passwordInput.value = '';
             passwordInput.focus();
         }
@@ -242,23 +254,42 @@ function showFeedback(message, type = 'info') {
     }, 5000);
 }
 
-function toggleTheme() {
-    // Alterna entre 'dark' e 'light'
+function setupThemeSelector() {
+    const themeSelect = document.getElementById('theme-select');
+    if (!themeSelect) return;
+
     const currentTheme = localStorage.getItem('appTheme') || 'dark-gray';
-    const newTheme = currentTheme === 'light' ? 'dark-gray' : 'light';
-    
-    localStorage.setItem('appTheme', newTheme);
-    applyTheme(); // Reaplica o tema imediatamente
+    themeSelect.value = currentTheme;
+
+    applyTheme(currentTheme); // Aplica o tema inicial
+
+    themeSelect.addEventListener('change', () => {
+        const newTheme = themeSelect.value;
+        localStorage.setItem('appTheme', newTheme);
+        applyTheme(newTheme);
+    });
+
+    initCustomSelects(); // Estiliza o select após a configuração
 }
 
 function applyTheme() {
-    // Padrão do sistema é 'dark-gray' se nada estiver salvo
     const savedTheme = localStorage.getItem('appTheme') || 'dark-gray';
     
     document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
+    switch (savedTheme) {
+        case 'light': document.body.classList.add('light-mode'); break;
+        case 'dark': document.body.classList.add('dark-mode'); break;
+        case 'light-gray': document.body.classList.add('light-gray-mode'); break;
+    }
+}
 
-    if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-    } 
-    // Se for 'dark-gray' ou qualquer outro valor, nenhuma classe é adicionada, usando o :root.
+async function handleLanguageChange(e) {
+    const newLang = e.target.value;
+    localStorage.setItem('appLanguage', newLang);
+    await loadLanguage(newLang); // Espera o novo idioma carregar
+    applyTranslations(); // Aplica as traduções em elementos estáticos
+    
+    // Recarrega e renderiza a tabela para traduzir os botões dinâmicos
+    renderUsersTable();
+    initCustomSelects(); // Re-inicializa os selects para garantir a tradução das opções
 }

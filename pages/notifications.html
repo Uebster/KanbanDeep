@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Notificações - KanbanDeep</title>
+  <title data-i18n-title="notifications.pageTitle">Notificações - KanbanDeep</title>
   <link rel="stylesheet" href="../static/universal.css">
   <link rel="stylesheet" href="../static/notifications.css">
 </head>
@@ -16,66 +16,65 @@
             <img id="user-avatar" src="" alt="Avatar do Usuário">
         </button>
         <div id="profile-dropdown" class="dropdown">            
-            <button id="switch-user-btn">🔁 Trocar Perfil</button>
-            <button id="user-profile-btn">👤 Meu Perfil</button>
-            <button id="kanban-btn">📋 Meus Quadros</button>
-            <button id="my-groups-btn">👥 Meus Grupos</button>
-            <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
-            <button id="templates-btn">🎨 Gerenciar Templates</button>
+            <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+            <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+            <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+            <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+            <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+            <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
             <hr>
-            <button id="exit-btn">🚪 Sair</button>
+            <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
         </div>
     </div>
 
-    <h1 id="page-title">Notificações</h1>
+    <h1 id="page-title" data-i18n="notifications.pageTitle"></h1>
 
     <div class="menu-container">
-        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+        <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
         <div id="actions-dropdown" class="dropdown">
-            <button id="markAllRead">Marcar todas como lidas</button>
-            <button id="deleteAllRead" class="btn danger" style="width: 100%;">Excluir lidas</button>
+            <button id="markAllRead" data-i18n="notifications.button.markAllRead"></button>
+            <button id="deleteAllRead" class="btn danger" style="width: 100%;" data-i18n="notifications.button.deleteAllRead"></button>
         </div>
     </div>
   </header>
   
   <main class="card">
     <nav class="showcase-navbar">
-        <button class="nav-item active" data-tab="all-notifications">Todas</button>
-        <button class="nav-item" data-tab="card-notifications">Cartões</button>
-        <button class="nav-item" data-tab="meeting-notifications">Reuniões</button>
-        <button class="nav-item" data-tab="friends-requests">Amizades</button>
-        <button class="nav-item" data-tab="group-requests">Grupos</button>
+        <button class="nav-item active" data-tab="all-notifications" data-i18n="kanban.dialog.search.statusAll"></button>
+        <button class="nav-item" data-tab="card-notifications" data-i18n="notifications.tab.cards"></button>
+        <button class="nav-item" data-tab="meeting-notifications" data-i18n="notifications.tab.meetings"></button>
+        <button class="nav-item" data-tab="friends-requests" data-i18n="notifications.tab.friendships"></button>
+        <button class="nav-item" data-tab="group-requests" data-i18n="kanban.boardFilter.groups"></button>
     </nav>
 
     <div id="all-notifications" class="tab-content active">
         <section class="form-section">
             <div class="card-header">
-                <h2>Todas as Notificações</h2>
+                <h2 data-i18n="notifications.allNotificationsTitle"></h2>
                 <div class="notification-filters">
                     <div class="custom-select">
                         <select id="notificationFilter">
-                          <option value="all">Todas</option>
-                          <option value="friend_request">Solicitações de amizade</option>
-                          <option value="friend_accepted">Amizades aceitas</option>
-                          <option value="group_request">Solicitações de grupo</option>
-                          <option value="group_invite">Convites para grupo</option>
-                          <option value="group_leave">Saídas de grupo</option>
-                          <option value="group_removal">Remoções de grupo</option>
-                          <option value="card_mention">Menções em cartões</option>
-                          <option value="card_overdue">Cartões atrasados</option>
-                          <option value="card_due_today">Cartões que vencem hoje</option>
-                          <option value="message_user">Mensagens de usuários</option>
-                          <option value="message_group">Mensagens de grupo</option>
-                          <option value="meeting">Reuniões</option>
-                          <option value="report">Relatórios</option>
+                          <option value="all" data-i18n="kanban.dialog.search.statusAll"></option>
+                          <option value="friend_request" data-i18n="notifications.types.friendRequest.title"></option>
+                          <option value="friend_accepted" data-i18n="notifications.types.friendAccepted.title"></option>
+                          <option value="group_request" data-i18n="notifications.types.groupRequest.title"></option>
+                          <option value="group_invite" data-i18n="notifications.types.groupInvite.title"></option>
+                          <option value="group_leave" data-i18n="notifications.types.groupLeave.title"></option>
+                          <option value="group_removal" data-i18n="notifications.types.groupRemoval.title"></option>
+                          <option value="card_assignment" data-i18n="notifications.types.cardAssignment.title"></option>
+                          <option value="card_due_today" data-i18n="notifications.types.cardDueToday.message"></option>
+                          <option value="card_overdue" data-i18n="notifications.types.cardOverdue.message"></option>
+                          <option value="message" data-i18n="notifications.types.message.title"></option>
+                          <option value="meeting" data-i18n="notifications.types.meeting.title"></option>
+                          <option value="report" data-i18n="notifications.types.report.title"></option>
                         </select>
                     </div>
                     <div class="custom-select">
                         <select id="timeFilter">
-                          <option value="all">Todos os períodos</option>
-                          <option value="today">Hoje</option>
-                          <option value="week">Esta semana</option>
-                          <option value="month">Este mês</option>
+                          <option value="all" data-i18n="groups.stats.periodAll"></option>
+                          <option value="today" data-i18n="ui.today"></option>
+                          <option value="week" data-i18n="ui.weekly"></option>
+                          <option value="month" data-i18n="ui.thisMonth"></option>
                         </select>
                     </div>
                 </div>
@@ -87,15 +86,15 @@
     <div id="card-notifications" class="tab-content">
         <section class="form-section">
             <div class="card-header">
-                <h2>Notificações de Cartões</h2>
+                <h2 data-i18n="notifications.tab.cards"></h2>
                 <div class="custom-select">
                     <select id="cardStatusFilter">
-                        <option value="all">Todos os Tipos</option>
-                        <option value="assignment">Atribuições</option>
-                        <option value="overdue">Atrasados</option>
-                        <option value="due_today">Vencem Hoje</option>
-                        <option value="due_week">Vencem esta Semana</option>
-                        <option value="due_month">Vencem este Mês</option>
+                        <option value="all" data-i18n="ui.allTypes"></option>
+                        <option value="assignment" data-i18n="notifications.filter.assignments"></option>
+                        <option value="overdue" data-i18n="kanban.dialog.search.dueDateOverdue"></option>
+                        <option value="due_today" data-i18n="kanban.dialog.search.dueDateToday"></option>
+                        <option value="due_week" data-i18n="kanban.dialog.search.dueDateWeek"></option>
+                        <option value="due_month" data-i18n="ui.thisMonth"></option>
                     </select>
                 </div>
             </div>
@@ -106,12 +105,12 @@
     <div id="meeting-notifications" class="tab-content">
         <section class="form-section">
             <div class="card-header">
-                <h2>Notificações de Reuniões</h2>
+                <h2 data-i18n="notifications.tab.meetings"></h2>
                 <div class="custom-select">
                     <select id="meetingStatusFilter">
-                        <option value="all">Todas</option>
-                        <option value="upcoming">Próximas</option>
-                        <option value="past">Passadas</option>
+                        <option value="all" data-i18n="kanban.dialog.search.statusAll"></option>
+                        <option value="upcoming" data-i18n="notifications.filter.upcoming"></option>
+                        <option value="past" data-i18n="notifications.filter.past"></option>
                     </select>
                 </div>
             </div>
@@ -122,7 +121,7 @@
     <div id="friends-requests" class="tab-content">
         <section class="form-section">
             <div class="card-header">
-                <h2>Solicitações de Amizade</h2>
+                <h2 data-i18n="notifications.types.friendRequest.title"></h2>
             </div>
             <div class="requests-list"></div>
         </section>
@@ -131,7 +130,7 @@
     <div id="group-requests" class="tab-content">
         <section class="form-section">
             <div class="card-header">
-                <h2>Convites e Solicitações de Grupo</h2>
+                <h2 data-i18n="notifications.groupRequestsTitle"></h2>
             </div>
             <div class="requests-list"></div>
         </section>
@@ -140,11 +139,11 @@
 
   <!-- Diálogos -->
   <dialog id="notification-details-dialog" class="draggable">
-    <h3 class="drag-handle">Detalhes da Notificação</h3>
+    <h3 class="drag-handle" data-i18n="notifications.details.title"></h3>
     <div id="notification-details-content"></div>
     <div class="modal-actions">
-        <button id="close-notification-details" class="btn cancel">Fechar</button>
-        <button id="action-notification-btn" class="btn confirm" style="display: none;">Ação</button>
+        <button id="close-notification-details" class="btn cancel" data-i18n="ui.close"></button>
+        <button id="action-notification-btn" class="btn confirm" style="display: none;" data-i18n="kanban.header.actions"></button>
     </div>
   </dialog>
 

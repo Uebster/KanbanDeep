@@ -8,15 +8,16 @@ import { initCreateUserPage } from './create-user.js';
 import { initProfilePage } from './profile.js';
 import { initGroupsPage, checkAndSendReports } from './groups.js';
 import { initNotificationsPage } from './notifications.js';
-import { initFriendsPage } from './friends.js';
+import { initFriendsPage } from './friends.js'; // Já estava aqui
 import { initTemplatesPage } from './templates.js';
 import { initPublicProfilePage } from './public-profile.js';
 import { updateUserAvatar } from './ui-controls.js';
+import { t } from './translations.js';
 
 /**
  * Ponto de entrada principal da aplicação.
  */
-function main() {
+async function main() { // <-- Torna a função principal assíncrona
     initUIControls(); // <-- CHAMA A NOVA FUNÇÃO
     checkAndSendReports(); // Verifica e envia relatórios agendados
 
@@ -25,30 +26,30 @@ function main() {
     // Roteador:
     // Se for a página Kanban, apenas a sua inicialização específica é chamada.
     if (path.includes('kanban.html')) {
-        initKanbanPage();
+        await initKanbanPage();
         return;
     } 
     // Para TODAS as outras páginas, aplicamos o cabeçalho global ANTES de sua inicialização.
     else {
-        setupGlobalHeader();
-
         if (path.includes('create-user.html')) {
-            initCreateUserPage();
+            await initCreateUserPage();
         } else if (path.includes('public-profile.html')) {
-            initPublicProfilePage();
+            await initPublicProfilePage(); // <-- Adiciona await
         } else if (path.includes('profile.html')) {
-            initProfilePage();
+            await initProfilePage();
         } else if (path.includes('groups.html')) {
-            initGroupsPage();
+            await initGroupsPage();
         } else if (path.includes('friends.html')) {
-            initFriendsPage();
+            await initFriendsPage();
         } else if (path.includes('notifications.html')) {
-            initNotificationsPage();
+            await initNotificationsPage();
         } else if (path.includes('templates.html')) {
-            initTemplatesPage();
+            await initTemplatesPage();
         } else if (path.includes('list-users.html') || path.endsWith('/')) {
-            initListUsersPage();
-    }
+            await initListUsersPage();
+        }
+        // O cabeçalho global é configurado DEPOIS que a página e suas traduções foram carregadas
+        setupGlobalHeader();
 }
 }
 
@@ -128,13 +129,13 @@ function setupGlobalHeader() {
     const exitBtn = document.getElementById('exit-btn');
     if (exitBtn) exitBtn.addEventListener('click', () => {
         showConfirmationDialog(
-            'Tem certeza que deseja fechar o aplicativo?',
+            t('listUsers.confirm.exitApp'),
             (dialog) => {
-                showDialogMessage(dialog, 'Fechando...', 'info');
+                showDialogMessage(dialog, t('listUsers.feedback.closing'), 'info');
                 setTimeout(() => window.close(), 1000);
                 return true;
             },
-            null, 'Sim, Fechar'
+            null, t('ui.yesExit')
         );
     });
 

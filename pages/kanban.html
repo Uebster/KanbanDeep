@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-title="kanban.pageTitle">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KanbanDeep - Meus Quadros</title>
+    <title>KanbanDeep - My Boards</title>
     <link rel="stylesheet" href="../static/universal.css">
     <link rel="stylesheet" href="../static/kanban.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -19,55 +19,55 @@
             <img id="user-avatar" src="" alt="Avatar do Usuário">
         </button>
         <div id="profile-dropdown" class="dropdown">       
-            <button id="switch-user-btn">🔁 Trocar Perfil</button>
-            <button id="user-profile-btn">👤 Meu Perfil</button>
-            <button id="my-groups-btn">👥 Meus Grupos</button>
-            <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
-            <button id="templates-btn">🎨 Gerenciar Templates</button>
-            <button id="notifications-btn">🔔 Notificações</button>
+            <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+            <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+            <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+            <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+            <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
+            <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
             <hr>     
-            <button id="preferences-btn">🛠️ Preferências</button>
-            <button id="exit-btn">🚪 Sair</button>
+            <button id="preferences-btn" data-i18n="kanban.profileMenu.preferences"></button>
+            <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
         </div>
     </div>
 
     <!-- Menu de Quadros (Centro) -->
     <div class="menu-container horizontal-menu">
-        <button id="boards-dropdown-btn" class="btn">📋 Meus Quadros</button>
+        <button id="boards-dropdown-btn" class="btn" data-i18n="kanban.header.myBoards"></button>
         <div id="boards-dropdown" class="dropdown">
             <div id="board-filter-toggle">
-                <button class="filter-btn active" data-filter="personal">Pessoal</button>
-                <button class="filter-btn" data-filter="group">Grupos</button>
+                <button class="filter-btn active" data-filter="personal" data-i18n="kanban.boardFilter.personal"></button>
+                <button class="filter-btn" data-filter="group" data-i18n="kanban.boardFilter.groups"></button>
             </div>
             <div class="custom-select">
                 <select id="board-select">
-                    <option value="">Selecione um quadro</option>
+                    <option value="" data-i18n="kanban.boardSelector.placeholder"></option>
                 </select>
             </div>
-            <button id="add-board-btn">➕ Adicionar Quadro</button>
-            <button id="add-column-btn">📌 Adicionar Coluna</button>
-            <button id="add-card-btn">📝 Adicionar Cartão</button>
-            <button id="edit-items-btn">✏️ Editar/Excluir</button>
+            <button id="add-board-btn" data-i18n="kanban.button.addBoard"></button>
+            <button id="add-column-btn" data-i18n="kanban.button.addColumn"></button>
+            <button id="add-card-btn" data-i18n="kanban.button.addCard"></button>
+            <button id="edit-items-btn" data-i18n="kanban.button.editItems"></button>
         </div>
     </div>
 
     <!-- Menu de Ações (Direita) -->
     <div class="menu-container">
-        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+        <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
         <div id="actions-dropdown" class="dropdown">
-            <button id="undo-btn">↩️ Desfazer</button>
-            <button id="redo-btn">↪️ Refazer</button>
+            <button id="undo-btn" data-i18n="kanban.actions.undo">↩️ Desfazer</button>
+            <button id="redo-btn" data-i18n="kanban.actions.redo">↪️ Refazer</button>
             <hr>
-            <button id="save-as-template-btn">💾 Salvar como Template</button>
-            <button id="print-btn">🖨️ Imprimir</button>
-            <button id="export-img">🖼️ Exportar Imagem</button>
+            <button id="save-as-template-btn" data-i18n="kanban.actions.saveAsTemplate">💾 Salvar como Template</button>
+            <button id="print-btn" data-i18n="kanban.actions.print">🖨️ Imprimir</button>
+            <button id="export-img" data-i18n="kanban.actions.exportImage">🖼️ Exportar Imagem</button>
         </div>
     </div>
 </header>
 
         <!-- Área principal do Kanban -->
         <main id="main-area">
-            <h1 id="kanban-title">Carregando...</h1>
+            <h1 id="kanban-title" data-i18n="ui.loading"></h1>
             
             <!-- Filtros (mantidos como antes) -->
             <div id="filters-container">
@@ -83,9 +83,9 @@
 
     <!-- Diálogos (Modais) - Estrutura mantida -->
     <dialog id="board-dialog" class="draggable">
-    <h3 class="drag-handle" id="board-dialog-title">Configurar Quadro</h3>
+    <h3 class="drag-handle" id="board-dialog-title"></h3>
     <div class="form-group">
-        <label for="board-template-select">Usar um Template (Opcional):</label>
+        <label for="board-template-select" data-i18n="kanban.dialog.board.useTemplate"></label>
         <div class="custom-select">
             <select id="board-template-select">
                 <!-- Preenchido pelo JS -->
@@ -93,106 +93,104 @@
         </div>
     </div>
     <div class="form-group">
-        <label for="board-title-input">Título:</label>
+        <label for="board-title-input" data-i18n="kanban.dialog.card.titleLabel"></label>
         <input type="text" id="board-title-input">
     </div>
     <div class="form-group">
-        <label for="board-description-input">Descrição (Opcional):</label>
-        <textarea id="board-description-input" rows="2" placeholder="Adicione uma breve descrição para este quadro..."></textarea>
+        <label for="board-description-input" data-i18n="templateEditor.descriptionLabel"></label>
+        <textarea id="board-description-input" rows="2" data-i18n-placeholder="kanban.card.hover.noDescription"></textarea>
     </div>
         <!-- Bloco de Ícone Adicionado -->
         <div class="form-group">
-            <label for="board-icon-input">Ícone:</label>
+            <label for="board-icon-input" data-i18n="templateEditor.iconLabel"></label>
             <div class="icon-input-group">
                 <input type="text" id="board-icon-input" class="icon-display" readonly>
-                <button type="button" id="btn-choose-board-icon" class="btn btn-sm">Escolher</button>
+                <button type="button" id="btn-choose-board-icon" class="btn btn-sm" data-i18n="ui.choose"></button>
             </div>
         </div>
         <div class="form-group">
-            <label for="board-visibility">Visibilidade:</label>
+            <label for="board-visibility" data-i18n="groups.create.accessLabel"></label>
             <div class="custom-select">
                 <select id="board-visibility">
-                    <option value="private">Privado</option>
-                    <option value="public">Público</option>
-                    <option value="group">Grupo</option>
+                    <!-- Options are populated by JS -->
                 </select>
             </div>
         </div>
         <div class="form-group" id="board-group-container" style="display:none;">
-            <label for="board-group-select">Grupo:</label>
+            <label for="board-group-select" data-i18n="kanban.dialog.board.groupLabel"></label>
             <div class="custom-select">
                 <select id="board-group-select"></select>
             </div>
             <div id="board-group-alert" class="permission-alert" style="display: none; margin-top: 10px;">
                 <span>⚠️</span>
-                <div>Você precisa ser membro de um grupo (e ter permissão) para criar quadros de grupo.</div>
+                <div data-i18n="kanban.feedback.noGroupCreatePermission"></div>
             </div>
         </div>
             <div class="feedback"></div> <!-- <-- Adicione esta linha -->
     <div class="modal-actions">
-        <button id="board-cancel-btn" class="btn cancel">Cancelar</button>
-        <button id="board-save-btn" class="btn confirm">Salvar</button>
+        <button id="board-cancel-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+        <button id="board-save-btn" class="btn confirm" data-i18n="ui.save"></button>
     </div>
     </dialog>
 
     <dialog id="column-dialog" class="draggable">
-        <h3 class="drag-handle">Configurar Coluna</h3>
+        <h3 class="drag-handle" data-i18n="kanban.dialog.column.title"></h3>
         <div class="form-group">
-            <label for="column-title-input">Nome:</label>
+            <label for="column-title-input" data-i18n="kanban.dialog.column.nameLabel"></label>
             <input type="text" id="column-title-input">
         </div>
         <div class="form-group">
-            <label for="column-description">Descrição/Instrução:</label>
+            <label for="column-description" data-i18n="kanban.dialog.column.descriptionLabel"></label>
             <textarea id="column-description" rows="2"></textarea>
         </div>
         <div class="form-group">
-            <label>Cor da Coluna:</label>
+            <label data-i18n="kanban.dialog.column.colorLabel"></label>
             <div id="column-color-trigger" class="color-picker-trigger" data-color="#3c3c3c" style="background-color: #3c3c3c;"></div>
         </div>
         <div class="form-group">
-            <label>Cor do Texto:</label>
+            <label data-i18n="kanban.dialog.column.textColorLabel"></label>
             <div id="column-text-color-trigger" class="color-picker-trigger" data-color="#e0e0e0" style="background-color: #e0e0e0;"></div>
         </div>
             <div class="feedback"></div> <!-- <-- Adicione esta linha -->
     <div class="modal-actions">
-        <button id="column-cancel-btn" class="btn cancel">Cancelar</button>
-        <button id="column-delete-btn" class="btn danger">Excluir</button>
-        <button id="column-save-btn" class="btn confirm">Salvar</button>
+        <button id="column-cancel-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+        <button id="column-delete-btn" class="btn danger" data-i18n="ui.delete"></button>
+        <button id="column-save-btn" class="btn confirm" data-i18n="ui.save"></button>
     </div>
     </dialog>
 
     <dialog id="card-dialog" class="draggable">
-    <h3 class="drag-handle">Configurar Cartão</h3>
+    <h3 class="drag-handle" data-i18n="kanban.dialog.card.title"></h3>
         <div class="form-group" id="card-column-select-group">
-            <label for="card-column-select">Coluna:</label>
+            <label for="card-column-select" data-i18n="kanban.dialog.card.columnLabel"></label>
             <div class="custom-select">
                 <select id="card-column-select"></select>
             </div>
     </div>
     <div class="form-group">
-        <label for="card-title-input">Título do Cartão:</label>
+        <label for="card-title-input" data-i18n="kanban.dialog.card.titleLabel"></label>
         <input type="text" id="card-title-input">
     </div>
     <div class="form-group">
-        <label for="card-description">Descrição:</label>
+        <label for="card-description" data-i18n="templateEditor.descriptionLabel"></label>
         <textarea id="card-description" rows="3"></textarea>
     </div>
     
     <!-- CAMPO DE DATA E HORA SEPARADOS -->
     <div class="form-row">
         <div class="form-group">
-            <label for="card-due-date">Data de Vencimento:</label>
+            <label for="card-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
             <input type="date" id="card-due-date">
         </div>
         <div class="form-group">
-            <label for="card-due-time">Hora:</label>
+            <label for="card-due-time" data-i18n="groups.meetings.timeLabel"></label>
             <input type="time" id="card-due-time">
         </div>
     </div>
     
     <!-- CAMPO DE ETIQUETAS AGORA É UM SELECT MÚLTIPLO -->
     <div class="form-group">
-        <label for="card-tags">Etiquetas (segure Ctrl/Cmd para selecionar várias):</label>
+        <label for="card-tags" data-i18n="kanban.dialog.card.tagsLabel"></label>
         <select id="card-tags" multiple size="5">
             <!-- Opções preenchidas pelo JS -->
         </select>
@@ -200,7 +198,7 @@
     
     <!-- O resto do formulário continua igual -->
     <div class="form-group">
-            <label for="card-assigned-to">Atribuir a:</label>
+            <label for="card-assigned-to" data-i18n="kanban.dialog.search.assigneeLabel"></label>
             <div class="custom-select">
                 <select id="card-assigned-to"></select>
             </div>
@@ -210,8 +208,8 @@
     <div class="feedback"></div>
 
     <div class="modal-actions">
-        <button class="btn cancel" onclick="this.closest('dialog').close()">Cancelar</button>
-        <button id="card-save-btn" class="btn confirm">Salvar Cartão</button>
+        <button class="btn cancel" data-i18n="ui.cancel" onclick="this.closest('dialog').close()"></button>
+        <button id="card-save-btn" class="btn confirm" data-i18n="ui.save"></button>
     </div>
 </dialog>
 
@@ -225,43 +223,43 @@
     </dialog>
 
     <dialog id="edit-dialog" class="draggable">
-    <h3 class="drag-handle">Editar / Excluir Itens</h3>
+    <h3 class="drag-handle" data-i18n="kanban.dialog.edit.title"></h3>
     
     <div class="form-group">
-        <label for="edit-select-board">Selecione o Quadro:</label>
+        <label for="edit-select-board" data-i18n="kanban.dialog.edit.selectBoard"></label>
         <select id="edit-select-board"></select>
     </div>
     
     <div class="form-group" id="edit-column-group" style="display: none;">
-        <label for="edit-select-column">Selecione a Coluna (Opcional):</label>
+        <label for="edit-select-column" data-i18n="kanban.dialog.edit.selectColumn"></label>
         <select id="edit-select-column"></select>
     </div>
     
     <div class="form-group" id="edit-card-group" style="display: none;">
-        <label for="edit-select-card">Selecione o Cartão (Opcional):</label>
+        <label for="edit-select-card" data-i18n="kanban.dialog.edit.selectCard"></label>
         <select id="edit-select-card"></select>
     </div>
     
-    <p class="edit-info">Selecione um item para habilitar as ações.</p>
+    <p class="edit-info" data-i18n="kanban.dialog.edit.info"></p>
     
     <div class="modal-actions">
-        <button id="edit-dialog-cancel-btn" class="btn cancel">Cancelar</button>
-        <button id="edit-dialog-delete-btn" class="btn danger" disabled>Excluir Selecionado</button>
-        <button id="edit-dialog-edit-btn" class="btn edit" disabled>Editar Selecionado</button>
+        <button id="edit-dialog-cancel-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+        <button id="edit-dialog-delete-btn" class="btn danger" data-i18n="kanban.dialog.edit.deleteButton" disabled></button>
+        <button id="edit-dialog-edit-btn" class="btn edit" data-i18n="kanban.dialog.edit.editButton" disabled></button>
     </div>
 </dialog>
 
 <dialog id="search-dialog" class="draggable">
-    <h3 class="drag-handle">Procurar e Filtrar Cartões</h3>
+    <h3 class="drag-handle" data-i18n="kanban.dialog.search.title"></h3>
     
     <div class="form-group">
-        <label for="search-text">Texto no título ou descrição:</label>
-        <input type="text" id="search-text" placeholder="Digite para buscar...">
+        <label for="search-text" data-i18n="kanban.dialog.search.textLabel"></label>
+        <input type="text" id="search-text" data-i18n-placeholder="kanban.dialog.search.textPlaceholder">
     </div>
 
     <!-- CAMPO ADICIONADO -->
     <div class="form-group">
-        <label for="search-creator">Por Criador:</label>
+        <label for="search-creator" data-i18n="kanban.dialog.search.creatorLabel"></label>
         <select id="search-creator">
             <!-- Opções preenchidas pelo JS -->
         </select>
@@ -269,28 +267,28 @@
 
     <!-- CAMPO ADICIONADO -->
     <div class="form-group">
-        <label for="search-status">Status:</label>
+        <label for="search-status" data-i18n="kanban.dialog.search.statusLabel"></label>
         <select id="search-status">
-            <option value="">Todos</option>
-            <option value="active">Pendentes</option>
-            <option value="completed">Concluídos</option>
+            <option value="" data-i18n="kanban.dialog.search.statusAll"></option>
+            <option value="active" data-i18n="kanban.dialog.search.statusPending"></option>
+            <option value="completed" data-i18n="kanban.dialog.search.statusCompleted"></option>
         </select>
     </div>
 
     <div class="form-group">
-        <label for="search-assignee">Atribuído a:</label>
+        <label for="search-assignee" data-i18n="kanban.dialog.search.assigneeLabel"></label>
         <select id="search-assignee">
             <!-- Opções preenchidas pelo JS -->
         </select>
     </div>
 
     <div class="form-group">
-        <label for="search-due-date">Data de Vencimento:</label>
+        <label for="search-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
         <select id="search-due-date">
-            <option value="">Todas</option>
-            <option value="today">Vence Hoje</option>
-            <option value="week">Vence esta Semana</option>
-            <option value="overdue">Atrasado</option>
+            <option value="" data-i18n="kanban.dialog.search.dueDateAll"></option>
+            <option value="today" data-i18n="kanban.dialog.search.dueDateToday"></option>
+            <option value="week" data-i18n="kanban.dialog.search.dueDateWeek"></option>
+            <option value="overdue" data-i18n="kanban.dialog.search.dueDateOverdue"></option>
         </select>
     </div>
 
@@ -302,9 +300,9 @@
     </div>
     
     <div class="modal-actions">
-        <button id="search-cancel-btn" class="btn cancel">Fechar</button>
-        <button id="search-reset-btn" class="btn alternative1">Limpar Filtros</button>
-        <button id="search-apply-btn" class="btn confirm">Aplicar Filtros</button>
+        <button id="search-cancel-btn" class="btn cancel" data-i18n="kanban.dialog.search.closeButton"></button>
+        <button id="search-reset-btn" class="btn alternative1" data-i18n="kanban.dialog.search.resetButton"></button>
+        <button id="search-apply-btn" class="btn confirm" data-i18n="kanban.dialog.search.applyButton"></button>
     </div>
 </dialog>
 
@@ -314,43 +312,46 @@
         <!-- O conteúdo será preenchido pelo JavaScript -->
     </div>
     <div class="modal-actions">
-        <button class="btn cancel" onclick="this.closest('dialog').close()">Fechar</button>
+        <button class="btn cancel" data-i18n="ui.close" onclick="this.closest('dialog').close()"></button>
     </div>
 </dialog>
     <!-- Diálogo de Preferências -->
 <dialog id="preferences-dialog" class="draggable">
-    <h3 class="drag-handle">Preferências</h3>
+    <h3 class="drag-handle" data-i18n="preferences.title">Preferências</h3>
     
     <div class="preferences-layout">
         <!-- Coluna Esquerda: Preferências Gerais -->
         <div class="preferences-column">
             <div class="form-group">
-                <label for="pref-theme">Tema:</label>
+                <label for="pref-theme" data-i18n="preferences.theme">Tema</label>
                 <div class="custom-select">
-                    <select id="pref-theme">
-                        <option value="auto">Padrão do Sistema</option>
-                        <option value="dark">Escuro (Preto)</option>
-                        <option value="dark-gray">Cinza Escuro</option>
-                        <option value="light-gray">Cinza Claro</option>
-                        <option value="light">Claro (Branco)</option>
+                    <select id="pref-theme" data-i18n-dynamic>
+                        <option value="auto" data-i18n="preferences.theme.systemDefault"></option>
+                        <option value="dark" data-i18n="preferences.theme.dark"></option>
+                        <option value="dark-gray" data-i18n="preferences.theme.darkGray"></option>
+                        <option value="light-gray" data-i18n="preferences.theme.lightGray"></option>
+                        <option value="light" data-i18n="preferences.theme.light"></option>
                     </select>
                 </div>
             </div>
             <div class="form-group">
-                <label for="pref-language">Idioma:</label>
+                <label for="pref-language" data-i18n="preferences.language">Idioma</label>
                 <div class="custom-select">
-                    <select id="pref-language">
-                        <option value="pt-BR">Português (Brasil)</option>
-                        <option value="en-US">English (EUA)</option>
-                        <option value="es-ES">Español (España)</option>
+                    <select id="pref-language" data-i18n-dynamic>
+                        <option value="pt-BR" data-i18n="preferences.language.pt"></option>
+                        <option value="en-US" data-i18n="preferences.language.en"></option>
+                        <option value="es-ES" data-i18n="preferences.language.es"></option>
+                        <option value="fr-FR" data-i18n="preferences.language.fr"></option>
+                        <option value="de-DE" data-i18n="preferences.language.de"></option>
+                        <option value="it-IT" data-i18n="preferences.language.it"></option>
                     </select>
                 </div>
             </div>
             <div class="form-group">
-                <label for="pref-font-family">Fonte:</label>
+                <label for="pref-font-family" data-i18n="preferences.font"></label>
                 <div class="custom-select">
-                    <select id="pref-font-family">
-                        <option value="Segoe UI, Inter, sans-serif">Padrão (Segoe/Inter)</option>
+                    <select id="pref-font-family" data-i18n-dynamic>
+                        <option value="Segoe UI, Inter, sans-serif" data-i18n="profile.font.default"></option>
                         <option value="Roboto, sans-serif">Roboto</option>
                         <option value="Open Sans, sans-serif">Open Sans</option>
                         <option value="Lato, sans-serif">Lato</option>
@@ -374,21 +375,21 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="pref-font-size">Tamanho da Fonte:</label>
+                <label for="pref-font-size" data-i18n="preferences.fontSize"></label>
                 <div class="custom-select">
-                    <select id="pref-font-size">
-                        <option value="small">Pequeno</option>
-                        <option value="medium">Médio</option>
-                        <option value="large">Grande</option>
-                        <option value="x-large">Extra Grande</option>
+                    <select id="pref-font-size" data-i18n-dynamic>
+                        <option value="small" data-i18n="fontSize.small"></option>
+                        <option value="medium" data-i18n="fontSize.medium"></option>
+                        <option value="large" data-i18n="fontSize.large"></option>
+                        <option value="x-large" data-i18n="fontSize.xLarge"></option>
                     </select>
                 </div>
             </div>
             <div class="form-group">
-                <label>Cor Primária:</label>
+                <label data-i18n="preferences.primaryColor">Cor Primária</label>
                 <div id="color-palette-container" class="color-palette">
-                    <div class="color-swatch special" data-action="remove-primary" title="Nenhuma">🚫</div>
-                    <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão"></div>
+                    <div class="color-swatch special" data-action="remove-primary" data-i18n-title="preferences.primaryColor.none">🚫</div>
+                    <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" data-i18n-title="preferences.primaryColor.default"></div>
                     <div class="color-swatch" style="background-color: #9a1eff;" data-hex="#9a1eff" data-rgb="154, 30, 255"></div>
                     <div class="color-swatch" style="background-color: #1eff1e;" data-hex="#1eff1e" data-rgb="30, 255, 30"></div>
                     <div class="color-swatch" style="background-color: #f552ed;" data-hex="#f552ed" data-rgb="245, 82, 237"></div>
@@ -405,45 +406,45 @@
         <!-- Coluna Direita: Preferências de Exibição -->
         <div class="preferences-column">
             <fieldset class="form-group">
-                <legend>Exibir no Quadro:</legend>
-                <label class="checkbox-container"> Mostrar Título do Quadro
+                <legend data-i18n="preferences.displayOnBoard">Exibir no Quadro:</legend>
+                <label class="checkbox-container" data-i18n="preferences.showBoardTitle">
                     <input type="checkbox" id="pref-board-show-title" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Mostrar Ícone do Quadro
+                <label class="checkbox-container" data-i18n="preferences.showBoardIcon">
                     <input type="checkbox" id="pref-board-show-icon" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Cabeçalho Inteligente (oculta automaticamente)
+                <label class="checkbox-container" data-i18n="preferences.smartHeader">
                     <input type="checkbox" id="pref-smart-header">
                     <span class="checkmark"></span>
                 </label>
             </fieldset>
             <fieldset class="form-group">
-                <legend>Exibir no Cartão:</legend>
-                <label class="checkbox-container"> Etiquetas
+                <legend data-i18n="preferences.displayOnCard">Exibir no Cartão:</legend>
+                <label class="checkbox-container" data-i18n="preferences.showTags">
                     <input type="checkbox" id="pref-card-show-tags" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Data de Vencimento
+                <label class="checkbox-container" data-i18n="preferences.showDueDate">
                     <input type="checkbox" id="pref-card-show-date" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Status (Concluído)
+                <label class="checkbox-container" data-i18n="preferences.showStatus">
                     <input type="checkbox" id="pref-card-show-status" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Usuário Atribuído
+                <label class="checkbox-container" data-i18n="preferences.showAssignee">
                     <input type="checkbox" id="pref-card-show-assignment" checked>
                     <span class="checkmark"></span>
                 </label>
-                <label class="checkbox-container"> Detalhes ao Passar o Mouse
+                <label class="checkbox-container" data-i18n="preferences.showDetailsOnHover">
                     <input type="checkbox" id="pref-card-show-details" checked>
                     <span class="checkmark"></span>
                 </label>
             </fieldset>
             <div class="form-group">
-                <label for="pref-default-tag-template">Conjunto de Etiquetas Padrão:</label>
+                <label for="pref-default-tag-template" data-i18n="preferences.defaultTagSet"></label>
                 <div class="custom-select">
                     <select id="pref-default-tag-template"></select>
                 </div>
@@ -456,19 +457,19 @@
     <div class="feedback"></div>
 
     <div class="modal-actions">
-        <button id="pref-cancel-btn" class="btn cancel">Cancelar</button>
-        <button id="pref-save-btn" class="btn confirm">Salvar</button>
+        <button id="pref-cancel-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+        <button id="pref-save-btn" class="btn confirm" data-i18n="ui.save"></button>
     </div>
 </dialog>
 
 <!-- Diálogo do Seletor de Ícones (Adicionar no final) -->
 <dialog id="icon-picker-dialog" class="draggable">
-    <h3 class="drag-handle">Selecione um Ícone</h3>
+    <h3 class="drag-handle" data-i18n="iconPicker.title"></h3>
     <div id="icon-grid">
         <!-- Ícones serão inseridos aqui pelo JavaScript -->
     </div>
     <div class="modal-actions">
-        <button id="close-icon-picker-btn" class="btn cancel">Fechar</button>
+        <button id="close-icon-picker-btn" class="btn cancel" data-i18n="ui.close"></button>
     </div>
 </dialog>
 

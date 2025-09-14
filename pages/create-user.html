@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" data-i18n-title="createUser.pageTitle">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Criar Novo Usuário</title>
   <link rel="stylesheet" href="../static/universal.css">
@@ -14,7 +14,7 @@
   <div id="message-container"></div>
   
   <header>
-    <h1>Cadastrar Novo Usuário</h1>
+    <h1 data-i18n="createUser.pageTitle"></h1>
   </header>
   
   <main class="card">
@@ -23,27 +23,27 @@
         <!-- Coluna 1: Informações Básicas -->
         <div class="form-column">
           <div class="form-section">
-            <h2>Informações Básicas</h2>
+            <h2 data-i18n="createUser.section.basicInfo"></h2>
             <div class="avatar-container">
               <div class="avatar-preview" id="avatar-preview">
                 <div class="avatar-preview-text">U</div>
               </div>
               <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
-              <button type="button" id="btn-upload-avatar" class="btn">
-                <span>📷</span> Escolher Avatar
+              <button type="button" id="btn-upload-avatar" class="btn" data-i18n="createUser.button.chooseAvatar">
+                <span>📷</span>
               </button>
             </div>
             <div class="form-group">
-              <label for="name" class="required">Nome Completo</label>
-              <input type="text" id="name" required placeholder="Digite seu nome completo">
+              <label for="name" class="required" data-i18n="createUser.label.fullName"></label>
+              <input type="text" id="name" required data-i18n-placeholder="createUser.placeholder.fullName">
             </div>
             <div class="form-group">
-              <label for="username" class="required">Nome de Usuário</label>
-              <input type="text" id="username" required placeholder="Escolha um nome de usuário">
+              <label for="username" class="required" data-i18n="createUser.label.username"></label>
+              <input type="text" id="username" required data-i18n-placeholder="createUser.placeholder.username">
             </div>
             <div class="form-group">
-              <label for="bio">Biografia</label>
-              <textarea id="bio" placeholder="Conte um pouco sobre você..." rows="5"></textarea>
+              <label for="bio" data-i18n="createUser.label.bio"></label>
+              <textarea id="bio" data-i18n-placeholder="createUser.placeholder.bio" rows="5"></textarea>
             </div>
           </div>
         </div>
@@ -51,42 +51,42 @@
         <!-- Coluna 2: Informações Pessoais e Contatos -->
         <div class="form-column">
           <div class="form-section">
-            <h2>Informações Pessoais</h2>
+            <h2 data-i18n="createUser.section.personalInfo"></h2>
             <div class="form-group">
-              <label for="birthdate">Data de Nascimento</label>
+              <label for="birthdate" data-i18n="createUser.label.birthdate"></label>
               <input type="date" id="birthdate">
             </div>
             <div class="form-group">
-              <label for="gender">Gênero</label>
+              <label for="gender" data-i18n="createUser.label.gender"></label>
               <div class="custom-select">
                 <select id="gender">
-                  <option value="">Selecionar</option>
-                  <option value="male">Masculino</option>
-                  <option value="female">Feminino</option>
-                  <option value="non-binary">Não-binário</option>
-                  <option value="other">Outro</option>
-                  <option value="prefer-not-to-say">Prefiro não informar</option>
+                  <option value="" data-i18n="createUser.gender.select">Selecionar</option>
+                  <option value="male" data-i18n="createUser.gender.male">Masculino</option>
+                  <option value="female" data-i18n="createUser.gender.female">Feminino</option>
+                  <option value="non-binary" data-i18n="createUser.gender.nonBinary">Não-binário</option>
+                  <option value="other" data-i18n="createUser.gender.other">Outro</option>
+                  <option value="prefer-not-to-say" data-i18n="createUser.gender.preferNotToSay">Prefiro não informar</option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label for="location">Localização</label>
-              <input type="text" id="location" placeholder="Cidade, Estado">
+              <label for="location" data-i18n="createUser.label.location"></label>
+              <input type="text" id="location" data-i18n-placeholder="createUser.placeholder.location">
             </div>
           </div>
           <div class="form-section">
-            <h2>Contatos</h2>
+            <h2 data-i18n="createUser.section.contacts"></h2>
             <div class="form-group">
-              <label for="email">E-mail</label>
-              <input type="email" id="email" placeholder="seu.email@exemplo.com">
+              <label for="email" data-i18n="createUser.label.email"></label>
+              <input type="email" id="email" data-i18n-placeholder="createUser.placeholder.email">
             </div>
             <div class="form-group">
-              <label for="whatsapp">WhatsApp</label>
-              <input type="tel" id="whatsapp" placeholder="(00) 00000-0000">
+              <label for="whatsapp" data-i18n="createUser.label.whatsapp"></label>
+              <input type="tel" id="whatsapp" data-i18n-placeholder="createUser.placeholder.whatsapp">
             </div>
             <div class="form-group">
-              <label for="linkedin">LinkedIn</label>
-              <input type="url" id="linkedin" placeholder="https://linkedin.com/in/seu-perfil">
+              <label for="linkedin" data-i18n="createUser.label.linkedin"></label>
+              <input type="url" id="linkedin" data-i18n-placeholder="createUser.placeholder.linkedin">
             </div>
           </div>
         </div>
@@ -94,36 +94,39 @@
         <!-- Coluna 3: Preferências e Senha -->
         <div class="form-column">
           <div class="form-section">
-            <h2>Preferências</h2>
+            <h2 data-i18n="preferences.title"></h2>
             <div class="form-group">
-              <label for="language">Idioma</label>
+              <label for="language" data-i18n="preferences.language"></label>
               <div class="custom-select">
                 <select id="language">
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="en-US">Inglês (EUA)</option>
-                  <option value="es-ES">Español (España)</option>
+                  <option value="pt-BR" data-i18n="preferences.language.pt">Português (Brasil)</option>
+                  <option value="en-US" data-i18n="preferences.language.en">Inglês (EUA)</option>
+                  <option value="es-ES" data-i18n="preferences.language.es">Español (España)</option>
+                  <option value="fr-FR" data-i18n="preferences.language.fr"></option>
+                  <option value="de-DE" data-i18n="preferences.language.de"></option>
+                  <option value="it-IT" data-i18n="preferences.language.it"></option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label for="theme">Tema</label>
+              <label for="theme" data-i18n="preferences.theme"></label>
               <div class="custom-select">
                 <select id="theme">
-                  <option value="auto">Padrão do Sistema</option>
-                  <option value="dark">Escuro (Preto)</option>
-                  <option value="dark-gray">Cinza Escuro</option>
-                  <option value="light-gray">Cinza Claro</option>
-                  <option value="light">Claro (Branco)</option>
+                  <option value="auto" data-i18n="preferences.theme.systemDefault">Padrão do Sistema</option>
+                  <option value="dark" data-i18n="preferences.theme.dark">Escuro (Preto)</option>
+                  <option value="dark-gray" data-i18n="preferences.theme.darkGray">Cinza Escuro</option>
+                  <option value="light-gray" data-i18n="preferences.theme.lightGray">Cinza Claro</option>
+                  <option value="light" data-i18n="preferences.theme.light">Claro (Branco)</option>
                 </select>
               </div>
             </div>
             <div class="form-group">
-              <label>Cor Primária da Interface</label>
+              <label data-i18n="preferences.primaryColor"></label>
               <div id="color-palette-container" class="color-palette">
                   <!-- Opção "Nenhuma Cor" -->
                   <div class="color-swatch special" data-action="remove-primary" title="Nenhuma cor primária">🚫</div>
                   <!-- Paleta de Cores -->
-                  <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão do Sistema"></div>
+                  <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão"></div>
                   <div class="color-swatch" style="background-color: #9a1eff;" data-hex="#9a1eff" data-rgb="154, 30, 255"></div>
                   <div class="color-swatch" style="background-color: #1eff1e;" data-hex="#1eff1e" data-rgb="30, 255, 30"></div>
                   <div class="color-swatch" style="background-color: #f552ed;" data-hex="#f552ed" data-rgb="245, 82, 237"></div>
@@ -133,22 +136,22 @@
                   <div class="color-swatch" style="background-color: #c3ff1e;" data-hex="#c3ff1e" data-rgb="195, 255, 30"></div>
                   <div class="color-swatch" style="background-color: #ffd700;" data-hex="#ffd700" data-rgb="255, 215, 0"></div>
                   <div class="color-swatch" style="background-color: #ffffff;" data-hex="#ffffff" data-rgb="255, 255, 255"></div>
-                  <div class="color-swatch" style="background-color: #000000;" data-hex="#1effff" data-rgb="30, 255, 255"></div>
+                  <div class="color-swatch" style="background-color: #000000;" data-hex="#000000" data-rgb="0, 0, 0"></div>
               </div>
             </div>
           </div>
           <div class="form-section">
-            <h2>Cadastrar Senha</h2>
+            <h2 data-i18n="createUser.section.password"></h2>
             <div class="form-group">
-              <label for="password" class="required">Senha</label>
-              <input type="password" id="password" required minlength="4" placeholder="Mínimo 4 caracteres">
+              <label for="password" class="required" data-i18n="createUser.label.password"></label>
+              <input type="password" id="password" required minlength="4" data-i18n-placeholder="createUser.placeholder.password">
               <div class="password-strength">
                 <div class="password-strength-meter" id="password-strength-meter"></div>
               </div>
             </div>
             <div class="form-group">
-              <label for="confirm-password" class="required">Confirmar Senha</label>
-              <input type="password" id="confirm-password" required minlength="4" placeholder="Digite a senha novamente">
+              <label for="confirm-password" class="required" data-i18n="createUser.label.confirmPassword"></label>
+              <input type="password" id="confirm-password" required minlength="4" data-i18n-placeholder="createUser.placeholder.confirmPassword">
             </div>
           </div>
         </div>
@@ -156,8 +159,8 @@
 
       <!-- Seção de Privacidade (Ocupando a largura total) -->
       <div class="form-section privacy-full-width">
-        <h2>Configurações de Privacidade</h2>
-        <p>Quem pode ver suas informações pessoais?</p>
+        <h2 data-i18n="createUser.section.privacy"></h2>
+        <p data-i18n="createUser.privacy.description">Quem pode ver suas informações pessoais?</p>
         <div style="margin-top: 8px;" class="privacy-options">
           <div class="privacy-option" data-value="public"><h4>🌍 Público</h4>
             <p>Todos podem ver suas informações</p>
@@ -173,16 +176,12 @@
 
       <div class="actions">
         <div class="feedback"></div>
-        <button type="button" id="btn-cancel" class="btn cancel">
-          <span>❌</span> Cancelar
-        </button>
-        <button type="submit" id="btn-save" class="btn confirm">
-          <span>💾</span> Salvar Usuário
-        </button>
+        <button type="button" id="btn-cancel" class="btn cancel" data-i18n="ui.cancel"><span>❌</span></button>
+        <button type="submit" id="btn-save" class="btn confirm" data-i18n="ui.save"><span>💾</span></button>
       </div>
     </form>
   </main>
 <script type="module" src="../js/main.js"></script>
+<footer class="rodape" data-i18n="ui.footer.placeholder"></footer>
 </body>
-<footer class="rodape">Espaço</footer>
 </html>

@@ -6,6 +6,7 @@ import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTem
   saveNotifications, saveUserProfile
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage, debounce, initCustomSelects, applyUserTheme } from './ui-controls.js';
+import { applyTranslations, t, initTranslations, loadLanguage } from './translations.js';
 import { addGroupRequestNotification } from './notifications.js';
 
 // Variável para armazenar dados originais do usuário
@@ -16,19 +17,20 @@ let originalFontSize = null;
 let isSaved = true;
 
 // Função de inicialização exportada
-export function initProfilePage() {
+export async function initProfilePage() {
     const currentUser = getCurrentUser();
     if (!currentUser) {
-        showFloatingMessage('Usuário não logado. Redirecionando...', 'error');
+        showFloatingMessage(t('ui.userNotLoggedIn'), 'error');
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
         return;
     }
-   
-    document.getElementById('page-title').textContent = "Perfil do Usuário";
-    
+
     if (currentUser) {
         updateUserAvatar(currentUser);
     }
+
+    await initTranslations();
+    document.getElementById('page-title').textContent = t('profile.pageTitle');
 
     loadUserData(); // 1. Carrega os dados e popula os selects
     setupEventListeners();
@@ -37,6 +39,36 @@ export function initProfilePage() {
     initDraggableElements();
     // initCustomSelects() foi movido para o final de loadUserData() para garantir que os selects estejam prontos.
 }
+
+function translateProfilePage() {
+    // Helper para definir o texto de um elemento de forma segura
+    const safeSetText = (selector, textKey) => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.textContent = t(textKey);
+        }
+    };
+
+    // Traduz labels estáticos que não são cobertos pelo data-i18n
+    safeSetText('label[for="name"]', 'createUser.label.fullName');
+    safeSetText('label[for="username"]', 'createUser.label.username');
+    safeSetText('label[for="bio"]', 'createUser.label.bio');
+    safeSetText('label[for="birthdate"]', 'createUser.label.birthdate');
+    safeSetText('label[for="gender"]', 'createUser.label.gender');
+    safeSetText('label[for="location"]', 'createUser.label.location');
+    safeSetText('label[for="email"]', 'createUser.label.email');
+    safeSetText('label[for="whatsapp"]', 'createUser.label.whatsapp');
+    safeSetText('label[for="linkedin"]', 'createUser.label.linkedin');
+    safeSetText('label[for="language"]', 'preferences.language');
+    safeSetText('label[for="theme"]', 'preferences.theme');
+    safeSetText('label[for="font-family"]', 'preferences.font');
+    safeSetText('label[for="font-size"]', 'preferences.fontSize');
+    safeSetText('label[for="default-tag-template"]', 'preferences.defaultTagSet');
+    safeSetText('label[for="color-palette-container"]', 'preferences.primaryColor');
+    safeSetText('legend[data-i18n="preferences.displayOnBoard"]', 'preferences.displayOnBoard');
+    safeSetText('legend[data-i18n="preferences.displayOnCard"]', 'preferences.displayOnCard');
+    // O seletor '#privacy-settings-label' não existe em profile.html, então foi removido para evitar o erro.
+}
 function loadUserData() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
@@ -44,9 +76,12 @@ function loadUserData() {
     try {
         const userData = getUserProfile(currentUser.id);
         if (!userData) {
-            showFloatingMessage('Dados do usuário não encontrados', 'error');
+            showFloatingMessage(t('profile.error.loading'), 'error');
             return;
         }
+
+        // Traduz os labels da página
+        translateProfilePage();
         
         // Salvar os dados originais para restauração
         originalUserData = {...userData};
@@ -78,13 +113,13 @@ tagTemplateSelect.innerHTML = '';
 // Adiciona a opção padrão (nenhum) no topo
 const defaultOption = document.createElement('option');
 defaultOption.value = '';
-defaultOption.textContent = 'Nenhum (usar padrão do sistema)';
+defaultOption.textContent = t('preferences.tagTemplate.none');
 tagTemplateSelect.appendChild(defaultOption);
 
 // Adiciona os templates do usuário primeiro, se existirem
 if (userTagTemplates.length > 0) {
     const optgroupUser = document.createElement('optgroup');
-    optgroupUser.label = 'Meus Conjuntos';
+    optgroupUser.label = t('preferences.tagTemplate.mySets');
     userTagTemplates.forEach(template => {
         const option = document.createElement('option');
         option.value = template.id;
@@ -97,7 +132,7 @@ if (userTagTemplates.length > 0) {
 // Adiciona os templates do sistema
 if (systemTagTemplates.length > 0) {
     const optgroupSystem = document.createElement('optgroup');
-    optgroupSystem.label = 'Sistema';
+    optgroupSystem.label = t('preferences.tagTemplate.systemSets');
     systemTagTemplates.forEach(template => {
         const option = document.createElement('option');
         option.value = template.id;
@@ -159,7 +194,7 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || 'system-tags-prio';
         
     } catch (error) {
         console.error('Erro ao carregar dados do usuário:', error);
-        showFloatingMessage('Erro ao carregar dados do usuário', 'error');
+        showFloatingMessage(t('profile.error.loading'), 'error');
     }
     loadUserGroups();
     initCustomSelects(); // Chamado aqui, no final, para garantir que todos os selects estão populados
@@ -208,6 +243,17 @@ function setupEventListeners() {
         });
     });
 
+        // Listener específico para o idioma, para aplicar a tradução em tempo real
+    const languageSelect = document.getElementById('language');
+    if (languageSelect) {
+        languageSelect.addEventListener('change', async (e) => {
+            isSaved = false;
+            await loadLanguage(e.target.value);
+            applyTranslations();
+            initCustomSelects(); // Atualiza o texto do select customizado
+        });
+    }
+
     // Listeners que marcam o estado como "não salvo"
     const formFields = [
         'name', 'username', 'bio', 'birthdate', 'gender', 
@@ -225,7 +271,6 @@ function setupEventListeners() {
     // Listeners com pré-visualização
     const previewFields = [
         { id: 'theme', action: (e) => applyThemeFromSelect(e.target.value) },
-        { id: 'font-family', action: (e) => applyFontFamily(e.target.value, true) },
         { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) }
     ];
     previewFields.forEach(field => {
@@ -253,12 +298,12 @@ function setupEventListeners() {
     // O 'true' no final faz com que este listener capture o evento ANTES dos listeners do main.js,
     // permitindo que a navegação seja cancelada se necessário.
     const navActions = {
-        'kanban-btn': 'kanban.html',
-        'my-groups-btn': 'groups.html',
-        'templates-btn': 'templates.html',
-        'friends-btn': 'friends.html',
-        'notifications-btn': 'notifications.html',
-        'switch-user-btn': 'list-users.html'
+        'kanban-btn': { url: 'kanban.html' },
+        'my-groups-btn': { url: 'groups.html' },
+        'templates-btn': { url: 'templates.html' },
+        'friends-btn': { url: 'friends.html' },
+        'notifications-btn': { url: 'notifications.html' },
+        'switch-user-btn': { url: 'list-users.html' }
     };
 
     Object.keys(navActions).forEach(id => {
@@ -269,7 +314,7 @@ function setupEventListeners() {
                 // A função handleNavigation decidirá se navega ou mostra o diálogo.
                 e.preventDefault();
                 e.stopImmediatePropagation(); // Impede que outros listeners (do main.js) sejam executados.
-                handleNavigation(navActions[id]);
+                handleNavigation(navActions[id].url, navActions[id].state || {});
             }, true); // Captura o evento na fase de "capturing".
         }
     });
@@ -280,7 +325,7 @@ function setupEventListeners() {
         if (statsButton) {
             const groupId = statsButton.dataset.groupId;
             if (groupId) {
-                handleNavigation('groups.html', { openTab: 'statistics', groupId: groupId });
+                handleNavigation('groups.html', { openTab: 'statistics', groupId });
             }
         }
     });
@@ -332,19 +377,18 @@ function handleNavigation(destination, state = {}) {
         window.location.href = destination;
     } else {
         // Mostra o diálogo de confirmação
-        showConfirmationDialog(
-            'Você tem alterações não salvas. Deseja sair mesmo assim?',
+        showConfirmationDialog(t('profile.nav.confirmLeave'),
             (dialog) => { // onConfirm (Sim, sair) - CORRIGIDO
                 Object.keys(state).forEach(key => localStorage.setItem(key, state[key]));
-                showDialogMessage(dialog, 'Redirecionando...', 'info');
+                showDialogMessage(dialog, t('profile.nav.redirecting'), 'info');
                 setTimeout(() => {
                     isSaved = true; // Libera a trava antes de sair da página
                     window.location.href = destination;
                 }, 1500);
                 return false; // Mantém o diálogo aberto enquanto redireciona
             },
-            (dialog) => { showDialogMessage(dialog, 'Continue editando.', 'info'); return true; }, // onCancel
-            'Sim, Sair', 'Não'
+            null, // onCancel usa o padrão
+            t('profile.nav.yesLeave'), t('profile.nav.no')
         );
     }
 }
@@ -388,23 +432,22 @@ function applyFontSize(size, isPreview = false) {
 }
 // Adicione esta função para aplicar as configurações de fonte do usuário
 function handleSaveClick() {
-    
-    showConfirmationDialog(
-        'Deseja salvar as alterações feitas no seu perfil?',
+    showConfirmationDialog(t('profile.confirm.save'), // A chave já está aqui
         // onConfirm
         async (dialog) => {
             const result = await processProfileUpdate();
             
             if (result.success) {
                 isSaved = true;
-                showDialogMessage(dialog, 'Perfil salvo com sucesso!', 'success');
+                showDialogMessage(dialog, t('profile.feedback.profileSaved'), 'success'); // A chave já está aqui
                 // Atualiza os dados originais para refletir o que foi salvo
                 originalUserData = {...result.userData};
                 originalTheme = result.userData.theme || 'auto';
                 applyUserTheme(); // <-- CHAMA A FUNÇÃO GLOBAL PARA APLICAR TUDO
+                applyTranslations();
                 return true;
             } else {
-                showDialogMessage(dialog, result.message, 'error');
+                showDialogMessage(dialog, t(result.message), 'error'); // Usa a chave de tradução
                 return false;
             }
         }
@@ -412,20 +455,19 @@ function handleSaveClick() {
 }
 
 function handleCancelClick() {
-    showConfirmationDialog(
-        'Tem certeza que deseja descartar todas as alterações?',
+    showConfirmationDialog(t('profile.confirm.discard'), // A chave já está aqui
         // onConfirm (Sim, descartar)
         (dialog) => {
             // Restaura os dados do formulário e aplica o tema/fonte originais
             restoreOriginalData();
             
             isSaved = true;
-            showDialogMessage(dialog, 'Alterações descartadas.', 'info');
+            showDialogMessage(dialog, t('profile.feedback.discarded'), 'info'); // A chave já está aqui
             return true;
         },
         // onCancel (Não, continuar editando)
         (dialog) => {
-            showDialogMessage(dialog, 'Continue editando...', 'info');
+            showDialogMessage(dialog, t('profile.feedback.continueEditing'), 'info');
             return true;
         }
     );
@@ -446,18 +488,18 @@ function setupPrivacyOptions() {
 async function processProfileUpdate() {
     const userData = getCurrentUser();
     if (!userData) {
-        return { success: false, message: 'Erro ao carregar dados do usuário.' };
+        return { success: false, message: 'profile.error.loading' };
     }
     
     // Validar campos obrigatórios
     const name = document.getElementById('name').value.trim();
     if (!name) {
-        return { success: false, message: 'O nome completo é obrigatório.' };
+        return { success: false, message: 'profile.error.nameRequired' };
     }
     
     const username = document.getElementById('username').value.trim();
     if (!username) {
-        return { success: false, message: 'O nome de usuário é obrigatório.' };
+        return { success: false, message: 'profile.error.usernameRequired' };
     }
 
     const privacyOption = document.querySelector('.privacy-option.selected');
@@ -520,7 +562,7 @@ async function processProfileUpdate() {
             
             updatedUser.avatar = await toBase64(avatarFile);
         } catch (error) {
-            return { success: false, message: 'Erro ao processar imagem.' };
+            return { success: false, message: 'profile.error.imageProcessing' };
         }
     }
     
@@ -551,7 +593,7 @@ function updatePasswordStrength(password, strengthMeter) {
 function completeProfileUpdate(updatedUser) {
     const currentUser = getCurrentUser();
     if (!currentUser) {
-        return { success: false, message: 'Erro: Sessão do usuário não encontrada.' };
+        return { success: false, message: 'profile.error.sessionNotFound' };
     }
     
     // Combina os dados atualizados com os dados existentes
@@ -569,13 +611,13 @@ function completeProfileUpdate(updatedUser) {
     if (updateUser(currentUser.id, fullUserData)) {
         // Atualiza os dados originais para o próximo cancelamento
         originalUserData = {...fullUserData};
-        return { 
+        return {
             success: true, 
-            message: 'Perfil salvo com sucesso!',
+            message: 'profile.feedback.profileSaved',
             userData: fullUserData
         };
     } else {
-        return { success: false, message: 'Erro ao salvar o perfil.' };
+        return { success: false, message: t('profile.feedback.errorSaving') };
     }
 }
 
@@ -584,28 +626,28 @@ function changePassword() {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Alterar Senha</h3>
+        <h3 class="drag-handle">${t('profile.changePassword.title')}</h3>
         <div class="form-group">
-            <label for="current-password-input">Senha Atual:</label>
-            <input type="password" id="current-password-input" placeholder="Digite sua senha atual">
+            <label for="current-password-input">${t('profile.changePassword.currentPassword')}</label>
+            <input type="password" id="current-password-input" placeholder="${t('profile.changePassword.currentPasswordPlaceholder')}">
         </div>
         <div class="form-group">
-            <label for="new-password-input">Nova Senha (mínimo 4 caracteres):</label>
-            <input type="password" id="new-password-input" placeholder="Digite a nova senha (mín. 4 caracteres)">
+            <label for="new-password-input">${t('profile.changePassword.newPassword')}</label>
+            <input type="password" id="new-password-input" placeholder="${t('profile.changePassword.newPasswordPlaceholder')}">
             <div class="password-strength">
                 <div class="password-strength-meter" id="new-password-strength-meter"></div>
             </div>
         </div>
         <div class="form-group">
-            <label for="confirm-new-password-input">Confirmar Nova Senha:</label>
-            <input type="password" id="confirm-new-password-input" placeholder="Repita a nova senha">
+            <label for="confirm-new-password-input">${t('profile.changePassword.confirmNewPassword')}</label>
+            <input type="password" id="confirm-new-password-input" placeholder="${t('profile.changePassword.confirmNewPasswordPlaceholder')}">
         </div>
         
         <div class="feedback"></div>
 
         <div class="modal-actions">
-            <button id="cancel-change-password" class="btn btn-neon cancel">Cancelar</button>
-            <button id="confirm-change-password" class="btn btn-neon confirm">Alterar Senha</button>
+            <button id="cancel-change-password" class="btn btn-neon cancel">${t('ui.cancel')}</button>
+            <button id="confirm-change-password" class="btn btn-neon confirm">${t('profile.changePassword.title')}</button>
         </div>
     `;
     
@@ -633,31 +675,31 @@ function changePassword() {
         const userData = getCurrentUser();
 
         if (!currentPassword || !newPassword || !confirmPassword) {
-            showDialogMessage(dialog, 'Todos os campos são obrigatórios.', 'error');
+            showDialogMessage(dialog, t('createUser.error.allFieldsRequired'), 'error');
             return;
         }
         
         // Validação do comprimento mínimo da senha
         if (newPassword.length < 4) {
-            showDialogMessage(dialog, 'A nova senha deve ter pelo menos 4 caracteres.', 'error');
+            showDialogMessage(dialog, t('createUser.error.passwordLength'), 'error');
             return;
         }
         
         if (newPassword !== confirmPassword) {
-            showDialogMessage(dialog, 'As novas senhas não coincidem.', 'error');
+            showDialogMessage(dialog, t('createUser.error.passwordMismatch'), 'error');
             return;
         }
         
         if (currentPassword !== userData.password && !validateMasterPassword(currentPassword)) {
-            showDialogMessage(dialog, 'Senha atual incorreta.', 'error');
+            showDialogMessage(dialog, t('ui.incorrectPassword'), 'error');
             return;
         }
         
         if (updateUser(userData.id, { password: newPassword })) {
-            showDialogMessage(dialog, 'Senha alterada com sucesso!', 'success');
+            showDialogMessage(dialog, t('profile.changePassword.success'), 'success');
             setTimeout(() => dialog.close(), 1500);
         } else {
-            showDialogMessage(dialog, 'Erro ao alterar a senha.', 'error');
+            showDialogMessage(dialog, t('profile.changePassword.error'), 'error');
         }
     });
 }
@@ -667,19 +709,19 @@ function confirmDeleteAccount() {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Excluir Perfil</h3>
-        <p>Esta ação é irreversível. Para confirmar, por favor, digite sua senha atual ou a senha mestra.</p>
+        <h3 class="drag-handle">${t('profile.deleteAccount.title')}</h3>
+        <p>${t('profile.deleteAccount.confirm')}</p>
         
         <div class="form-group">
-            <label for="delete-confirm-password">Senha de Confirmação:</label>
+            <label for="delete-confirm-password">${t('profile.deleteAccount.passwordLabel')}</label>
             <input type="password" id="delete-confirm-password" autocomplete="current-password">
         </div>
         
         <div class="feedback"></div>
 
         <div class="modal-actions">
-            <button id="cancel-delete-btn" class="btn btn-neon cancel">Cancelar</button>
-            <button id="confirm-delete-btn" class="btn btn-neon danger">Excluir Permanentemente</button>
+            <button id="cancel-delete-btn" class="btn btn-neon cancel">${t('ui.cancel')}</button>
+            <button id="confirm-delete-btn" class="btn btn-neon danger">${t('ui.deletePermanently')}</button>
         </div>
     `;
 
@@ -697,13 +739,13 @@ function confirmDeleteAccount() {
         const userData = getCurrentUser();
 
         if (!password) {
-            showDialogMessage(dialog, 'A senha é obrigatória para confirmar.', 'error');
+            showDialogMessage(dialog, t('ui.passwordRequired'), 'error');
             return;
         }
 
         if (password === userData.password || validateMasterPassword(password)) {
             if (deleteUserProfile(userData.id)) {
-                showDialogMessage(dialog, 'Perfil excluído com sucesso. Redirecionando...', 'success');
+                showDialogMessage(dialog, t('profile.deleteAccount.success'), 'success');
                 dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
                 
                 setTimeout(() => {
@@ -711,10 +753,10 @@ function confirmDeleteAccount() {
                     window.location.href = 'list-users.html';
                 }, 2000);
             } else {
-                showDialogMessage(dialog, 'Ocorreu um erro ao excluir o perfil.', 'error');
+                showDialogMessage(dialog, t('profile.deleteAccount.error'), 'error');
             }
         } else {
-            showDialogMessage(dialog, 'Senha incorreta.', 'error');
+            showDialogMessage(dialog, t('ui.incorrectPassword'), 'error');
             dialog.querySelector('#delete-confirm-password').value = '';
             dialog.querySelector('#delete-confirm-password').focus();
         }
@@ -760,11 +802,11 @@ function loadUserGroups() {
             <div class="group-icon">👥</div>
             <div class="group-info">
                 <div class="group-name">${group.name}</div>
-                <div class="group-role">${isAdmin ? 'Administrador' : 'Membro'}</div>
+                <div class="group-role">${isAdmin ? t('profile.groups.roleAdmin') : t('profile.groups.roleMember')}</div>
             </div>
             <div class="group-actions">
                 <button type="button" class="btn btn-sm view-group-stats" data-group-id="${group.id}">
-                    📊 Estatísticas
+                    ${t('profile.groups.buttonStats')}
                 </button>
             </div>
         `;
@@ -778,9 +820,9 @@ function showGroupSearchDialog() {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">🔍 Procurar Grupos</h3>
+        <h3 class="drag-handle">${t('profile.groups.searchDialogTitle')}</h3>
         <div class="form-group">
-            <input type="text" id="group-search-input" placeholder="Digite o nome do grupo..." 
+            <input type="text" id="group-search-input" placeholder="${t('profile.groups.searchPlaceholder')}" 
                    style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
         </div>
         <div id="group-search-results" style="max-height: 300px; overflow-y: auto; margin: 15px 0; border: 1px solid var(--border); border-radius: 6px; padding: 10px;"></div>
@@ -788,7 +830,7 @@ function showGroupSearchDialog() {
         <div class="feedback" id="group-search-feedback"></div>
         
         <div class="modal-actions">
-            <button id="group-search-cancel" class="btn cancel">Cancelar</button>
+            <button id="group-search-cancel" class="btn cancel">${t('ui.cancel')}</button>
         </div>
     `;
     
@@ -856,14 +898,14 @@ function showGroupSearchDialog() {
         resultsContainer.innerHTML = ''; // Limpa sempre
 
         if (noPublicGroupsExist) {
-            resultsContainer.innerHTML = `<p style="text-align: center; padding: 20px; color: var(--text-muted);">Digite para buscar grupos públicos.</p>`;
+            resultsContainer.innerHTML = `<p style="text-align: center; padding: 20px; color: var(--text-muted);">${t('profile.groups.searchPrompt')}</p>`;
             return;
         }
         if (groups.length === 0 && query) {
             resultsContainer.innerHTML = `
                 <div style="text-align: center; padding: 30px; color: var(--text-muted);">
                     <div style="font-size: 2rem; margin-bottom: 15px;">🔍</div>
-                    <p style="font-style: italic; margin: 0;">Nenhum grupo encontrado com este nome.</p>
+                    <p style="font-style: italic; margin: 0;">${t('profile.groups.searchNotFound')}</p>
                 </div>
             `;
             return;
@@ -881,10 +923,10 @@ function showGroupSearchDialog() {
             groupEl.innerHTML = `
                 <div>
                     <div style="font-weight: bold;">${group.name}</div>
-                    <div style="font-size: 0.9rem; color: var(--text-muted);">${group.memberIds ? group.memberIds.length : 0} membros</div>
+                    <div style="font-size: 0.9rem; color: var(--text-muted);">${t('profile.groups.memberCount', { count: group.memberIds ? group.memberIds.length : 0 })}</div>
                 </div>
                 <button class="btn btn-sm join-group-btn" data-group-id="${group.id}" data-group-name="${group.name}">
-                    Entrar
+                    ${t('profile.groups.buttonJoin')}
                 </button>
             `;
             
@@ -909,15 +951,15 @@ function showGroupSearchDialog() {
         
         // Desabilitar o botão para evitar múltiplos cliques
         joinButton.disabled = true;
-        joinButton.textContent = 'Enviando...';
+        joinButton.textContent = t('profile.groups.sendingRequest');
         
         const currentUser = getCurrentUser();
         const group = getGroup(groupId);
         
         if (!group) {
-            showFeedback(dialog.querySelector('#group-search-feedback'), 'Grupo não encontrado.', 'error');
+            showFeedback(dialog.querySelector('#group-search-feedback'), t('profile.groups.groupNotFound'), 'error');
             joinButton.disabled = false;
-            joinButton.textContent = 'Entrar';
+            joinButton.textContent = t('profile.groups.buttonJoin');
             return;
         }
         
@@ -930,8 +972,8 @@ function showGroupSearchDialog() {
             group.adminId
         );
         
-        showFeedback(dialog.querySelector('#group-search-feedback'), `Solicitação para entrar no grupo "${groupName}" enviada!`, 'success');
-        joinButton.textContent = 'Solicitado';
+        showFeedback(dialog.querySelector('#group-search-feedback'), t('profile.groups.requestSent', { groupName: groupName }), 'success');
+        joinButton.textContent = t('profile.groups.requested');
         
         // Fechar o diálogo após um tempo
         setTimeout(() => {

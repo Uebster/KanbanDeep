@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grupos - KanbanDeep</title>
+  <title data-i18n-title="groups.pageTitle">Grupos - KanbanDeep</title>
   <link rel="stylesheet" href="../static/universal.css">
   <link rel="stylesheet" href="../static/groups.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -16,25 +16,25 @@
         <button id="user-avatar-btn" class="avatar-btn">
             <img id="user-avatar" src="" alt="Avatar do Usuário">
         </button>
-        <div id="profile-dropdown" class="dropdown">            
-            <button id="switch-user-btn">🔁 Trocar Perfil</button>
-            <button id="user-profile-btn">👤 Meu Perfil</button>
-            <button id="kanban-btn">📋 Meus Quadros</button>
-            <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
-            <button id="templates-btn">🎨 Gerenciar Templates</button>
-            <button id="notifications-btn">🔔 Notificações</button>
+        <div id="profile-dropdown" class="dropdown">
+            <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+            <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+            <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+            <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+            <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
+            <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
             <hr>
-            <button id="exit-btn">🚪 Sair</button>
+            <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
         </div>
     </div>
 
-    <h1 id="page-title">Grupos</h1>
+    <h1 id="page-title" data-i18n="groups.pageTitle"></h1>
 
     <div class="menu-container">
-        <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+        <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
         <div id="actions-dropdown" class="dropdown">
-            <button id="undo-btn">↩️ Desfazer</button>
-            <button id="redo-btn">↪️ Refazer</button>
+            <button id="undo-btn" data-i18n="kanban.actions.undo">↩️ Desfazer</button>
+            <button id="redo-btn" data-i18n="kanban.actions.redo">↪️ Refazer</button>
         </div>
     </div>
   </header>
@@ -42,28 +42,28 @@
     <main class="card">
         <!-- NOVO: Sistema de abas com estilo de navbar -->
         <nav class="showcase-navbar">
-            <button class="nav-item active" data-tab="my-groups">Meus Grupos</button>
-            <button class="nav-item" data-tab="create-group">Criar Grupo</button>
-            <button class="nav-item" data-tab="group-templates">Templates de Grupo</button>
-            <button class="nav-item" data-tab="statistics">Estatísticas</button>
-            <button class="nav-item" data-tab="meetings">Reuniões</button>
-            <button class="nav-item" data-tab="reports">Relatórios</button>
-            <button class="nav-item" data-tab="admin-servers">Administrar Servidores</button>
+            <button class="nav-item active" data-tab="my-groups" data-i18n="kanban.profileMenu.myGroups"></button>
+            <button class="nav-item" data-tab="create-group" data-i18n="groups.create.title"></button>
+            <button class="nav-item" data-tab="group-templates" data-i18n="groups.templates.title"></button>
+            <button class="nav-item" data-tab="statistics" data-i18n="profile.groups.buttonStats"></button>
+            <button class="nav-item" data-tab="meetings" data-i18n="groups.meetings.title"></button>
+            <button class="nav-item" data-tab="reports" data-i18n="groups.reports.tabTitle"></button>
+            <button class="nav-item" data-tab="admin-servers" data-i18n="groups.servers.title"></button>
         </nav>
 
         <div class="tab-content active" id="my-groups">
             <div class="actions" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-                <button id="btn-create-group" class="btn confirm"><span>➕</span> Criar Novo Grupo</button>
+                <button id="btn-create-group" class="btn confirm" data-i18n="groups.myGroups.createButton"><span>➕</span> Criar Novo Grupo</button>
             </div>
             <section class="form-section">
                 <div class="section-header">
-                    <h2>Grupos que Administro</h2>
+                    <h2 data-i18n="groups.myGroups.adminTitle"></h2>
                 </div>
                 <div id="admin-groups-grid" class="groups-grid"></div>
             </section>
             <section class="form-section">
                 <div class="section-header">
-                    <h2>Grupos que Participo</h2>
+                    <h2 data-i18n="groups.myGroups.memberTitle"></h2>
                 </div>
                 <div id="member-groups-grid" class="groups-grid"></div>
             </section>
@@ -73,50 +73,50 @@
             <form id="create-group-form" class="form-layout">
                 <div class="form-column">
                     <div class="form-section">
-                        <h3>Informações Básicas</h3>
+                        <h3 data-i18n="createUser.section.basicInfo"></h3>
                         <div class="form-group">
-                            <label for="group-icon">Ícone do Grupo:</label>
+                            <label for="group-icon" data-i18n="templateEditor.iconLabel"></label>
                             <div class="icon-input-group">
                                 <input type="text" id="group-icon" class="icon-display" readonly value="👥">
-                                <button type="button" id="btn-choose-group-icon" class="btn btn-sm">Escolher</button>
+                                <button type="button" id="btn-choose-group-icon" class="btn btn-sm" data-i18n="ui.choose"></button>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="group-name">Nome do Grupo:</label>
+                            <label for="group-name" data-i18n="groups.create.nameLabel"></label>
                             <input type="text" id="group-name" required>
                         </div>
                         <div class="form-group">
-                            <label for="group-description">Descrição:</label>
+                            <label for="group-description" data-i18n="templateEditor.descriptionLabel"></label>
                             <textarea id="group-description" rows="3"></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="group-access">Acesso:</label>
+                            <label for="group-access" data-i18n="groups.create.accessLabel"></label>
                             <div class="custom-select">
                                 <select id="group-access">
-                                    <option value="public">Público (qualquer um pode pedir para entrar)</option>
-                                    <option value="private">Privado (apenas por convite)</option>
+                                    <option value="public" data-i18n="groups.create.accessPublic"></option>
+                                    <option value="private" data-i18n="groups.create.accessPrivate"></option>
                                 </select>
                             </div>
                         </div>
                     </div>
                     <div class="form-section">
-                        <h3>Membros</h3>
+                        <h3 data-i18n="groups.myGroups.card.members"></h3>
                         <div class="form-group">
-                            <label for="group-members">Adicionar Membros (segure Ctrl/Cmd para selecionar vários):</label>
+                            <label for="group-members" data-i18n="groups.create.addMembersLabel"></label>
                             <select id="group-members" multiple size="5"></select>
                         </div>
                     </div>
                 </div>
                 <div class="form-column">
                     <div class="form-section">
-                        <h3>Quadros Iniciais</h3>
+                        <h3 data-i18n="groups.create.initialBoards"></h3>
                         <div id="group-boards-container"></div>
-                        <button type="button" id="btn-add-board" class="btn alternative1" style="width: 100%; margin-top: 10px;">Adicionar Quadro</button>
+                        <button type="button" id="btn-add-board" class="btn alternative1" style="width: 100%; margin-top: 10px;" data-i18n="kanban.button.addBoard"></button>
                     </div>
                     <div class="form-section">
-                        <h3>Conjunto de Etiquetas Padrão</h3>
+                        <h3 data-i18n="profile.section.defaultContent"></h3>
                         <div class="form-group">
-                            <label for="group-tag-template">Usar um conjunto de etiquetas:</label>
+                            <label for="group-tag-template" data-i18n="groups.tags.useSystemTemplate"></label>
                             <div class="custom-select">
                                 <select id="group-tag-template"></select>
                             </div>
@@ -125,23 +125,23 @@
                 </div>
             </form>
             <div class="actions">
-                <button id="btn-cancel-group" class="btn cancel">Cancelar</button>
-                <button id="btn-save-group" class="btn confirm">Criar Grupo</button>
+                <button id="btn-cancel-group" class="btn cancel" data-i18n="ui.cancel"></button>
+                <button id="btn-save-group" class="btn confirm" data-i18n="groups.create.title"></button>
             </div>
         </div>
 
         <div class="tab-content" id="group-templates">
             <div class="template-type-buttons" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-                <button id="btn-new-board-template" class="btn confirm">Novo Template de Quadro</button>
-                <button id="btn-new-tag-template" class="btn confirm">Novo Conjunto de Etiquetas</button>
+                <button id="btn-new-board-template" class="btn confirm" data-i18n="templates.userBoard.create"></button>
+                <button id="btn-new-tag-template" class="btn confirm" data-i18n="templates.userTag.create"></button>
             </div>
             <div class="templates-sections">
                 <div class="template-section">
-                    <h3>Templates de Quadro</h3>
+                    <h3 data-i18n="templates.userBoard.title">Meus Templates de Quadro</h3>
                     <div id="group-board-templates-grid" class="templates-grid"></div>
                 </div>
                 <div class="template-section">
-                    <h3>Conjuntos de Etiquetas</h3>
+                    <h3 data-i18n="templates.userTag.title"></h3>
                     <div id="group-tag-templates-grid" class="templates-grid"></div>
                 </div>
             </div>
@@ -150,55 +150,55 @@
         <div class="tab-content" id="statistics">
             <div class="card-header" style="flex-wrap: wrap;">
                 <div class="filters" style="width: 100%;">
-                    <label for="stats-group-select">Selecionar Grupo:</label>
+                    <label for="stats-group-select" data-i18n="groups.reports.selectGroup"></label>
                     <div class="custom-select stats-filter"><select id="stats-group-select" class="filter-select"></select></div>
                     <div class="custom-select stats-filter"><select id="time-filter" class="filter-select">
-                        <option value="all">Todo o Período</option>
-                        <option value="last30">Últimos 30 dias</option>
-                        <option value="last7">Últimos 7 dias</option>
-                        <option value="today">Hoje</option>
+                        <option value="all" data-i18n="groups.stats.periodAll"></option>
+                        <option value="last30" data-i18n="groups.stats.period30"></option>
+                        <option value="last7" data-i18n="groups.stats.period7"></option>
+                        <option value="today" data-i18n="ui.today"></option>
                     </select></div>
                     <div class="custom-select stats-filter"><select id="chart-type" class="filter-select">
-                        <option value="pie">Gráfico de Pizza</option>
-                        <option value="bar">Gráfico de Barras</option>
-                        <option value="line">Gráfico de Linha</option>
+                        <option value="pie" data-i18n="groups.stats.chartPie"></option>
+                        <option value="bar" data-i18n="groups.stats.chartBar"></option>
+                        <option value="line" data-i18n="groups.stats.chartLine"></option>
                     </select></div>
                 </div>
             </div>
             <div class="stats-sections">
                 <div class="stats-section">
-                    <h3>Resumo</h3>
+                    <h3 data-i18n="groups.reports.summaryTitle"></h3>
                     <div class="stats-summary">
                         <div class="stat-item">
                             <span class="stat-number" id="total-cards">0</span>
-                            <span class="stat-label">Total de Tarefas</span>
+                            <span class="stat-label" data-i18n="groups.myGroups.card.tasks"></span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-number" id="completed-cards">0</span>
-                            <span class="stat-label">Concluídas</span>
+                            <span class="stat-label" data-i18n="groups.myGroups.card.completed"></span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-number" id="active-cards">0</span>
-                            <span class="stat-label">Ativas</span>
+                            <span class="stat-label" data-i18n="kanban.dialog.details.statusActive"></span>
                         </div>
                     </div>
                 </div>
                 <div class="stats-section">
-                    <h3>Desempenho dos Participantes</h3>
+                    <h3 data-i18n="groups.reports.memberPerformanceTitle"></h3>
                     <table class="participants-table">
                         <thead>
                             <tr>
-                                <th>Nome</th>
-                                <th>Função</th>
-                                <th>Tarefas Concluídas</th>
-                                <th>Produtividade</th>
+                                <th data-i18n="listUsers.table.name"></th>
+                                <th data-i18n="groups.stats.roleHeader"></th>
+                                <th data-i18n="groups.reports.tasksCompleted"></th>
+                                <th data-i18n="groups.reports.tableHeaderProductivity"></th>
                             </tr>
                         </thead>
                         <tbody id="participants-table-body"></tbody>
                     </table>
                 </div>
                 <div class="stats-section">
-                    <h3>Status dos Cartões</h3>
+                    <h3 data-i18n="groups.stats.chartTitle"></h3>
                     <div class="chart-container">
                         <canvas id="status-chart"></canvas>
                     </div>
@@ -207,26 +207,26 @@
         </div>
 
         <div class="tab-content" id="meetings">
-            <button id="btn-schedule-meeting" class="btn confirm" style="margin-bottom: 20px;">Agendar Nova Reunião</button>
+            <button id="btn-schedule-meeting" class="btn confirm" style="margin-bottom: 20px;" data-i18n="groups.meetings.scheduleTitle"></button>
             <div id="meetings-list" class="meetings-list"></div>
         </div>
 
         <div class="tab-content" id="reports">
             <section class="form-section">
                 <div class="card-header">
-                    <h2>Gerador de Relatórios de Atividade</h2>
+                    <h2 data-i18n="groups.reports.generatorTitle"></h2>
                     <div class="filters">
                         <div class="custom-select report-filter">
                             <select id="report-group-select"></select>
                         </div>
                         <div class="custom-select report-filter">
                             <select id="report-period-select">
-                                <option value="daily">Diário</option>
-                                <option value="weekly">Semanal</option>
-                                <option value="monthly">Mensal</option>
+                                <option value="daily" data-i18n="ui.daily"></option>
+                                <option value="weekly" data-i18n="ui.weekly"></option>
+                                <option value="monthly" data-i18n="ui.monthly"></option>
                             </select>
                         </div>
-                        <button id="generate-report-btn" class="btn confirm">Gerar Relatório</button>
+                        <button id="generate-report-btn" class="btn confirm" data-i18n="groups.reports.generateButton"></button>
                     </div>
                 </div>
                 <div id="report-container"></div>
@@ -235,8 +235,8 @@
 
         <div class="tab-content" id="admin-servers">
             <div class="actions" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-                <button id="btn-create-server" class="btn confirm">Criar Servidor Local</button>
-                <button id="btn-add-server" class="btn alternative1">Adicionar Servidor Externo</button>
+                <button id="btn-create-server" class="btn confirm" data-i18n="groups.servers.createLocalButton"></button>
+                <button id="btn-add-server" class="btn alternative1" data-i18n="groups.servers.addExternalButton"></button>
             </div>
             <div class="servers-list"></div>
         </div>
@@ -244,37 +244,37 @@
 
     <!-- Diálogos -->
     <dialog id="edit-group-dialog" class="draggable">
-        <h3 class="drag-handle">Editar Grupo</h3>
+        <h3 class="drag-handle" data-i18n="groups.edit.title"></h3>
         <form id="edit-group-form" class="form-layout">
             <div class="form-column">
                 <div class="form-section">
-                    <h3>Informações do Grupo</h3>
+                    <h3 data-i18n="groups.edit.groupInfo"></h3>
                     <div class="form-group">
-                        <label for="edit-group-icon">Ícone:</label>
+                        <label for="edit-group-icon" data-i18n="templateEditor.iconLabel"></label>
                         <div class="icon-input-group">
                             <input type="text" id="edit-group-icon" class="icon-display" readonly>
-                            <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm">Escolher</button>
+                            <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm" data-i18n="ui.choose"></button>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="edit-group-name">Nome do Grupo:</label>
+                        <label for="edit-group-name" data-i18n="groups.create.nameLabel"></label>
                         <input type="text" id="edit-group-name" required>
                     </div>
                     <div class="form-group">
-                        <label for="edit-group-description">Descrição:</label>
+                        <label for="edit-group-description" data-i18n="templateEditor.descriptionLabel"></label>
                         <textarea id="edit-group-description" rows="3"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="edit-group-access">Acesso:</label>
+                        <label for="edit-group-access" data-i18n="groups.create.accessLabel"></label>
                         <div class="custom-select">
                             <select id="edit-group-access">
-                                <option value="public">Público</option>
-                                <option value="private">Privado</option>
+                                <option value="public" data-i18n="profile.privacy.public.title"></option>
+                                <option value="private" data-i18n="profile.privacy.private.title"></option>
                             </select>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="edit-group-tag-template">Conjunto de Etiquetas Padrão:</label>
+                        <label for="edit-group-tag-template" data-i18n="preferences.defaultTagSet"></label>
                         <div class="custom-select">
                             <select id="edit-group-tag-template"></select>
                         </div>
@@ -283,39 +283,39 @@
             </div>
             <div class="form-column">
                 <div class="form-section">
-                    <h3>Participantes</h3>
+                    <h3 data-i18n="groups.edit.participants"></h3>
                     <div id="group-members-list"></div>
-                    <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;">Adicionar Participante</button>
+                    <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;" data-i18n="groups.edit.addParticipantTitle"></button>
                 </div>
                 <div class="form-section">
-                    <h3>Relatórios Automáticos</h3>
+                    <h3 data-i18n="groups.edit.autoReports"></h3>
                     <div class="form-group">
-                        <label for="edit-group-report-frequency">Frequência:</label>
+                        <label for="edit-group-report-frequency" data-i18n="groups.edit.frequency"></label>
                         <div class="custom-select">
                             <select id="edit-group-report-frequency">
-                                <option value="none">Nenhum</option>
-                                <option value="daily">Diário</option>
-                                <option value="weekly">Semanal</option>
-                                <option value="monthly">Mensal</option>
+                                <option value="none" data-i18n="preferences.tagTemplate.none"></option>
+                                <option value="daily" data-i18n="ui.daily"></option>
+                                <option value="weekly" data-i18n="ui.weekly"></option>
+                                <option value="monthly" data-i18n="ui.monthly"></option>
                             </select>
                         </div>
                     </div>
                     <div id="edit-group-report-day-of-week-container" class="form-group hidden">
-                        <label for="edit-group-report-day-of-week">Dia da Semana:</label>
+                        <label for="edit-group-report-day-of-week" data-i18n="groups.edit.dayOfWeek"></label>
                         <div class="custom-select">
                             <select id="edit-group-report-day-of-week">
-                                <option value="1">Segunda-feira</option>
-                                <option value="2">Terça-feira</option>
-                                <option value="3">Quarta-feira</option>
-                                <option value="4">Quinta-feira</option>
-                                <option value="5">Sexta-feira</option>
-                                <option value="6">Sábado</option>
-                                <option value="0">Domingo</option>
+                                <option value="1" data-i18n="ui.day.monday"></option>
+                                <option value="2" data-i18n="ui.day.tuesday"></option>
+                                <option value="3" data-i18n="ui.day.wednesday"></option>
+                                <option value="4" data-i18n="ui.day.thursday"></option>
+                                <option value="5" data-i18n="ui.day.friday"></option>
+                                <option value="6" data-i18n="ui.day.saturday"></option>
+                                <option value="0" data-i18n="ui.day.sunday"></option>
                             </select>
                         </div>
                     </div>
                     <div id="edit-group-report-day-of-month-container" class="form-group hidden">
-                        <label for="edit-group-report-day-of-month">Dia do Mês:</label>
+                        <label for="edit-group-report-day-of-month" data-i18n="groups.edit.dayOfMonth"></label>
                         <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
                     </div>
                 </div>
@@ -323,125 +323,126 @@
             <div class="feedback"></div>
         </form>
         <div class="modal-actions">
-            <button id="cancel-edit-group" class="btn cancel">Cancelar</button>
-            <button type="submit" form="edit-group-form" class="btn confirm">Salvar Alterações</button>
+            <button id="cancel-edit-group" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button type="submit" form="edit-group-form" class="btn confirm" data-i18n="profile.button.saveChanges"></button>
         </div>
     </dialog>
 
     <dialog id="add-participant-dialog" class="draggable">
-        <h3 class="drag-handle">Adicionar Participante</h3>
+        <h3 class="drag-handle" data-i18n="groups.edit.addParticipantTitle"></h3>
         <div class="form-group">
-            <label for="participant-select">Selecione um usuário para convidar:</label>
+            <label for="participant-select" data-i18n="groups.edit.selectUserToInvite"></label>
             <div class="custom-select">
                 <select id="participant-select"></select>
             </div>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="cancel-add-participant" class="btn cancel">Cancelar</button>
-            <button id="confirm-add-participant" class="btn confirm">Enviar Convite</button>
+            <button id="cancel-add-participant" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="confirm-add-participant" class="btn confirm" data-i18n="publicProfile.inviteDialog.sendButton"></button>
         </div>
     </dialog>
 
     <dialog id="add-board-to-group-dialog" class="draggable">
-        <h3 class="drag-handle">Adicionar Quadro ao Grupo</h3>
+        <h3 class="drag-handle" data-i18n="groups.boards.addTitle"></h3>
         <div class="form-group">
-            <label for="add-board-title-input">Nome do Quadro:</label>
+            <label for="add-board-title-input" data-i18n="groups.create.nameLabel"></label>
             <input type="text" id="add-board-title-input">
         </div>
         <div class="form-group">
-            <label for="add-board-template-select">Usar Template do Sistema:</label>
+            <label for="add-board-template-select" data-i18n="groups.tags.useSystemTemplate"></label>
             <div class="custom-select">
                 <select id="add-board-template-select"></select>
             </div>
         </div>
         <div class="form-group">
-            <label for="add-board-description-input">Descrição:</label>
+            <label for="add-board-description-input" data-i18n="templateEditor.descriptionLabel"></label>
             <textarea id="add-board-description-input" rows="2"></textarea>
         </div>
         <div class="form-group">
-            <label for="add-board-icon-input">Ícone:</label>
+            <label for="add-board-icon-input" data-i18n="templateEditor.iconLabel"></label>
             <div class="icon-input-group">
                 <input type="text" id="add-board-icon-input" class="icon-display" readonly value="📋">
-                <button type="button" id="btn-choose-add-board-icon" class="btn btn-sm">Escolher</button>
+                <button type="button" id="btn-choose-add-board-icon" class="btn btn-sm" data-i18n="ui.choose"></button>
             </div>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="cancel-add-board-to-group-btn" class="btn cancel">Cancelar</button>
-            <button id="confirm-add-board-to-group-btn" class="btn confirm">Adicionar</button>
+            <button id="cancel-add-board-to-group-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="confirm-add-board-to-group-btn" class="btn confirm" data-i18n="ui.add"></button>
         </div>
     </dialog>
 
     <dialog id="meeting-dialog" class="draggable">
-        <h3 class="drag-handle">Agendar Reunião</h3>
+        <h3 class="drag-handle" data-i18n="groups.meetings.scheduleTitle"></h3>
         <div class="form-group">
-            <label for="meeting-group-select">Grupo:</label>
+            <label for="meeting-group-select" data-i18n="groups.meetings.groupLabel"></label>
             <div class="custom-select"><select id="meeting-group-select"></select></div>
         </div>
         <div class="form-group">
-            <label for="meeting-title">Título:</label>
+            <label for="meeting-title" data-i18n="kanban.dialog.titleRequired"></label>
             <input type="text" id="meeting-title">
         </div>
         <div class="form-group">
-            <label for="meeting-date">Data:</label>
+            <label for="meeting-date" data-i18n="kanban.card.dueDateTitle"></label>
             <input type="date" id="meeting-date">
         </div>
         <div class="form-group">
-            <label for="meeting-time">Hora:</label>
+            <label for="meeting-time" data-i18n="groups.meetings.timeLabel"></label>
             <input type="time" id="meeting-time">
         </div>
         <div class="form-group">
-            <label for="meeting-location">Local (Opcional):</label>
-            <input type="text" id="meeting-location" placeholder="Ex: Sala de Conferência, Link do Meet">
+            <label for="meeting-location" data-i18n="groups.meetings.locationLabel"></label>
+            <input type="text" id="meeting-location" data-i18n-placeholder="groups.meetings.locationPlaceholder">
         </div>
         <div class="form-group">
-            <label for="meeting-description">Descrição (Opcional):</label>
-            <textarea id="meeting-description" rows="2" placeholder="Pauta da reunião..."></textarea>
+            <label for="meeting-description" data-i18n="templateEditor.descriptionLabel"></label>
+            <textarea id="meeting-description" rows="2" data-i18n-placeholder="groups.meetings.descriptionPlaceholder"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="cancel-meeting-btn" class="btn cancel">Cancelar</button>
-            <button id="save-meeting-btn" class="btn confirm">Agendar e Notificar</button>
+            <button id="cancel-meeting-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="save-meeting-btn" class="btn confirm" data-i18n="groups.meetings.scheduleAndNotifyButton"></button>
         </div>
     </dialog>
 
     <dialog id="server-dialog" class="draggable">
-        <h3 class="drag-handle" id="server-dialog-title">Criar Servidor</h3>
-        <div class="form-group"><label for="server-name">Nome do Servidor:</label><input type="text" id="server-name"></div>
+        <h3 class="drag-handle" id="server-dialog-title" data-i18n="groups.servers.createDialogTitle"></h3>
+        <div class="form-group"><label for="server-name" data-i18n="groups.servers.nameLabel"></label><input type="text" id="server-name"></div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="cancel-server-btn" class="btn cancel">Cancelar</button>
-            <button id="confirm-server-btn" class="btn confirm">Criar</button>
+            <button id="cancel-server-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="confirm-server-btn" class="btn confirm" data-i18n="groups.create.title"></button>
         </div>
     </dialog>
 
     <dialog id="add-server-dialog" class="draggable">
-        <h3 class="drag-handle">Adicionar Servidor Externo</h3>
+        <h3 class="drag-handle" data-i18n="groups.servers.addExternalTitle"></h3>
         <div class="form-group">
-            <label for="server-url">URL do Servidor:</label>
+            <label for="server-url" data-i18n="groups.servers.urlLabel"></label>
             <div class="input-with-button">
-                <input type="text" id="server-url" placeholder="https://exemplo.com">
-                <button id="paste-server-btn" class="btn alternative1">Colar</button>
+                <input type="text" id="server-url" data-i18n-placeholder="createUser.placeholder.linkedin">
+                <button id="paste-server-btn" class="btn alternative1" data-i18n="kanban.button.pasteCard"></button>
             </div>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="cancel-add-server-btn" class="btn cancel">Cancelar</button>
-            <button id="confirm-add-server-btn" class="btn confirm">Adicionar</button>
+            <button id="cancel-add-server-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="confirm-add-server-btn" class="btn confirm" data-i18n="ui.add"></button>
         </div>
     </dialog>
 
     <dialog id="share-server-dialog" class="draggable">
-        <h3 class="drag-handle">Compartilhar Servidor</h3>
+        <h3 class="drag-handle" data-i18n="groups.servers.shareTitle"></h3>
         <div class="form-group">
-            <label for="server-share-url">URL para Compartilhar:</label>
-            <input type="text" id="server-share-url" readonly>
-            <button id="copy-server-url-btn" class="btn">Copiar</button>
+            <label for="server-share-url" data-i18n="groups.servers.shareUrlLabel"></label>
+            <div class="input-with-button">
+                <input type="text" id="server-share-url" readonly><button id="copy-server-url-btn" class="btn" data-i18n="kanban.contextMenu.card.copy"></button>
+            </div>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="close-share-dialog-btn" class="btn cancel">Fechar</button>
+            <button id="close-share-dialog-btn" class="btn cancel" data-i18n="ui.close"></button>
         </div>
     </dialog>
 

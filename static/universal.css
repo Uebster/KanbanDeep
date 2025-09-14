@@ -213,6 +213,11 @@ body.smart-header-enabled #main-header.show-header {
         /* ===== 8. NOVO: ESTILOS PARA SELECT CUSTOMIZADO ===== */
         .custom-select {
             position: relative;
+            /* A margem foi movida para ser mais específica e evitar conflitos no header */
+        }
+
+        /* Adiciona a margem apenas quando o select está dentro de um form-group */
+        .form-group .custom-select {
             margin-top: 12px;
         }
 
@@ -236,6 +241,12 @@ body.smart-header-enabled #main-header.show-header {
             border-color: var(--primary);
             box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
             color: var(--primary);
+        }
+        
+        /* Garante que os selects no header tenham um tamanho mínimo e estejam alinhados */
+        header .custom-select {
+            min-width: 200px;
+            align-self: stretch; /* Faz com que o container do select se estique */
         }
 
         .select-items {
@@ -334,7 +345,7 @@ body.smart-header-enabled #main-header.show-header {
 
 /* ===== BOTÕES PADRÃO ===== */
 .btn {
-    padding: 10px 20px;
+    padding: 12px 20px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.95rem;

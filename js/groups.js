@@ -35,8 +35,10 @@ import {
     addMeetingNotification,
     addMessageNotification,
     addGroupLeaveNotification,
-    addReportNotification
+    addReportNotification,
+    initNotificationsPage
 } from './notifications.js';
+import { t, initTranslations } from './translations.js';
 
 let currentUser;
 let allUsers = [];
@@ -46,10 +48,12 @@ let currentGroup = null;
 let isGroupSaved = true; // Flag para rastrear alterações no diálogo de edição
 
 // groups.js - Adicione este código na função initGroupsPage(), após a verificação de estatísticas
-export function initGroupsPage() {
+export async function initGroupsPage() {
+    await initTranslations();
+
     currentUser = getCurrentUser();
     if (!currentUser) {
-        showFloatingMessage('Usuário não logado. Redirecionando...', 'error');
+        showFloatingMessage(t('ui.userNotLoggedIn'), 'error');
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
         return;
     }
@@ -114,7 +118,7 @@ function loadGroups() {
 
 function setupEventListeners() {
     document.getElementById('kanban-btn')?.addEventListener('click', () => window.location.href = 'kanban.html');
-    // --- ABAS PRINCIPAIS (agora com a classe .nav-item) ---
+    
     document.querySelectorAll('.showcase-navbar .nav-item').forEach(tab => {
         tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
@@ -122,18 +126,18 @@ function setupEventListeners() {
 
     
     // --- ABA "REUNIÕES" ---
-    document.getElementById('btn-schedule-meeting')?.addEventListener('click', showMeetingDialog);
+    document.getElementById('btn-schedule-meeting')?.addEventListener('click', showMeetingDialog); // This button is already translated by data-i18n
 
     // --- ABA "CRIAR GRUPO" ---
-    document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog);
+    document.getElementById('btn-add-board')?.addEventListener('click', showAddBoardToGroupDialog); // This button is already translated by data-i18n
     document.getElementById('btn-choose-group-icon')?.addEventListener('click', () => {
         showIconPickerDialog(icon => document.getElementById('group-icon').value = icon);
     });
-    document.getElementById('btn-save-group')?.addEventListener('click', handleSaveGroup);
+    document.getElementById('btn-save-group')?.addEventListener('click', handleSaveGroup); // This button is already translated by data-i18n
     document.getElementById('group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('edit-group-report-frequency')?.addEventListener('change', handleReportFrequencyChange);
     document.getElementById('btn-message-all')?.addEventListener('click', sendMessageToAllMembers);
-    document.getElementById('btn-cancel-group')?.addEventListener('click', cancelGroupCreation);
+    document.getElementById('btn-cancel-group')?.addEventListener('click', cancelGroupCreation); // This button is already translated by data-i18n
 
     
     // --- ABA "RELATÓRIOS" ---
@@ -152,7 +156,7 @@ document.getElementById('my-groups')?.addEventListener('click', (e) => {
     
     currentGroup = groups.find(g => g.id === groupId);
     if (!currentGroup) {
-        showFloatingMessage('Grupo não encontrado.', 'error');
+        showFloatingMessage(t('groups.feedback.groupNotFound'), 'error');
         return;
     }
 
@@ -172,7 +176,7 @@ document.getElementById('my-groups')?.addEventListener('click', (e) => {
     }
 });
     document.getElementById('edit-group-form')?.addEventListener('submit', saveGroupChanges);
-document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
+    document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
     const editDialog = document.getElementById('edit-group-dialog');
     if (isGroupSaved) {
         editDialog.close();
@@ -180,9 +184,9 @@ document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
     }
 
     showConfirmationDialog(
-        'Você tem alterações não salvas. Deseja descartá-las?',
+        t('ui.unsavedChanges'),
         (confirmationDialog) => {
-            showDialogMessage(confirmationDialog, 'Alterações descartadas.', 'info');
+            showDialogMessage(confirmationDialog, t('kanban.feedback.changesDiscarded'), 'info');
             setTimeout(() => {
                 editDialog.close();
             }, 1500);
@@ -194,7 +198,7 @@ document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
 document.getElementById('btn-add-participant')?.addEventListener('click', () => {
     // Verifique se currentGroup está definido
     if (!currentGroup) {
-        showFloatingMessage('Nenhum grupo selecionado.', 'error');
+        showFloatingMessage(t('groups.edit.noGroupSelected'), 'error');
         return;
     }
     
@@ -207,14 +211,14 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
     const memberId = select.value;
     
     if (!memberId || select.disabled) {
-        showDialogMessage(dialog, 'Selecione um usuário válido para adicionar.', 'error');
+        showDialogMessage(dialog, t('groups.edit.selectUserToAdd'), 'error');
         return;
     }
     
     // Enviar solicitação via notificação
     sendGroupInvitation(currentGroup.id, memberId, currentUser);
     
-    showDialogMessage(dialog, 'Convite enviado com sucesso!', 'success');
+    showDialogMessage(dialog, t('groups.edit.inviteSent'), 'success');
     
     // Marcar como não salvo para que o admin salve o grupo
     isGroupSaved = false;
@@ -223,13 +227,13 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
     setTimeout(() => {
         document.getElementById('add-participant-dialog').close();
     }, 1500);
-});
+    });
 
-        // Botão para adicionar participante
+    
 
-    document.getElementById('cancel-add-participant')?.addEventListener('click', () => {
+    document.getElementById('cancel-add-participant')?.addEventListener('click', () => { // This button is already translated by data-i18n
     const dialog = document.getElementById('add-participant-dialog');
-    showDialogMessage(dialog, 'Operação cancelada.', 'info');
+    showDialogMessage(dialog, t('ui.operationCancelled'), 'info');
     
     setTimeout(() => {
         document.getElementById('add-participant-dialog').close();
@@ -237,11 +241,11 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
 });
     
     // --- TEMPLATES DE GRUPO ---
-    document.getElementById('btn-new-board-template')?.addEventListener('click', () => {
+    document.getElementById('btn-new-board-template')?.addEventListener('click', () => { // This button is already translated by data-i18n
         // Chama a função universal, passando o contexto 'group'
         showTemplateEditorDialog('board', { ownerType: 'group' });
     });
-    document.getElementById('btn-new-tag-template')?.addEventListener('click', () => {
+    document.getElementById('btn-new-tag-template')?.addEventListener('click', () => { // This button is already translated by data-i18n
         // Chama a função universal, passando o contexto 'group'
         showTemplateEditorDialog('tag', { ownerType: 'group' });
     });
@@ -256,24 +260,24 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
 
     
     // --- ABA "ADMINISTRAR SERVIDORES" ---
-    document.getElementById('btn-create-server')?.addEventListener('click', showCreateServerDialog);
-    document.getElementById('btn-add-server')?.addEventListener('click', showAddServerDialog);
-    document.getElementById('confirm-server-btn')?.addEventListener('click', createServer);
+    document.getElementById('btn-create-server')?.addEventListener('click', showCreateServerDialog); // This button is already translated by data-i18n
+    document.getElementById('btn-add-server')?.addEventListener('click', showAddServerDialog); // This button is already translated by data-i18n
+    document.getElementById('confirm-server-btn')?.addEventListener('click', createServer); // This button is already translated by data-i18n
     document.getElementById('cancel-server-btn')?.addEventListener('click', () => {
         const dialog = document.getElementById('server-dialog');
-        showDialogMessage(dialog, 'Operação cancelada.', 'info');
+        showDialogMessage(dialog, t('ui.operationCancelled'), 'info');
         setTimeout(() => dialog.close(), 1500);
     });
-    document.getElementById('confirm-add-server-btn')?.addEventListener('click', addServer);
+    document.getElementById('confirm-add-server-btn')?.addEventListener('click', addServer); // This button is already translated by data-i18n
     document.getElementById('cancel-add-server-btn')?.addEventListener('click', () => {
         const dialog = document.getElementById('add-server-dialog');
-        showDialogMessage(dialog, 'Operação cancelada.', 'info');
+        showDialogMessage(dialog, t('ui.operationCancelled'), 'info');
         setTimeout(() => dialog.close(), 1500);
     });
-    document.getElementById('paste-server-btn')?.addEventListener('click', pasteServerUrl);
-    document.getElementById('copy-server-url-btn')?.addEventListener('click', copyServerUrl);
+    document.getElementById('paste-server-btn')?.addEventListener('click', pasteServerUrl); // This button is already translated by data-i18n
+    document.getElementById('copy-server-url-btn')?.addEventListener('click', copyServerUrl); // This button is already translated by data-i18n
     document.getElementById('close-share-dialog-btn')?.addEventListener('click', () => {
-        showDialogMessage(document.querySelector('#share-server-dialog .feedback'), 'Operação cancelada.', 'info');
+        showDialogMessage(document.querySelector('#share-server-dialog .feedback'), t('ui.operationCancelled'), 'info');
         setTimeout(() => {
             document.getElementById('share-server-dialog').close();
         }, 1500);
@@ -292,7 +296,7 @@ function switchTab(tabId, options = {}) {
     
     // Carregar dados específicos da aba
     if (tabId === 'create-group') {
-        loadUsersForSelection();
+        loadUsersForSelection(); // This function populates a select, no hardcoded text.
         loadTagTemplatesForGroup();
         initCustomSelects();
     } else if (tabId === 'group-templates') {
@@ -310,21 +314,22 @@ function switchTab(tabId, options = {}) {
             initCustomSelects();
         }
     } else if (tabId === 'meetings') {
-        loadAndRenderMeetings();
+        loadAndRenderMeetings(); // This function populates a list, no hardcoded text.
     } else if (tabId === 'reports') {
         populateGroupSelectorForReports();
         initCustomSelects();
+        document.getElementById('report-container').innerHTML = `<p class="no-templates">${t('groups.reports.selectGroup')}</p>`;
     }
 }
 
 function handleSaveGroup() {
     const name = document.getElementById('group-name').value.trim();
     if (!name) {
-        showFloatingMessage('O nome do grupo é obrigatório.', 'error');
+        showFloatingMessage(t('groups.feedback.nameRequired'), 'error');
         return;
     }
 
-    showConfirmationDialog('Deseja criar este novo grupo?', (dialog) => {
+    showConfirmationDialog(t('groups.confirm.create'), (dialog) => {
         const newGroup = {
             name,
             icon: document.getElementById('group-icon').value || '👥',
@@ -353,7 +358,7 @@ function handleSaveGroup() {
         });
 
         const savedGroup = saveGroup(newGroup);
-        showDialogMessage(dialog, 'Grupo criado com sucesso!', 'success');
+        showDialogMessage(dialog, t('groups.feedback.createSuccess'), 'success');
         setTimeout(() => { dialog.close(); loadGroups(); switchTab('my-groups'); }, 1500);
         return true;
     });
@@ -393,7 +398,7 @@ function loadAndRenderMeetings() {
     meetingsListContainer.innerHTML = '';
 
     if (allMeetings.length === 0) {
-        meetingsListContainer.innerHTML = '<p class="no-templates">Nenhuma reunião agendada para os seus grupos.</p>';
+        meetingsListContainer.innerHTML = `<p class="no-templates">${t('groups.meetings.noneScheduled')}</p>`;
         return;
     }
 
@@ -402,10 +407,10 @@ function loadAndRenderMeetings() {
         meetingCard.className = 'meeting-card';
 
         const date = new Date(meeting.date);
-        const day = date.getDate();
-        const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+        const day = date.toLocaleDateString(undefined, { day: '2-digit' });
+        const month = date.toLocaleDateString(undefined, { month: 'short' }).replace('.', '');
 
-        meetingCard.innerHTML = `
+    meetingCard.innerHTML = `
             <div class="meeting-date-box">
                 <span class="meeting-day">${day}</span>
                 <span class="meeting-month">${month}</span>
@@ -413,9 +418,9 @@ function loadAndRenderMeetings() {
             <div class="meeting-details">
                 <h4 class="meeting-title">${meeting.title}</h4>
                 <div class="meeting-meta">
-                    <span><strong>Grupo:</strong> ${meeting.groupName}</span>
-                    <span><strong>Horário:</strong> ${meeting.time}</span>
-                    ${meeting.location ? `<span><strong>Local:</strong> ${meeting.location}</span>` : ''}
+                    <span><strong>${t('groups.meetings.groupLabel')}</strong> ${meeting.groupName}</span>
+                    <span><strong>${t('groups.meetings.timeLabel')}</strong> ${meeting.time}</span>
+                    ${meeting.location ? `<span><strong>${t('groups.meetings.locationLabel')}</strong> ${meeting.location}</span>` : ''}
                 </div>
             </div>
         `;
@@ -427,14 +432,14 @@ function showMeetingDialog() {
     const dialog = document.getElementById('meeting-dialog');
     const groupSelect = document.getElementById('meeting-group-select');
 
-    // Popula o select com os grupos que o usuário administra
+    
     groupSelect.innerHTML = '';
     const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
     adminGroups.forEach(group => {
         groupSelect.innerHTML += `<option value="${group.id}">${group.name}</option>`;
     });
 
-    // Limpa campos
+    
     document.getElementById('meeting-title').value = '';
     document.getElementById('meeting-date').value = '';
     document.getElementById('meeting-time').value = '';
@@ -443,17 +448,17 @@ function showMeetingDialog() {
 
     // Adiciona o listener de salvamento
     const saveBtn = document.getElementById('save-meeting-btn');
-    // Clona para remover listeners antigos e evitar duplicação
+    
     const newSaveBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
     newSaveBtn.addEventListener('click', saveMeeting);
 
-    // Adiciona o listener de cancelamento
+    
     const cancelBtn = document.getElementById('cancel-meeting-btn');
     const newCancelBtn = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
     newCancelBtn.addEventListener('click', () => {
-        showDialogMessage(dialog, 'Agendamento cancelado.', 'info');
+        showDialogMessage(dialog, t('groups.meetings.schedulingCancelled'), 'info');
         dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
         setTimeout(() => dialog.close(), 1500);
     });
@@ -470,7 +475,7 @@ function saveMeeting() {
     const time = document.getElementById('meeting-time').value;
 
     if (!groupId || !title || !date || !time) {
-        showDialogMessage(dialog, 'Grupo, título, data e horário são obrigatórios.', 'error');
+        showDialogMessage(dialog, t('groups.meetings.fieldsRequired'), 'error');
         return;
     }
 
@@ -489,7 +494,7 @@ function saveMeeting() {
     group.meetings.push(newMeeting);
     saveGroup(group);
 
-    // Envia notificação para todos os membros
+    
     group.memberIds.forEach(memberId => {
         // Não envia para si mesmo
         if (memberId !== currentUser.id) {
@@ -497,7 +502,7 @@ function saveMeeting() {
         }
     });
 
-    showDialogMessage(dialog, 'Reunião agendada e membros notificados!', 'success');
+    showDialogMessage(dialog, t('groups.meetings.scheduleSuccess'), 'success');
     setTimeout(() => {
         dialog.close();
         loadAndRenderMeetings(); // Atualiza a lista
@@ -508,7 +513,7 @@ function addBoardToGroup(name, templateId, description) {
     const container = document.getElementById('group-boards-container');
     const boardId = 'board-' + Date.now();
     
-    // Encontrar o template selecionado
+    
     let templateName = "";
     if (templateId) {
         const allTemplates = getSystemBoardTemplates();
@@ -524,9 +529,9 @@ function addBoardToGroup(name, templateId, description) {
     boardElement.innerHTML = `
         <div class="board-info">
             <strong>${name}</strong>
-            ${templateName ? `<span class="template-badge">Template: ${templateName}</span>` : ''}
+            ${templateName ? `<span class="template-badge">${t('groups.boards.templateLabel', { templateName: templateName })}</span>` : ''}
         </div>
-        <button class="btn btn-sm danger remove-board-btn">Remover</button>
+        <button class="btn btn-sm danger remove-board-btn">${t('ui.remove')}</button>
     `;
     
     boardElement.querySelector('.remove-board-btn').addEventListener('click', () => {
@@ -543,19 +548,19 @@ function showAddBoardToGroupDialog() {
     const descriptionInput = dialog.querySelector('#add-board-description-input');
     const iconInput = dialog.querySelector('#add-board-icon-input');
 
-    // Limpa e popula o select de templates do sistema
-    templateSelect.innerHTML = '<option value="">Começar com um quadro vazio</option>';
+    
+    templateSelect.innerHTML = `<option value="">${t('kanban.dialog.board.templateEmpty')}</option>`;
     const systemTemplates = getSystemBoardTemplates();
     systemTemplates.forEach(t => {
         templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
 
-    // Reseta os campos
+    
     titleInput.value = '';
     descriptionInput.value = '';
     iconInput.value = '📋';
 
-    // Listener para o seletor de ícone
+    
     dialog.querySelector('#btn-choose-add-board-icon').onclick = () => {
         showIconPickerDialog(icon => iconInput.value = icon);
     };
@@ -563,9 +568,9 @@ function showAddBoardToGroupDialog() {
     // Listener para o botão de cancelar
     dialog.querySelector('#cancel-add-board-to-group-btn').onclick = () => dialog.close();
 
-    // Listener para o botão de confirmar
+    
     const confirmBtn = dialog.querySelector('#confirm-add-board-to-group-btn');
-    // Remove listener antigo para evitar duplicação
+    
     const newConfirmBtn = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
@@ -575,18 +580,18 @@ function showAddBoardToGroupDialog() {
         const description = descriptionInput.value.trim();
         const selectedTemplate = systemTemplates.find(t => t.id === selectedTemplateId);
 
-        // Se um template foi selecionado e o nome está vazio, usa o nome do template
+        
         const finalBoardName = boardName || (selectedTemplate ? selectedTemplate.name : '');
 
         if (!finalBoardName) {
-            showDialogMessage(dialog, 'O nome do quadro é obrigatório.', 'error');
+            showDialogMessage(dialog, t('groups.boards.nameRequired'), 'error');
             return;
         }
 
-        // Adiciona o quadro à lista na interface
+        
         addBoardToGroup(finalBoardName, selectedTemplateId, description);
 
-        showDialogMessage(dialog, 'Quadro adicionado à lista de criação!', 'success');
+        showDialogMessage(dialog, t('groups.boards.addSuccess'), 'success');
         setTimeout(() => {
             dialog.close();
         }, 1500);
@@ -600,20 +605,20 @@ function loadTagTemplatesForGroup() {
     const templateSelect = document.getElementById('group-tag-template');
     if (!templateSelect) return;
 
-    // Limpar opções existentes
+    
     templateSelect.innerHTML = '';
 
-    // Adicionar opção padrão (nenhum) no topo
+    
     const defaultOption = document.createElement('option');
     defaultOption.value = '';
-    defaultOption.textContent = 'Nenhum (começar do zero)';
+    defaultOption.textContent = t('groups.tags.none');
     templateSelect.appendChild(defaultOption);
 
-    // Carregar templates do sistema
+    
     const systemTemplates = getSystemTagTemplates();
     if (systemTemplates.length > 0) {
         const optgroupSystem = document.createElement('optgroup');
-        optgroupSystem.label = 'Usar um Template do Sistema';
+        optgroupSystem.label = t('groups.tags.useSystemTemplate');
         systemTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
@@ -632,8 +637,8 @@ function loadGroupTemplates() {
     const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
 
     if (adminGroups.length === 0) {
-        boardContainer.innerHTML = '<p class="no-templates">Você não administra nenhum grupo para ter templates.</p>';
-        tagContainer.innerHTML = '<p class="no-templates">Você não administra nenhum grupo para ter conjuntos de etiquetas.</p>';
+        boardContainer.innerHTML = `<p class="no-templates">${t('groups.templates.noAdminGroups')}</p>`;
+        tagContainer.innerHTML = `<p class="no-templates">${t('groups.templates.noAdminGroups')}</p>`;
         return;
     }
 
@@ -655,7 +660,7 @@ function renderGroupBoardTemplates(templates) {
     container.innerHTML = '';
     
     if (templates.length === 0) {
-        container.innerHTML = '<p class="no-templates">Nenhum template de quadro criado para os grupos que você administra.</p>';
+        container.innerHTML = `<p class="no-templates">${t('groups.templates.noBoardTemplates')}</p>`;
         return;
     }
     
@@ -667,8 +672,8 @@ function renderGroupBoardTemplates(templates) {
         templateCard.innerHTML = `
             <div class="template-icon">${template.icon || '📋'}</div>
             <h4>${template.name}</h4>
-            <p class="template-group-info">Grupo: ${template.groupName}</p>
-            <p>${template.description || 'Sem descrição'}</p>
+            <p class="template-group-info">${t('groups.templates.groupLabel', { groupName: template.groupName })}</p>
+            <p>${template.description || t('templates.feedback.noDescription')}</p>
             <div class="template-colors">
                 ${template.columns.slice(0, 4).map(col => 
                     `<div class="color-box" style="background-color: ${col.color};"></div>`
@@ -676,16 +681,16 @@ function renderGroupBoardTemplates(templates) {
                 ${template.columns.length > 4 ? '<span>...</span>' : ''}
             </div>
             <div class="template-actions">
-                <button class="btn btn-sm confirm use-template-btn" data-template-id="${template.id}">Usar</button>
-                <button class="btn btn-sm edit edit-template-btn" data-template-id="${template.id}">Editar</button>
-                <button class="btn btn-sm danger delete-template-btn" data-template-id="${template.id}">Excluir</button>
+                <button class="btn btn-sm confirm use-template-btn" data-template-id="${template.id}">${t('templates.button.use')}</button>
+                <button class="btn btn-sm edit edit-template-btn" data-template-id="${template.id}">${t('templates.button.edit')}</button>
+                <button class="btn btn-sm danger delete-template-btn" data-template-id="${template.id}">${t('templates.button.delete')}</button>
             </div>
         `;
         
         container.appendChild(templateCard);
     });
     
-    // Adicionar event listeners
+    
     container.querySelectorAll('.use-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const card = e.target.closest('.template-card');
@@ -715,7 +720,7 @@ function renderGroupTagTemplates(templates) {
     container.innerHTML = '';
     
     if (templates.length === 0) {
-        container.innerHTML = '<p class="no-templates">Nenhum conjunto de etiquetas criado para os grupos que você administra.</p>';
+        container.innerHTML = `<p class="no-templates">${t('groups.templates.noTagTemplates')}</p>`;
         return;
     }
     
@@ -727,8 +732,8 @@ function renderGroupTagTemplates(templates) {
         templateCard.innerHTML = `
             <div class="template-icon">${template.icon || '🏷️'}</div>
             <h4>${template.name}</h4>
-            <p class="template-group-info">Grupo: ${template.groupName}</p>
-            <p>${template.description || 'Sem descrição'}</p>
+            <p class="template-group-info">${t('groups.templates.groupLabel', { groupName: template.groupName })}</p>
+            <p>${template.description || t('templates.feedback.noDescription')}</p>
             <div class="tag-list">
                 ${template.tags.slice(0, 3).map(tag => 
                     `<span class="tag-pill" style="background-color: ${tag.color}">${tag.name}</span>`
@@ -736,16 +741,16 @@ function renderGroupTagTemplates(templates) {
                 ${template.tags.length > 3 ? '<span>...</span>' : ''}
             </div>
             <div class="template-actions">
-                <button class="btn btn-sm confirm use-template-btn" data-template-id="${template.id}">Usar</button>
-                <button class="btn btn-sm edit edit-template-btn" data-template-id="${template.id}">Editar</button>
-                <button class="btn btn-sm danger delete-template-btn" data-template-id="${template.id}">Excluir</button>
+                <button class="btn btn-sm confirm use-template-btn" data-template-id="${template.id}">${t('templates.button.use')}</button>
+                <button class="btn btn-sm edit edit-template-btn" data-template-id="${template.id}">${t('templates.button.edit')}</button>
+                <button class="btn btn-sm danger delete-template-btn" data-template-id="${template.id}">${t('templates.button.delete')}</button>
             </div>
         `;
         
         container.appendChild(templateCard);
     });
     
-    // Adicionar event listeners
+    
     container.querySelectorAll('.use-template-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const card = e.target.closest('.template-card');
@@ -774,7 +779,7 @@ function useBoardTemplate(templateId, groupId) {
 
     const template = (group.boardTemplates || []).find(t => t.id === templateId);
     if (!template) {
-        showFloatingMessage('Template não encontrado no grupo.', 'error');
+        showFloatingMessage(t('groups.templates.templateNotFoundInGroup'), 'error');
         return;
     }
 
@@ -783,7 +788,7 @@ function useBoardTemplate(templateId, groupId) {
     });
 
     const newBoardData = {
-        title: `${template.name} (Cópia do Grupo)`,
+        title: `${template.name} ${t('kanban.board.copySuffix')}`,
         icon: template.icon || '📋',
         ownerId: currentUser.id,
         visibility: 'group', // O quadro criado a partir de um template de grupo, é de grupo
@@ -794,22 +799,22 @@ function useBoardTemplate(templateId, groupId) {
     const savedBoard = saveBoard(newBoardData);
 
     localStorage.setItem(`currentBoardId_${currentUser.id}`, savedBoard.id);
-    showFloatingMessage(`Quadro '${savedBoard.title}' criado com sucesso! Redirecionando...`, 'success');
+    showFloatingMessage(t('templates.feedback.boardUsed', { boardTitle: savedBoard.title }), 'success');
     setTimeout(() => { window.location.href = `kanban.html`; }, 1500);
 }
 
 function useTagTemplate(templateId, groupId) {
-    showFloatingMessage('Funcionalidade "Usar Conjunto de Etiquetas" ainda não implementada.', 'info');
-    // Futuramente, isso poderia aplicar o conjunto de etiquetas a um quadro selecionado.
+    showFloatingMessage(t('groups.templates.tagUseNotImplemented'), 'info');
+    
 }
 
 function deleteGroupBoardTemplate(templateId, groupId) {
-    showConfirmationDialog('Tem certeza que deseja excluir este template?', (dialog) => {
+    showConfirmationDialog(t('templates.confirm.deleteBoard'), (dialog) => {
         const group = getGroup(groupId);
         if (!group || !group.boardTemplates) return false;
         group.boardTemplates = group.boardTemplates.filter(t => t.id !== templateId);
         if (saveGroup(group)) {
-            showDialogMessage(dialog, 'Template excluído.', 'success');
+            showDialogMessage(dialog, t('templates.feedback.boardDeleted'), 'success');
             loadGroupTemplates();
             return true;
         }
@@ -818,16 +823,16 @@ function deleteGroupBoardTemplate(templateId, groupId) {
 }
 
 function deleteGroupTagTemplate(templateId, groupId) {
-    showConfirmationDialog('Tem certeza que deseja excluir este conjunto?', (dialog) => {
+    showConfirmationDialog(t('templates.confirm.deleteTag'), (dialog) => {
         const group = getGroup(groupId);
         if (!group || !group.tagTemplates) return false;
 
-        const wasDefault = group.tagTemplate === templateId;
+        const wasDefault = group.defaultTagTemplateId === templateId;
         
         // Filtra para remover o template
         group.tagTemplates = group.tagTemplates.filter(t => t.id !== templateId);
 
-        // Se o template excluído era o padrão, define um novo padrão.
+        
         if (wasDefault) {
             if (group.tagTemplates.length > 0) {
                 // O novo padrão é o primeiro da lista de templates customizados.
@@ -839,8 +844,8 @@ function deleteGroupTagTemplate(templateId, groupId) {
         }
 
         if (saveGroup(group)) {
-            showDialogMessage(dialog, 'Conjunto excluído.', 'success');
-            loadGroupTemplates();
+            showDialogMessage(dialog, t('templates.feedback.tagDeleted'), 'success');
+            loadGroupTemplates(); // Recarrega os templates da aba
             loadGroups(); // Recarrega os grupos para atualizar o alerta
             return true;
         }
@@ -868,7 +873,7 @@ function renderServers() {
     serversList.innerHTML = '';
     
     if (servers.length === 0) {
-        serversList.innerHTML = '<p class="no-servers">Nenhum servidor encontrado.</p>';
+        serversList.innerHTML = `<p class="no-servers">${t('groups.servers.noneFound')}</p>`;
         return;
     }
     
@@ -880,19 +885,19 @@ function renderServers() {
                 <div class="server-icon">🌐</div>
                 <div class="server-details">
                     <h3>${server.name}</h3>
-                    <p>${server.url || 'Servidor local'}</p>
+                    <p>${server.url || t('groups.servers.localServer')}</p>
                 </div>
             </div>
             <div class="server-actions">
-                <button class="btn btn-sm share share-server-btn" data-server-id="${server.id}">Compartilhar</button>
-                <button class="btn btn-sm danger delete-server-btn" data-server-id="${server.id}">Excluir</button>
+                <button class="btn btn-sm share share-server-btn" data-server-id="${server.id}">${t('groups.servers.buttonShare')}</button>
+                <button class="btn btn-sm danger delete-server-btn" data-server-id="${server.id}">${t('templates.button.delete')}</button>
             </div>
         `;
         
         serversList.appendChild(serverItem);
     });
     
-    // Adicionar event listeners aos botões
+    
     document.querySelectorAll('.share-server-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const serverId = e.target.dataset.serverId;
@@ -910,7 +915,7 @@ function renderServers() {
 
 function showCreateServerDialog() {
     const dialog = document.getElementById('server-dialog');
-    dialog.querySelector('#server-dialog-title').textContent = 'Criar Novo Servidor';
+    dialog.querySelector('#server-dialog-title').textContent = t('groups.servers.createDialogTitle');
     dialog.querySelector('#server-name').value = '';
     const feedbackEl = dialog.querySelector('.feedback');
     feedbackEl.textContent = '';
@@ -923,12 +928,12 @@ function createServer() {
     const serverName = document.getElementById('server-name').value.trim();
     
     if (!serverName) {
-        showDialogMessage(dialog, 'O nome do servidor é obrigatório.', 'error');
+        showDialogMessage(dialog, t('groups.servers.nameRequired'), 'error');
         return;
     }
 
     showConfirmationDialog(
-        `Confirma a criação do servidor "${serverName}"?`,
+        t('groups.servers.confirmCreate', { serverName: serverName }),
         (confirmDialog) => {
             const newServer = {
                 id: 'server-' + Date.now(),
@@ -941,7 +946,7 @@ function createServer() {
             saveServers();
             renderServers();
             
-            showDialogMessage(confirmDialog, 'Servidor criado com sucesso!', 'success');
+            showDialogMessage(confirmDialog, t('groups.servers.createSuccess'), 'success');
             setTimeout(() => dialog.close(), 1500); // Fecha o diálogo original
             return true; // Fecha o diálogo de confirmação
         }
@@ -963,21 +968,21 @@ function pasteServerUrl() {
         .then(text => {
             const dialog = document.getElementById('add-server-dialog');
             if (!text) {
-                showDialogMessage(dialog, 'A área de transferência está vazia.', 'error');
+                showDialogMessage(dialog, t('groups.servers.clipboardEmpty'), 'error');
                 return;
             }
             
-            // Validar se o texto é uma URL
+            
             try {
                 new URL(text);
                 document.getElementById('server-url').value = text;
-                showDialogMessage(dialog, 'URL colada com sucesso!', 'success');
+                showDialogMessage(dialog, t('groups.servers.pasteSuccess'), 'success');
             } catch (e) {
-                showDialogMessage(dialog, 'O conteúdo da área de transferência não é uma URL válida.', 'error');
+                showDialogMessage(dialog, t('groups.servers.invalidUrl'), 'error');
             }
         })
         .catch(err => {
-            showDialogMessage(document.getElementById('add-server-dialog'), 'Não foi possível acessar a área de transferência.', 'error');
+            showDialogMessage(document.getElementById('add-server-dialog'), t('groups.servers.clipboardError'), 'error');
         });
 }
 
@@ -988,14 +993,14 @@ function copyServerUrl() {
     const dialog = document.getElementById('share-server-dialog');
     try {
         navigator.clipboard.writeText(urlInput.value);
-        showDialogMessage(dialog, 'URL copiada com sucesso!', 'success');
+        showDialogMessage(dialog, t('groups.servers.copySuccess'), 'success');
         
-        // Fechar o diálogo após 1.5 segundos
+        
         setTimeout(() => {
             dialog.close();
         }, 1500);
     } catch (err) {
-        showDialogMessage(dialog, 'Falha ao copiar a URL.', 'error');
+        showDialogMessage(dialog, t('groups.servers.copyError'), 'error');
     }
 }
 
@@ -1004,16 +1009,16 @@ function confirmDeleteServer(serverId) {
     if (!server) return;
     
     showConfirmationDialog(
-        `Tem certeza que deseja excluir o servidor "${server.name}"? Esta ação não pode ser desfeita.`,
+        t('groups.servers.confirmDelete', { serverName: server.name }),
         (dialog) => {
             servers = servers.filter(s => s.id !== serverId);
             saveServers();
             renderServers();
             
-            // Mostra a mensagem de sucesso
-            showDialogMessage(dialog, 'Servidor excluído com sucesso.', 'success');
             
-            // Fecha o diálogo automaticamente após 1.5 segundos
+            showDialogMessage(dialog, t('groups.servers.deleteSuccess'), 'success');
+            
+            
             setTimeout(() => {
                 dialog.close();
             }, 1500);
@@ -1044,43 +1049,43 @@ async function addServer() {
     const serverUrl = document.getElementById('server-url').value.trim();
     
     if (!serverUrl) {
-        showDialogMessage(dialog, 'A URL do servidor é obrigatória.', 'error');
+        showDialogMessage(dialog, t('groups.servers.urlRequired'), 'error');
         return;
     }
     
-    // Validar URL
+    
     try {
         new URL(serverUrl);
     } catch (e) {
-        showDialogMessage(dialog, 'URL inválida. Por favor, insira uma URL válida.', 'error');
+        showDialogMessage(dialog, t('groups.servers.invalidUrl'), 'error');
         return;
     }
     
-    // Verificar se já existe um servidor com esta URL
+    
     const existingServer = servers.find(s => s.url === serverUrl);
     if (existingServer) {
-        showDialogMessage(dialog, 'Este servidor já foi adicionado.', 'error');
+        showDialogMessage(dialog, t('groups.servers.alreadyAdded'), 'error');
         return;
     }
     
-    // Verificar conexão com o servidor
-    showDialogMessage(dialog, 'Testando conexão com o servidor...', 'info');
+    
+    showDialogMessage(dialog, t('groups.servers.testingConnection'), 'info');
     
     const connectionTest = await testServerConnection(serverUrl);
     
     if (!connectionTest.success) {
-        showDialogMessage(dialog, `Falha na conexão: ${connectionTest.message}`, 'error');
+        showDialogMessage(dialog, t('groups.servers.connectionFailed', { message: connectionTest.message }), 'error');
         return;
     }
     
-    // Mostrar confirmação final
+    
     showConfirmationDialog(
-        `Confirma a adição do servidor "${new URL(serverUrl).hostname}"?`,
+        t('groups.servers.confirmAdd', { hostname: new URL(serverUrl).hostname }),
         (confirmDialog) => {
             const newServer = {
                 id: 'server-' + Date.now(),
                 url: serverUrl,
-                name: `Servidor Externo - ${new URL(serverUrl).hostname}`,
+                name: t('groups.servers.externalServerName', { hostname: new URL(serverUrl).hostname }),
                 createdAt: new Date().toISOString(),
                 isExternal: true,
                 status: 'connected'
@@ -1090,7 +1095,7 @@ async function addServer() {
             saveServers();
             renderServers();
             
-            showDialogMessage(confirmDialog, 'Servidor adicionado com sucesso!', 'success');
+            showDialogMessage(confirmDialog, t('groups.servers.addSuccess'), 'success');
             
             setTimeout(() => {
                 confirmDialog.close();
@@ -1115,7 +1120,7 @@ function renderGroups() {
     const memberGroups = groups.filter(g => g.adminId !== currentUser.id);
 
     if (adminGroups.length === 0) {
-        adminContainer.innerHTML = '<p class="no-groups-message">Você não administra nenhum grupo.</p>';
+        adminContainer.innerHTML = `<p class="no-groups-message">${t('groups.myGroups.noAdminGroups')}</p>`;
     } else {
         adminGroups.forEach(group => {
             const groupCard = createGroupCard(group);
@@ -1124,7 +1129,7 @@ function renderGroups() {
     }
 
     if (memberGroups.length === 0) {
-        memberContainer.innerHTML = '<p class="no-groups-message">Você não participa de nenhum grupo como membro.</p>';
+        memberContainer.innerHTML = `<p class="no-groups-message">${t('groups.myGroups.noMemberGroups')}</p>`;
     } else {
         memberGroups.forEach(group => {
             const groupCard = createGroupCard(group);
@@ -1142,30 +1147,30 @@ function createGroupCard(group) {
     const isAdmin = group.adminId === currentUser.id;
 
     const actionsHtml = isAdmin
-        ? `<button class="btn btn-sm edit" data-action="edit">Editar</button>
-           <button class="btn btn-sm danger" data-action="delete">Excluir</button>`
-        : `<button class="btn btn-sm danger" data-action="leave">Sair</button>`;
+        ? `<button class="btn btn-sm edit" data-action="edit">${t('ui.edit')}</button>
+           <button class="btn btn-sm danger" data-action="delete">${t('ui.delete')}</button>`
+        : `<button class="btn btn-sm danger" data-action="leave">${t('groups.leave.title')}</button>`;
 
     groupCard.innerHTML = `
         <div class="group-icon">${group.icon || '👥'}</div>
         <h4 class="group-name">${group.name}</h4>
-        <p class="group-description">${group.description || 'Sem descrição.'}</p>
+        <p class="group-description">${group.description || t('templates.feedback.noDescription')}</p>
         <div class="group-stats-grid">
             <div class="group-stat">
                 <span class="stat-number">${group.memberIds ? group.memberIds.length : 0}</span>
-                <span class="stat-label">Membros</span>
+                <span class="stat-label">${t('groups.myGroups.card.members')}</span>
             </div>
             <div class="group-stat">
                 <span class="stat-number">${getGroupTaskCount(group.id)}</span>
-                <span class="stat-label">Tarefas</span>
+                <span class="stat-label">${t('groups.myGroups.card.tasks')}</span>
             </div>
             <div class="group-stat">
                 <span class="stat-number">${getCompletedTaskCount(group.id)}</span>
-                <span class="stat-label">Concluídas</span>
+                <span class="stat-label">${t('groups.myGroups.card.completed')}</span>
             </div>
         </div>
         <div class="group-actions">
-            <button class="btn btn-sm confirm" data-action="view">Estatísticas</button>
+            <button class="btn btn-sm confirm" data-action="view">${t('profile.groups.buttonStats')}</button>
             ${actionsHtml}
         </div>
     `;
@@ -1192,9 +1197,9 @@ function loadUsersForSelection() {
 
 function cancelGroupCreation() {
     showConfirmationDialog(
-        'Tem certeza que deseja cancelar a criação do grupo? Todas as informações serão perdidas.',
+        t('groups.create.confirmCancel'),
         (dialog) => {
-            showDialogMessage(dialog, 'Alterações descartadas.', 'info');
+            showDialogMessage(dialog, t('kanban.feedback.changesDiscarded'), 'info');
             
             setTimeout(() => {
                 dialog.close();
@@ -1226,7 +1231,7 @@ function editGroup(group) {
     const dialog = document.getElementById('edit-group-dialog');
     const form = document.getElementById('edit-group-form');
     
-    // Preencher formulário com dados atuais
+    
     document.getElementById('edit-group-name').value = group.name;
     const iconInput = document.getElementById('edit-group-icon');
     iconInput.value = group.icon || '👥';
@@ -1243,18 +1248,18 @@ function editGroup(group) {
 
     const groupTemplates = group.tagTemplates || [];
 
-    // Só mostra "Nenhum" se não houver templates customizados para o grupo.
+    
     if (groupTemplates.length === 0) {
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.textContent = 'Nenhum (usar padrão do grupo)';
+        defaultOption.textContent = t('groups.tags.none');
         tagTemplateSelect.appendChild(defaultOption);
     }
 
-    // Carrega os templates do próprio grupo
+    
     if (groupTemplates.length > 0) {
         const optgroupGroup = document.createElement('optgroup');
-        optgroupGroup.label = 'Templates deste Grupo';
+        optgroupGroup.label = t('groups.templates.groupLabel', { groupName: group.name });
         groupTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
@@ -1264,11 +1269,11 @@ function editGroup(group) {
         tagTemplateSelect.appendChild(optgroupGroup);
     }
 
-    // Templates do Sistema
+    
     const systemTemplates = getSystemTagTemplates();
     if (systemTemplates.length > 0) {
         const optgroupSystem = document.createElement('optgroup');
-        optgroupSystem.label = 'Usar um Template do Sistema';
+        optgroupSystem.label = t('groups.tags.useSystemTemplate');
         systemTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
@@ -1278,8 +1283,8 @@ function editGroup(group) {
         tagTemplateSelect.appendChild(optgroupSystem);
     }
 
-    // Seleciona o valor atual do grupo
-    tagTemplateSelect.value = group.tagTemplate || '';
+    
+    tagTemplateSelect.value = group.defaultTagTemplateId || '';
     
     // --- LÓGICA PARA PREENCHER OS CAMPOS DE RELATÓRIO ---
     const reportSettings = group.reportSettings || { frequency: 'none' };
@@ -1290,11 +1295,11 @@ function editGroup(group) {
     const monthContainer = document.getElementById('edit-group-report-day-of-month-container');
 
     freqSelect.value = reportSettings.frequency;
-    // Mostra/esconde os campos condicionais
+    
     weekContainer.classList.toggle('hidden', reportSettings.frequency !== 'weekly');
     monthContainer.classList.toggle('hidden', reportSettings.frequency !== 'monthly');
 
-    // Define os valores dos campos condicionais se aplicável
+    
     if (reportSettings.frequency === 'weekly') {
         weekSelect.value = reportSettings.dayOfWeek || '1';
     }
@@ -1302,7 +1307,7 @@ function editGroup(group) {
         monthInput.value = reportSettings.dayOfMonth || '1';
     }
 
-    // Resetar o estado de "salvo" e adicionar listeners para rastrear alterações
+    
     isGroupSaved = true;
     const formElements = dialog.querySelectorAll('input, textarea, select');
     
@@ -1313,16 +1318,16 @@ function editGroup(group) {
         el.addEventListener('change', markAsUnsaved);
     });
 
-    // Carregar lista de membros (mas a interface mostrará "participantes")
+    
     loadGroupMembers(group);
     
-    // Limpar feedback anterior
+    
     const feedbackEl = dialog.querySelector('.feedback');
     feedbackEl.textContent = '';
     feedbackEl.className = 'feedback';
     
     initCustomSelects();
-    // Mostrar diálogo
+    
     dialog.showModal();
 }
 
@@ -1334,30 +1339,30 @@ function saveGroupChanges(e) {
     
     const name = document.getElementById('edit-group-name').value.trim();
     if (!name) {
-        showDialogMessage(feedbackEl, 'O nome do grupo é obrigatório.', 'error');
+        showDialogMessage(feedbackEl, t('groups.feedback.nameRequired'), 'error');
         return;
     }
     
-    // Verificar se outro grupo já tem este nome (excluindo o grupo atual)
+    
     const existingGroup = groups.find(g => 
         g.name.toLowerCase() === name.toLowerCase() && 
         g.id !== currentGroup.id
     );
     
     if (existingGroup) {
-        showDialogMessage(feedbackEl, 'Já existe um grupo com este nome.', 'error');
+        showDialogMessage(feedbackEl, t('groups.edit.nameExists'), 'error');
         return;
     }
     
-    // Mostrar confirmação antes de salvar
+    
     showConfirmationDialog(
-        'Deseja salvar todas as alterações no grupo?',
+        t('groups.edit.confirmSave'),
         (confirmationDialog) => {
             currentGroup.name = name;
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.icon = document.getElementById('edit-group-icon').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
-            currentGroup.tagTemplate = document.getElementById('edit-group-tag-template').value;
+            currentGroup.defaultTagTemplateId = document.getElementById('edit-group-tag-template').value;
             
             const reportFrequency = document.getElementById('edit-group-report-frequency').value;
             currentGroup.reportSettings = {
@@ -1366,24 +1371,24 @@ function saveGroupChanges(e) {
                 dayOfMonth: reportFrequency === 'monthly' ? document.getElementById('edit-group-report-day-of-month').value : null,
             };
             
-            // Enviar notificações para participantes pendentes
+            
             if (window.pendingParticipants && window.pendingParticipants.length > 0) {
                 window.pendingParticipants.forEach(memberId => {
                     sendGroupInvitation(currentGroup.id, memberId, currentUser);
                 });
-                // Limpar lista de participantes pendentes
+                
                 window.pendingParticipants = [];
             }
             
-            // Salvar alterações
+            
             if (saveGroup(currentGroup)) {
-                showDialogMessage(confirmationDialog, 'Grupo atualizado com sucesso! Notificações enviadas.', 'success');
+                showDialogMessage(confirmationDialog, t('groups.edit.saveSuccess'), 'success');
                 
-                // Atualizar exibição
+                
                 renderGroups();
                 isGroupSaved = true; // Reseta o estado após salvar
                 
-                // Fechar diálogos após breve delay
+                
                 setTimeout(() => {
                     confirmationDialog.close();
                     dialog.close();
@@ -1391,7 +1396,7 @@ function saveGroupChanges(e) {
                 
                 return true;
             } else {
-                showDialogMessage(confirmationDialog, 'Erro ao salvar alterações.', 'error');
+                showDialogMessage(confirmationDialog, t('groups.edit.saveError'), 'error');
                 return false;
             }
         }
@@ -1400,29 +1405,29 @@ function saveGroupChanges(e) {
 
 function deleteGroup() {
     if (!currentGroup || currentGroup.adminId !== currentUser.id) {
-        showFloatingMessage('Apenas o administrador pode excluir o grupo.', 'error');
+        showFloatingMessage(t('groups.delete.adminOnly'), 'error');
         return;
     }
     
     showConfirmationDialog(
-        `Tem certeza que deseja excluir permanentemente o grupo "${currentGroup.name}"?`,
+        t('groups.delete.confirm', { groupName: currentGroup.name }),
         async (confirmationDialog) => {
-            // Fechar o diálogo de confirmação inicial
+            
             confirmationDialog.close();
             
-            // Abrir diálogo de senha personalizado para esta operação
+            
             const passwordDialog = document.createElement('dialog');
             passwordDialog.className = 'draggable';
             passwordDialog.innerHTML = `
-                <h3 class="drag-handle">Confirmação de Segurança</h3>
+                <h3 class="drag-handle">${t('groups.delete.securityTitle')}</h3>
                 <div class="form-group">
-                    <label for="confirm-password-input">Digite sua senha ou a senha mestra para excluir o grupo "${currentGroup.name}":</label>
+                    <label for="confirm-password-input">${t('groups.delete.passwordPrompt', { groupName: currentGroup.name })}</label>
                     <input type="password" id="confirm-password-input" autocomplete="current-password" required>
                 </div>
                 <div class="feedback"></div>
                 <div class="modal-actions">
-                    <button class="btn btn-neon cancel" id="cancel-password-btn">Cancelar</button>
-                    <button class="btn btn-neon danger" id="confirm-password-btn">Excluir Grupo</button>
+                    <button class="btn btn-neon cancel" id="cancel-password-btn">${t('ui.cancel')}</button>
+                    <button class="btn btn-neon danger" id="confirm-password-btn">${t('groups.delete.buttonDelete')}</button>
                 </div>
             `;
             
@@ -1442,18 +1447,18 @@ function deleteGroup() {
             const handleConfirm = async () => {
                 const password = passwordInput.value;
                 if (!password) {
-                    showDialogMessage(feedbackEl, 'A senha é obrigatória.', 'error');
+                    showDialogMessage(feedbackEl, t('ui.passwordRequired'), 'error');
                     return;
                 }
                 
                 if (password === currentUser.password || validateMasterPassword(password)) {
-                    // Desabilitar botões durante a operação
+                    
                     confirmBtn.disabled = true;
                     cancelBtn.disabled = true;
                     
-                    // Processar a exclusão do grupo
+                    
                     if (deleteGroupStorage(currentGroup.id)) {
-                        // Lógica de limpeza de referências
+                        
                         const groupMemberIds = currentGroup.memberIds || [];
                         groupMemberIds.forEach(memberId => {
                             const userProfile = getUserProfile(memberId);
@@ -1463,29 +1468,29 @@ function deleteGroup() {
                             }
                         });
                         
-                        // Mostrar mensagem de sucesso DENTRO do diálogo de senha
-                        showDialogMessage(passwordDialog, 'Grupo excluído com sucesso!', 'success');
+                        
+                        showDialogMessage(passwordDialog, t('groups.delete.deleteSuccess'), 'success');
                             loadGroups();
                         
-                        // Fechar o diálogo e mudar de aba após 1.5 segundos
+                        
                         setTimeout(() => {
                             closePasswordDialog();
                             switchTab('my-groups');
                         }, 1500);
                     } else {
-                        showDialogMessage(passwordDialog, 'Erro ao excluir o grupo.', 'error');
+                        showDialogMessage(passwordDialog, t('groups.edit.saveError'), 'error');
                         confirmBtn.disabled = false;
                         cancelBtn.disabled = false;
                     }
                 } else {
-                    showDialogMessage(feedbackEl, 'Senha incorreta. Tente novamente.', 'error');
+                    showDialogMessage(feedbackEl, t('ui.incorrectPassword'), 'error');
                     passwordInput.value = '';
                     passwordInput.focus();
                 }
             };
 
             cancelBtn.addEventListener('click', () => {
-                showDialogMessage(passwordDialog, 'Exclusão cancelada.', 'info');
+                showDialogMessage(passwordDialog, t('groups.delete.deleteCancelled'), 'info');
                 confirmBtn.disabled = true;
                 cancelBtn.disabled = true;
                 setTimeout(closePasswordDialog, 1500);
@@ -1503,33 +1508,33 @@ function deleteGroup() {
 
 function leaveGroup() {
     if (!currentGroup) {
-        showFloatingMessage('Nenhum grupo selecionado.', 'error');
+        showFloatingMessage(t('groups.edit.noGroupSelected'), 'error');
         return;
     }
     if (currentGroup.adminId === currentUser.id) {
-        showFloatingMessage('Você não pode sair de um grupo que administra. Transfira a administração primeiro.', 'error');
+        showFloatingMessage(t('groups.leave.adminCannotLeave'), 'error');
         return;
     }
 
     showConfirmationDialog(
-        `Tem certeza que deseja sair do grupo "${currentGroup.name}"?`,
+        t('groups.leave.confirm', { groupName: currentGroup.name }),
         (dialog) => {
-            // Fechar o diálogo de confirmação
+            
             dialog.close();
             
-            // Mostrar diálogo de senha personalizado
+            
             const passwordDialog = document.createElement('dialog');
             passwordDialog.className = 'draggable';
             passwordDialog.innerHTML = `
-                <h3 class="drag-handle">Confirmação de Segurança</h3>
+                <h3 class="drag-handle">${t('groups.delete.securityTitle')}</h3>
                 <div class="form-group">
-                    <label for="confirm-password-input">Digite sua senha para sair do grupo "${currentGroup.name}":</label>
+                    <label for="confirm-password-input">${t('groups.leave.passwordPrompt', { groupName: currentGroup.name })}</label>
                     <input type="password" id="confirm-password-input" autocomplete="current-password" required>
                 </div>
                 <div class="feedback"></div>
                 <div class="modal-actions">
-                    <button class="btn btn-neon cancel" id="cancel-password-btn">Cancelar</button>
-                    <button class="btn btn-neon confirm" id="confirm-password-btn">Confirmar</button>
+                    <button class="btn btn-neon cancel" id="cancel-password-btn">${t('ui.cancel')}</button>
+                    <button class="btn btn-neon confirm" id="confirm-password-btn">${t('ui.confirm')}</button>
                 </div>
             `;
             
@@ -1544,12 +1549,12 @@ function leaveGroup() {
             const handleConfirm = async () => {
                 const password = passwordInput.value;
                 if (!password) {
-                    showDialogMessage(feedbackEl, 'A senha é obrigatória.', 'error');
+                    showDialogMessage(feedbackEl, t('ui.passwordRequired'), 'error');
                     return;
                 }
                 
                 if (password === currentUser.password || validateMasterPassword(password)) {
-                    // Processar a saída do grupo
+                    
                     const groupData = getGroup(currentGroup.id);
                     const userProfile = getUserProfile(currentUser.id);
 
@@ -1557,7 +1562,7 @@ function leaveGroup() {
                         groupData.memberIds = groupData.memberIds.filter(id => id !== currentUser.id);
                         saveGroup(groupData);
                         
-                        // Notifica o admin que o usuário saiu
+                        
                         addGroupLeaveNotification(groupData.name, currentUser.name, groupData.adminId);
                     }
 
@@ -1566,7 +1571,7 @@ function leaveGroup() {
                         saveUserProfile(userProfile);
                     }
 
-                    showDialogMessage(passwordDialog, `Você saiu do grupo "${currentGroup.name}".`, 'success');
+                    showDialogMessage(passwordDialog, t('groups.leave.success', { groupName: currentGroup.name }), 'success');
                     
                     setTimeout(() => {
                         passwordDialog.close();
@@ -1575,7 +1580,7 @@ function leaveGroup() {
                         switchTab('my-groups');
                     }, 1500);
                 } else {
-                    showDialogMessage(passwordDialog, 'Senha incorreta. Tente novamente.', 'error');
+                    showDialogMessage(passwordDialog, t('ui.incorrectPassword'), 'error');
                     passwordInput.value = '';
                     passwordInput.focus();
                 }
@@ -1602,10 +1607,10 @@ function populateGroupSelectorForStats(selectElement) {
     if (!selectElement) return;
     selectElement.innerHTML = '';
 
-    // CORREÇÃO: Usa a variável 'groups', que já contém todos os grupos dos quais o usuário é membro.
+    
     const memberGroups = groups; 
     if (memberGroups.length === 0) {
-        selectElement.innerHTML = '<option value="">Você não participa de nenhum grupo</option>';
+        selectElement.innerHTML = `<option value="">${t('groups.reports.noGroups')}</option>`;
         selectElement.disabled = true;
         return;
     }
@@ -1618,7 +1623,7 @@ function populateGroupSelectorForStats(selectElement) {
         selectElement.appendChild(option);
     });
 
-    // Adiciona listeners para os filtros
+    
     selectElement.onchange = () => loadAndRenderStatistics(selectElement.value);
     document.getElementById('time-filter').onchange = () => loadAndRenderStatistics(selectElement.value);
     document.getElementById('chart-type').onchange = () => loadAndRenderStatistics(selectElement.value);
@@ -1627,7 +1632,7 @@ function populateGroupSelectorForStats(selectElement) {
 function loadAndRenderStatistics(groupId) {
     const group = getGroup(groupId);
     if (!group) {
-        document.querySelector('.stats-sections').innerHTML = '<p class="no-templates">Grupo não encontrado.</p>';
+        document.querySelector('#statistics .stats-sections').innerHTML = `<p class="no-templates">${t('groups.stats.groupNotFound')}</p>`;
         return;
     }
 
@@ -1643,7 +1648,7 @@ function loadAndRenderStatistics(groupId) {
         }
     });
 
-    // Filtrar cartões por data
+    
     const now = new Date();
     const filteredCards = allCards.filter(card => {
         if (timeFilter === 'all') return true;
@@ -1658,7 +1663,7 @@ function loadAndRenderStatistics(groupId) {
         return false;
     });
 
-    // Calcular estatísticas
+    
     const totalCards = filteredCards.length;
     const completedCards = filteredCards.filter(c => c.isComplete).length;
     const activeCards = totalCards - completedCards;
@@ -1677,7 +1682,7 @@ function loadAndRenderStatistics(groupId) {
         }
     });
 
-    // Renderizar tudo
+    
     renderSummary(totalCards, completedCards, activeCards);
     renderParticipantsTable(tasksByMember, group.memberIds);
     renderStatusChart({ active: activeCards, completed: completedCards });
@@ -1704,7 +1709,7 @@ function renderParticipantsTable(tasksByMember, memberIds) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${user.name}</td>
-            <td>Membro</td>
+            <td>${t('groups.stats.roleMember')}</td>
             <td>${stats.completed}</td>
             <td>${productivity}%</td>
         `;
@@ -1720,7 +1725,7 @@ function renderStatusChart(data) {
         statusChartInstance.destroy();
     }
 
-    // Garante que o gráfico seja exibido mesmo se os dados estiverem zerados
+    
     const hasData = data.active > 0 || data.completed > 0;
     const chartData = hasData ? [data.active, data.completed] : [1, 1]; // Usa dados placeholder se zerado
     const chartColors = hasData 
@@ -1728,11 +1733,11 @@ function renderStatusChart(data) {
         : ['rgba(128, 128, 128, 0.2)', 'rgba(128, 128, 128, 0.2)']; // Cinza se zerado
 
     statusChartInstance = new Chart(ctx, {
-        type: chartType, // pie ou bar
+        type: chartType, 
         data: {
-            labels: ['Ativos', 'Concluídos'],
+            labels: JSON.parse(t('groups.stats.chartLabels')),
             datasets: [{
-                label: 'Status dos Cartões',
+                label: t('groups.stats.chartDatasetLabel'),
                 data: chartData,
                 backgroundColor: chartColors,
                 borderColor: [
@@ -1751,11 +1756,11 @@ function renderStatusChart(data) {
                 },
                 title: {
                     display: true,
-                    text: hasData ? 'Distribuição de Cartões por Status' : 'Nenhum cartão no período selecionado'
+                    text: hasData ? t('groups.stats.chartTitle') : t('groups.stats.chartNoData')
                 },
                 tooltip: {
                     callbacks: {
-                        label: hasData ? undefined : () => '' // Esconde tooltips se não houver dados
+                        label: hasData ? undefined : () => '' 
                     }
                 }
             }
@@ -1770,7 +1775,7 @@ function populateGroupSelectorForReports() {
 
     const memberGroups = groups;
     if (memberGroups.length === 0) {
-        selectElement.innerHTML = '<option value="">Você não participa de nenhum grupo</option>';
+        selectElement.innerHTML = `<option value="">${t('groups.reports.noGroups')}</option>`;
         selectElement.disabled = true;
         return;
     }
@@ -1790,21 +1795,21 @@ function generateAndRenderReport() {
     const container = document.getElementById('report-container');
 
     if (!groupId) {
-        container.innerHTML = '<p class="no-templates">Por favor, selecione um grupo.</p>';
+        container.innerHTML = `<p class="no-templates">${t('groups.reports.selectGroup')}</p>`;
         return;
     }
 
     const group = getGroup(groupId);
     if (!group) {
-        container.innerHTML = '<p class="no-templates">Grupo não encontrado.</p>';
+        container.innerHTML = `<p class="no-templates">${t('groups.feedback.groupNotFound')}</p>`;
         return;
     }
 
-    // 1. Filtrar cartões pelo período
+    
     const now = new Date();
     let startDate = new Date();
     switch (period) {
-        case 'daily': startDate.setDate(now.getDate() - 1); break;
+        case 'daily': startDate.setDate(now.getDate() - 1); break; // Mantido, mas a UI oferece 'today'
         case 'weekly': startDate.setDate(now.getDate() - 7); break;
         case 'monthly': startDate.setMonth(now.getMonth() - 1); break;
     }
@@ -1814,10 +1819,16 @@ function generateAndRenderReport() {
         return board ? board.columns.flatMap(col => col.cards) : [];
     });
 
+    // Se não houver nenhum cartão no grupo, exibe a mensagem e para.
+    if (allCardsInGroup.length === 0) {
+        container.innerHTML = `<p class="no-templates">${t('groups.reports.noActivity')}</p>`;
+        return;
+    }
+
     const cardsInPeriod = allCardsInGroup.filter(card => new Date(card.createdAt) >= startDate);
     const cardsCompletedInPeriod = allCardsInGroup.filter(card => card.isComplete && new Date(card.completedAt) >= startDate);
 
-    // 2. Calcular métricas
+    
     const totalCreated = cardsInPeriod.length;
     const totalCompleted = cardsCompletedInPeriod.length;
     const completionRate = totalCreated > 0 ? ((totalCompleted / totalCreated) * 100).toFixed(1) : 0;
@@ -1833,44 +1844,44 @@ function generateAndRenderReport() {
 
     const overdueCards = allCardsInGroup.filter(c => !c.isComplete && c.dueDate && new Date(c.dueDate) < now).length;
 
-    // 3. Renderizar HTML do relatório
+    
     container.innerHTML = `
         <div class="report-header">
-            <h3>Relatório de Atividade - ${group.name}</h3>
-            <p><strong>Período:</strong> ${period.charAt(0).toUpperCase() + period.slice(1)} | <strong>Gerado em:</strong> ${now.toLocaleString('pt-BR')}</p>
+            <h3>${t('groups.reports.title', { groupName: group.name })}</h3>
+            <p><strong>${t('groups.reports.period')}</strong> ${period.charAt(0).toUpperCase() + period.slice(1)} | <strong>${t('groups.reports.generatedAt')}</strong> ${now.toLocaleString()}</p>
         </div>
 
         <div class="report-section">
-            <h4>Resumo Geral</h4>
+            <h4>${t('groups.reports.summaryTitle')}</h4>
             <div class="stats-summary">
                 <div class="stat-item">
                     <span class="stat-number">${totalCreated}</span>
-                    <span class="stat-label">Tarefas Criadas</span>
+                    <span class="stat-label">${t('groups.reports.tasksCreated')}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">${totalCompleted}</span>
-                    <span class="stat-label">Tarefas Concluídas</span>
+                    <span class="stat-label">${t('groups.reports.tasksCompleted')}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">${completionRate}%</span>
-                    <span class="stat-label">Taxa de Conclusão</span>
+                    <span class="stat-label">${t('groups.reports.completionRate')}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">${overdueCards}</span>
-                    <span class="stat-label">Tarefas Atrasadas</span>
+                    <span class="stat-label">${t('groups.reports.overdueTasks')}</span>
                 </div>
             </div>
         </div>
 
         <div class="report-section">
-            <h4>Desempenho dos Membros</h4>
+            <h4>${t('groups.reports.memberPerformanceTitle')}</h4>
             <table class="participants-table">
                 <thead>
                     <tr>
-                        <th>Membro</th>
-                        <th>Tarefas Atribuídas</th>
-                        <th>Tarefas Concluídas</th>
-                        <th>Produtividade</th>
+                        <th>${t('groups.reports.tableHeaderMember')}</th>
+                        <th>${t('groups.reports.tableHeaderAssigned')}</th>
+                        <th>${t('groups.reports.tableHeaderCompleted')}</th>
+                        <th>${t('groups.reports.tableHeaderProductivity')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1909,24 +1920,24 @@ async function testServerConnection(serverUrl) {
 }
 
 function removeMemberFromGroup(group, memberId) {
-    const users = getAllUsers();
+    const users = getAllUsers(); // A variável allUsers já está disponível globalmente
     const member = users.find(u => u.id === memberId);
     if (!member) return;
     
     showConfirmationDialog(
-        `Tem certeza que deseja remover ${member.name} do grupo?`,
+        t('groups.edit.confirmRemoveMember', { name: member.name }),
         (dialog) => {
             // Remover o membro do grupo (em memória)
-            group.memberIds = group.memberIds.filter(id => id !== memberId);
+            currentGroup.memberIds = currentGroup.memberIds.filter(id => id !== memberId);
             
             // Atualizar a lista de membros
-            loadGroupMembers(group);
+            loadGroupMembers(currentGroup);
 
             // Enviar notificação de remoção
-            notifyGroupRemoval(group.name, memberId);
+            notifyGroupRemoval(currentGroup.name, memberId);
             
-            // Mostrar feedback de sucesso
-            showDialogMessage(dialog.querySelector('.feedback'), `${member.name} será removido do grupo quando você salvar as alterações.`, 'success');
+            
+            showDialogMessage(dialog, t('groups.edit.memberWillBeRemoved', { name: member.name }), 'info');
             
             // Fechar apenas o diálogo de confirmação, não o de edição
             setTimeout(() => {
@@ -1940,7 +1951,7 @@ function removeMemberFromGroup(group, memberId) {
 
 /**
  * Verifica todos os grupos e envia relatórios automáticos se necessário.
- * Esta função é exportada para ser chamada pelo main.js na inicialização.
+ * 
  */
 export function checkAndSendReports() {
     const allGroups = getAllGroups();
@@ -1985,24 +1996,24 @@ export function checkAndSendReports() {
 }
 
 function sendMessageToAllMembers() {
-    // Esta função é chamada pelo botão no diálogo de edição de grupo.
+    
     if (!currentGroup) {
-        showFloatingMessage('Nenhum grupo selecionado para enviar mensagem.', 'error');
+        showFloatingMessage(t('groups.edit.noGroupSelected'), 'error');
         return;
     }
 
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Mensagem para o Grupo: ${currentGroup.name}</h3>
+        <h3 class="drag-handle">${t('groups.message.broadcastTitle', { groupName: currentGroup.name })}</h3>
         <div class="form-group">
-            <label for="group-broadcast-message-textarea">Mensagem:</label>
-            <textarea id="group-broadcast-message-textarea" placeholder="Escreva sua mensagem para todos os membros..." rows="5" style="width: 100%;"></textarea>
+            <label for="group-broadcast-message-textarea" data-i18n="publicProfile.actions.message"></label>
+            <textarea id="group-broadcast-message-textarea" placeholder="${t('groups.message.broadcastPlaceholder')}" rows="5" style="width: 100%;"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn btn-neon cancel">Cancelar</button>
-            <button class="btn btn-neon confirm">Enviar para Todos</button>
+            <button class="btn cancel" data-i18n="ui.cancel"></button>
+            <button class="btn confirm" data-i18n="groups.message.broadcastSendButton"></button>
         </div>
     `;
 
@@ -2019,10 +2030,10 @@ function sendMessageToAllMembers() {
 
     sendBtn.addEventListener('click', () => {
         const message = textarea.value.trim();
-        if (!message) { showDialogMessage(dialog, 'A mensagem não pode estar vazia.', 'error'); return; }
+        if (!message) { showDialogMessage(dialog, t('groups.message.emptyError'), 'error'); return; }
         const membersToNotify = currentGroup.memberIds.filter(id => id !== currentUser.id);
         membersToNotify.forEach(memberId => addMessageNotification(`${currentUser.name} (Grupo: ${currentGroup.name})`, currentUser.id, memberId, message.length > 50 ? message.substring(0, 50) + '...' : message));
-        showDialogMessage(dialog, `Mensagem enviada para ${membersToNotify.length} membro(s).`, 'success');
+        showDialogMessage(dialog, t('groups.message.broadcastSuccess', { count: membersToNotify.length }), 'success');
         sendBtn.disabled = true; cancelBtn.disabled = true;
         setTimeout(closeDialog, 1500);
     });
@@ -2031,21 +2042,21 @@ function sendMessageToAllMembers() {
 function sendMessageToMember(memberId) {
     const member = allUsers.find(u => u.id === memberId);
     if (!member) {
-        showFloatingMessage('Membro não encontrado.', 'error');
+        showFloatingMessage(t('groups.message.memberNotFound'), 'error');
         return;
     }
 
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Enviar Mensagem para ${member.name}</h3>
+        <h3 class="drag-handle">${t('groups.message.privateTitle', { name: member.name })}</h3>
         <div class="form-group">
-            <textarea id="group-private-message-textarea" placeholder="Escreva sua mensagem..." rows="5"></textarea>
+            <textarea id="group-private-message-textarea" data-i18n-placeholder="groups.message.privatePlaceholder" rows="5"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn cancel">Cancelar</button>
-            <button class="btn confirm">Enviar</button>
+            <button class="btn cancel" data-i18n="ui.cancel"></button>
+            <button class="btn confirm" data-i18n="ui.send"></button>
         </div>
     `;
 
@@ -2062,20 +2073,20 @@ function sendMessageToMember(memberId) {
 
     sendBtn.addEventListener('click', () => {
         const message = textarea.value.trim();
-        if (!message) { showDialogMessage(dialog, 'A mensagem não pode estar vazia.', 'error'); return; }
+        if (!message) { showDialogMessage(dialog, t('groups.message.emptyError'), 'error'); return; }
         addMessageNotification(currentUser.name, currentUser.id, member.id, message.length > 50 ? message.substring(0, 50) + '...' : message);
-        showDialogMessage(dialog, 'Mensagem enviada com sucesso!', 'success');
+        showDialogMessage(dialog, t('groups.message.privateSuccess'), 'success');
         sendBtn.disabled = true; cancelBtn.disabled = true;
         setTimeout(closeDialog, 1500);
     });
 }
 
-// Adicione esta função para enviar convites:
+
 function sendGroupInvitation(groupId, userId, inviter) {
     const group = getGroup(groupId);
     if (!group) return;
     
-    // Usar a nova função de notificação
+    
     addGroupInvitationNotification(
         group.name, 
         groupId, 
@@ -2094,7 +2105,7 @@ function loadGroupMembers(group) {
     const membersList = document.getElementById('group-members-list');
     membersList.innerHTML = '';
     
-    // Obter todos os usuários
+    
     const users = getAllUsers();
     
     group.memberIds.forEach(memberId => {
@@ -2119,9 +2130,9 @@ function loadGroupMembers(group) {
             </div>
             <div>
                 ${isAdmin ?
-                    '<span class="admin-badge">Administrador</span>' :
-                    `<button class="btn btn-sm alternative1 message-member-btn" data-member-id="${memberId}" title="Enviar Mensagem">✉️</button>
-                     <button class="btn btn-sm danger remove-member-btn" data-member-id="${memberId}">Remover</button>`
+                    `<span class="admin-badge">${t('profile.groups.roleAdmin')}</span>` :
+                    `<button class="btn btn-sm alternative1 message-member-btn" data-member-id="${memberId}" title="${t('publicProfile.actions.message')}">✉️</button>
+                     <button class="btn btn-sm danger remove-member-btn" data-member-id="${memberId}">${t('ui.remove')}</button>`
                 }
             </div>
         `;
@@ -2129,7 +2140,7 @@ function loadGroupMembers(group) {
         membersList.appendChild(memberItem);
     });
     
-    // Adicionar event listeners para os botões de remover
+    
     membersList.querySelectorAll('.remove-member-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const memberId = e.target.dataset.memberId;
@@ -2137,7 +2148,7 @@ function loadGroupMembers(group) {
         });
     });
 
-    // Adicionar event listeners para os botões de mensagem
+    
     membersList.querySelectorAll('.message-member-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const memberId = e.target.closest('button').dataset.memberId;
@@ -2148,7 +2159,7 @@ function loadGroupMembers(group) {
 
 /**
  * Exibe o diálogo para adicionar um novo participante ao grupo atual.
- * Popula o seletor com usuários que ainda não são membros.
+ * 
  */
 function showAddParticipantDialog() {
     const dialog = document.getElementById('add-participant-dialog');
@@ -2171,11 +2182,11 @@ function showAddParticipantDialog() {
     );
     
     if (availableUsers.length === 0) {
-        select.innerHTML = '<option value="">Nenhum usuário disponível para adicionar</option>';
+        select.innerHTML = `<option value="">${t('groups.edit.noUsersAvailable')}</option>`;
         select.disabled = true;
     } else {
         select.disabled = false;
-        select.innerHTML = '<option value="">Selecione um usuário</option>';
+        select.innerHTML = `<option value="">${t('groups.edit.selectUser')}</option>`;
         availableUsers.forEach(user => {
             const option = document.createElement('option');
             option.value = user.id;
@@ -2190,7 +2201,7 @@ function showAddParticipantDialog() {
 
 /**
  * Calcula o número total de tarefas (cartões) em todos os quadros de um grupo.
- * @param {string} groupId - O ID do grupo.
+ * 
  * @returns {number} O número total de tarefas.
  */
 function getGroupTaskCount(groupId) {
@@ -2206,7 +2217,7 @@ function getGroupTaskCount(groupId) {
 
 /**
  * Calcula o número de tarefas concluídas em todos os quadros de um grupo.
- * @param {string} groupId - O ID do grupo.
+ * 
  * @returns {number} O número de tarefas concluídas.
  */
 function getCompletedTaskCount(groupId) {
@@ -2223,7 +2234,7 @@ function getCompletedTaskCount(groupId) {
 
 /**
  * Calcula o número de tarefas atrasadas em todos os quadros de um grupo.
- * @param {string} groupId - O ID do grupo.
+ * 
  * @returns {number} O número de tarefas atrasadas.
  */
 function getOverdueTaskCount(groupId) {

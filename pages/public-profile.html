@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfil Público - KanbanDeep</title>
+    <title data-i18n-title="publicProfile.pageTitle">Perfil Público - KanbanDeep</title>
     <link rel="stylesheet" href="../static/universal.css">
     <link rel="stylesheet" href="../static/public-profile.css">
 </head>
@@ -17,20 +17,20 @@
                 <img id="user-avatar" src="" alt="Avatar do Usuário">
             </button>
             <div id="profile-dropdown" class="dropdown">            
-                <button id="switch-user-btn">🔁 Trocar Perfil</button>
-                <button id="user-profile-btn">👤 Meu Perfil</button>
-                <button id="kanban-btn">📋 Meus Quadros</button>
-                <button id="friends-btn">🧑‍🤝‍🧑 Amigos</button>
-                <button id="my-groups-btn">👥 Meus Grupos</button>
-                <button id="templates-btn">🎨 Gerenciar Templates</button>
-                <button id="notifications-btn">🔔 Notificações</button>
+                <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+                <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+                <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+                <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+                <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
+                <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
                 <hr>
-                <button id="exit-btn">🚪 Sair</button>
+                <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
             </div>
         </div>
-        <h1 id="page-title">Perfil Público</h1>
+        <h1 id="page-title" data-i18n="publicProfile.pageTitle"></h1>
         <div class="menu-container">
-            <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+            <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
             <div id="actions-dropdown" class="dropdown"></div>
         </div>
     </header>
@@ -58,34 +58,34 @@
         <div class="profile-layout">
             <div class="form-column">
                 <section id="stats-section" class="profile-content-section">
-                    <h3>Estatísticas</h3>
+                    <h3 data-i18n="profile.groups.buttonStats"></h3>
                     <div class="profile-stats">
-                        <div class="stat-item"><span id="stats-boards" class="stat-number">0</span><span class="stat-label">Quadros</span></div>
-                        <div class="stat-item"><span id="stats-followers" class="stat-number">0</span><span class="stat-label">Seguidores</span></div>
-                        <div class="stat-item"><span id="stats-following" class="stat-number">0</span><span class="stat-label">Seguindo</span></div>
-                        <div class="stat-item"><span id="stats-groups" class="stat-number">0</span><span class="stat-label">Grupos</span></div>
+                        <div class="stat-item"><span id="stats-boards" class="stat-number">0</span><span class="stat-label" data-i18n="publicProfile.stats.boards"></span></div>
+                        <div class="stat-item"><span id="stats-followers" class="stat-number">0</span><span class="stat-label" data-i18n="publicProfile.stats.followers"></span></div>
+                        <div class="stat-item"><span id="stats-following" class="stat-number">0</span><span class="stat-label" data-i18n="publicProfile.stats.following"></span></div>
+                        <div class="stat-item"><span id="stats-groups" class="stat-number">0</span><span class="stat-label" data-i18n="kanban.boardFilter.groups"></span></div>
                     </div>
                 </section>
                 <section id="personal-info-section" class="profile-content-section">
-                    <h3>Informações Pessoais</h3>
+                    <h3 data-i18n="createUser.section.personalInfo"></h3>
                     <div id="personal-info-content" class="section-content-wrapper"></div>
                 </section>
                 <section id="contacts-section" class="profile-content-section">
-                    <h3>Contatos</h3>
+                    <h3 data-i18n="createUser.section.contacts"></h3>
                     <div id="contact-info-content" class="section-content-wrapper"></div>
                 </section>
             </div>
             <div class="form-column">
                 <section id="public-groups-section" class="profile-content-section">
-                    <h3>Grupos Públicos</h3>
+                    <h3 data-i18n="publicProfile.groups.title"></h3>
                     <div id="public-groups-container" class="groups-grid"></div>
                 </section>
                 <section id="mutual-friends-section" class="profile-content-section" style="display: none;">
-                    <h3>Amigos em Comum</h3>
+                    <h3 data-i18n="publicProfile.mutualFriends.title"></h3>
                     <div id="mutual-friends-container" class="mutual-friends-grid"></div>
                 </section>
                 <section id="public-boards-section" class="profile-content-section">
-                    <h3>Quadros Públicos</h3>
+                    <h3 data-i18n="publicProfile.boards.title"></h3>
                     <div id="public-boards-container" class="boards-grid"></div>
                 </section>
             </div>
@@ -93,22 +93,22 @@
 
         <!-- Seção de Ação (largura total) -->
         <section id="group-invite-section" class="profile-content-section" style="display: none; margin-top: 25px;">
-            <h3>Convidar para Grupo</h3>
-            <p>Você administra grupos e pode convidar este usuário para participar.</p>
-            <button id="group-invite-btn" class="btn confirm">Convidar para um Grupo</button>
+            <h3 data-i18n="publicProfile.inviteDialog.title"></h3>
+            <p data-i18n="publicProfile.invite.description"></p>
+            <button id="group-invite-btn" class="btn confirm" data-i18n="publicProfile.inviteDialog.title"></button>
         </section>
     </main>
 
     <!-- Diálogos -->
     <dialog id="avatar-modal" class="avatar-modal"><img id="modal-avatar" src="" alt="Avatar ampliado"></dialog>
     <dialog id="friend-request-modal" class="draggable">
-        <h3 class="drag-handle">Enviar Solicitação de Amizade</h3>
-        <p>Você pode enviar uma mensagem junto com sua solicitação.</p>
-        <textarea id="friend-request-message" rows="3" placeholder="Olá! Gostaria de me conectar com você."></textarea>
+        <h3 class="drag-handle" data-i18n="publicProfile.friendRequest.title"></h3>
+        <p data-i18n="publicProfile.friendRequest.description"></p>
+        <textarea id="friend-request-message" rows="3" data-i18n-placeholder="publicProfile.friendRequest.placeholder"></textarea>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button id="cancel-friend-request-btn" class="btn cancel">Cancelar</button>
-            <button id="send-friend-request-btn" class="btn confirm">Enviar</button>
+            <button id="cancel-friend-request-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="send-friend-request-btn" class="btn confirm" data-i18n="ui.send"></button>
         </div>
     </dialog>
 

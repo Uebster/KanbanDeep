@@ -1,9 +1,10 @@
 // js/friends.js
 
-import { getCurrentUser } from './auth.js';
-import { getAllUsers, getUserProfile, removeFriend, addFriend, getNotifications, saveNotifications } from './storage.js';
-import { addFriendRequestNotification, addFriendAcceptedNotification } from './notifications.js';
+import { getCurrentUser, updateUser } from './auth.js';
+import { getAllUsers, getUserProfile, removeFriend, addFriend, getNotifications, saveNotifications, } from './storage.js';
+import { addFriendRequestNotification, addFriendAcceptedNotification } from './notifications.js'; // A importação de 't' já estava aqui
 import { showFloatingMessage, showConfirmationDialog, showDialogMessage, debounce } from './ui-controls.js';
+import { t, initTranslations } from './translations.js'; // Garantindo que a importação esteja presente
 
 let currentUser;
 let allUsers = [];
@@ -11,12 +12,15 @@ let friends = [];
 let receivedRequests = [];
 let sentRequests = [];
 
-export function initFriendsPage() {
+export async function initFriendsPage() {
     currentUser = getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
         return;
     }
+
+    await initTranslations();
+
     allUsers = getAllUsers();
     
     setupEventListeners();
@@ -69,7 +73,7 @@ function renderFriendsList(filter = '') {
     const filteredFriends = friends.filter(f => f.name.toLowerCase().includes(filter.toLowerCase()));
 
     if (filteredFriends.length === 0) {
-        listEl.innerHTML = '<div class="empty-list-message"><span class="icon">🧑‍🤝‍🧑</span>Você ainda não tem amigos. Use a aba "Buscar Usuários" para encontrar pessoas.</div>';
+        listEl.innerHTML = `<div class="empty-list-message"><span class="icon">🧑‍🤝‍🧑</span>${t('friends.list.noFriends')}</div>`;
         return;
     }
 
@@ -85,8 +89,8 @@ function renderFriendsList(filter = '') {
                 <div class="user-username">@${friend.username}</div>
             </div>
             <div class="user-actions">
-                <button class="btn btn-secondary btn-sm" data-action="view-profile" data-id="${friend.id}">Ver Perfil</button>
-                <button class="btn btn-danger btn-sm" data-action="remove-friend" data-id="${friend.id}">Remover</button>
+                <button class="btn btn-secondary btn-sm" data-action="view-profile" data-id="${friend.id}">${t('friends.button.viewProfile')}</button>
+                <button class="btn btn-danger btn-sm" data-action="remove-friend" data-id="${friend.id}">${t('friends.button.remove')}</button>
             </div>
         `;
         listEl.appendChild(itemEl);
@@ -100,7 +104,7 @@ function renderRequests() {
     sentListEl.innerHTML = '';
 
     if (receivedRequests.length === 0) {
-        receivedListEl.innerHTML = '<div class="empty-list-message"><span class="icon">📥</span>Nenhuma solicitação de amizade recebida.</div>';
+        receivedListEl.innerHTML = `<div class="empty-list-message"><span class="icon">📥</span>${t('friends.requests.emptyList')}</div>`;
     } else {
         receivedRequests.forEach(req => {
             const itemEl = document.createElement('div');
@@ -109,11 +113,11 @@ function renderRequests() {
                 <div class="request-avatar"><img src="${allUsers.find(u => u.id === req.senderId)?.avatar || `https://ui-avatars.com/api/?name=${req.sender}&background=random`}" alt="Avatar de ${req.sender}"></div>
                 <div class="request-info">
                     <div class="request-name">${req.sender}</div>
-                    <div class="request-message">Enviou uma solicitação de amizade.</div>
+                    <div class="request-message">${t('friends.requests.sentYouRequest')}</div>
                 </div>
                 <div class="request-actions">
-                    <button class="btn btn-primary btn-sm" data-action="accept-request" data-id="${req.id}">Aceitar</button>
-                    <button class="btn btn-secondary btn-sm" data-action="reject-request" data-id="${req.id}">Recusar</button>
+                    <button class="btn btn-primary btn-sm" data-action="accept-request" data-id="${req.id}">${t('friends.button.accept')}</button>
+                    <button class="btn btn-secondary btn-sm" data-action="reject-request" data-id="${req.id}">${t('friends.button.reject')}</button>
                 </div>
             `;
             receivedListEl.appendChild(itemEl);
@@ -121,7 +125,7 @@ function renderRequests() {
     }
 
     if (sentRequests.length === 0) {
-        sentListEl.innerHTML = '<div class="empty-list-message"><span class="icon">📤</span>Nenhuma solicitação de amizade enviada.</div>';
+        sentListEl.innerHTML = `<div class="empty-list-message"><span class="icon">📤</span>${t('friends.requests.sentEmptyList')}</div>`;
     } else {
         sentRequests.forEach(req => {
             const receiver = allUsers.find(u => u.id === req.receiverId); // CORREÇÃO: Usa a propriedade receiverId
@@ -131,10 +135,10 @@ function renderRequests() {
             itemEl.innerHTML = `
                 <div class="request-avatar"><img src="${receiver.avatar || `https://ui-avatars.com/api/?name=${receiver.name}&background=random`}" alt="Avatar de ${receiver.name}"></div>
                 <div class="request-info">
-                    <div class="request-name">Solicitação enviada para ${receiver.name}</div>
+                    <div class="request-name">${t('friends.requests.sentTo', { name: receiver.name })}</div>
                 </div>
                 <div class="request-actions">
-                    <button class="btn btn-danger btn-sm" data-action="cancel-request" data-id="${req.id}" data-receiver-id="${receiver.id}">Cancelar</button>
+                    <button class="btn btn-danger btn-sm" data-action="cancel-request" data-id="${req.id}" data-receiver-id="${receiver.id}">${t('friends.button.cancel')}</button>
                 </div>
             `;
             sentListEl.appendChild(itemEl);
@@ -147,7 +151,7 @@ function renderUserSearchResults(query = '') {
     resultsEl.innerHTML = '';
 
     if (!query) {
-        resultsEl.innerHTML = '<p class="empty-list-message">Digite um nome para começar a buscar.</p>';
+        resultsEl.innerHTML = `<p class="empty-list-message">${t('friends.search.empty')}</p>`;
         return;
     }
 
@@ -159,7 +163,7 @@ function renderUserSearchResults(query = '') {
     );
 
     if (filteredUsers.length === 0) {
-        resultsEl.innerHTML = '<p class="empty-list-message">Nenhum usuário encontrado.</p>';
+        resultsEl.innerHTML = `<p class="empty-list-message">${t('friends.search.noResults')}</p>`;
         return;
     }
 
@@ -177,13 +181,11 @@ function renderUserSearchResults(query = '') {
                 <div class="user-name">${user.name}</div>
                 <div class="user-username">@${user.username}</div>
                 ${mutualFriendsCount > 0 ? 
-                    `<div class="user-mutual-friends">
-                        🧑‍🤝‍🧑 ${mutualFriendsCount} amigo(s) em comum
-                    </div>` : ''
+                    `<div class="user-mutual-friends">🧑‍🤝‍🧑 ${t('friends.search.mutualFriends', { count: mutualFriendsCount })}</div>` : ''
                 }
             </div>
             <div class="user-actions">
-                <button class="btn btn-secondary btn-sm" data-action="view-profile" data-id="${user.id}">Ver Perfil</button>
+                <button class="btn btn-secondary btn-sm" data-action="view-profile" data-id="${user.id}">${t('friends.button.viewProfile')}</button>
             </div>
         `;
         resultsEl.appendChild(itemEl);
@@ -199,9 +201,9 @@ async function handleActionClick(e) {
 
     switch (action) {
         case 'remove-friend':
-            showConfirmationDialog(`Tem certeza que deseja remover este amigo?`, (dialog) => {
+            showConfirmationDialog(t('friends.confirm.removeFriend'), (dialog) => {
                 removeFriend(currentUser.id, id);
-                showDialogMessage(dialog, 'Amigo removido.', 'success');
+                showDialogMessage(dialog, t('friends.feedback.friendRemovedSuccess'), 'success');
                 loadAndRenderAll();
                 return true;
             });
@@ -217,7 +219,7 @@ async function handleActionClick(e) {
                 // Notifica o usuário que enviou a solicitação
                 addFriendAcceptedNotification(currentUser.name, currentUser.id, requestToAccept.senderId);
 
-                showFloatingMessage('Amigo adicionado!', 'success');
+                showFloatingMessage(t('friends.feedback.friendAdded'), 'success');
                 loadAndRenderAll();
             }
             break;
@@ -227,7 +229,7 @@ async function handleActionClick(e) {
             if (requestToReject) {
                 requestToReject.status = 'rejected';
                 saveNotifications(currentUser.id, getNotifications(currentUser.id));
-                showFloatingMessage('Solicitação recusada.', 'info');
+                showFloatingMessage(t('friends.feedback.requestRejected'), 'info');
                 loadAndRenderAll();
             }
             break;
@@ -237,7 +239,7 @@ async function handleActionClick(e) {
             const receiverNotifications = getNotifications(receiverId);
             const updatedReceiverNotifications = receiverNotifications.filter(n => n.id !== id);
             saveNotifications(receiverId, updatedReceiverNotifications);
-            showFloatingMessage('Solicitação cancelada.', 'info');
+            showFloatingMessage(t('friends.feedback.requestCancelled'), 'info');
             loadAndRenderAll();
             break;
 
@@ -245,7 +247,7 @@ async function handleActionClick(e) {
             const userToAdd = allUsers.find(u => u.id === id);
             if (userToAdd) {
                 addFriendRequestNotification(currentUser.name, currentUser.id, userToAdd.id);
-                showFloatingMessage(`Solicitação enviada para ${userToAdd.name}`, 'success');
+                showFloatingMessage(t('friends.feedback.requestSent', { name: userToAdd.name }), 'success');
                 loadAndRenderAll();
             }
             break;

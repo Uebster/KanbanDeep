@@ -2,9 +2,11 @@
 
 import { registerUser, getAllUsers } from './auth.js';
 import { showFloatingMessage, initDraggableElements, initCustomSelects, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
+import { t, initTranslations } from './translations.js';
 
 // Função de inicialização exportada para ser chamada pelo main.js
-export function initCreateUserPage() {
+export async function initCreateUserPage() {
+    await initTranslations();
     initApp();
     initCustomSelects(); // Inicializa os selects customizados
     setupEventListeners();
@@ -37,10 +39,9 @@ function setupEventListeners() {
     
 // Função de cancelamento corrigida
     document.getElementById('btn-cancel')?.addEventListener('click', () => {
-        showConfirmationDialog(
-            'Tem certeza que deseja cancelar? Todas as alterações não salvas serão perdidas.',
+        showConfirmationDialog(t('createUser.confirm.cancel'), // "Tem certeza que deseja cancelar o cadastro? As informações inseridas serão perdidas."
             (dialog) => { // onConfirm
-                showDialogMessage(dialog, 'Criação cancelada. Redirecionando...', 'info');
+                showDialogMessage(dialog, t('createUser.feedback.cancelled'), 'info');
                 setTimeout(() => window.location.href = 'list-users.html', 1500);
                 return true; // Sinaliza para fechar o diálogo de confirmação
             }
@@ -72,25 +73,25 @@ function processUserCreation() {
 
     // Validações
     if (!name || !username) {
-        return { success: false, message: 'Nome completo e nome de usuário são obrigatórios.' };
+        return { success: false, message: 'createUser.error.nameRequired' };
     }
 
     if (password.length < 4) {
-        return { success: false, message: 'A senha deve ter pelo menos 4 caracteres.' };
+        return { success: false, message: 'createUser.error.passwordLength' };
     }
 
     if (password !== confirmPassword) {
-        return { success: false, message: 'As senhas não coincidem.' };
+        return { success: false, message: 'createUser.error.passwordMismatch' };
      
     }
 
     const existingUsers = getAllUsers();
     if (existingUsers.some(user => user.username === username)) {
-        return { success: false, message: 'Este nome de usuário já está em uso. Por favor, escolha outro.' };
+        return { success: false, message: 'createUser.error.usernameExists' };
     }
     
     if (email && existingUsers.some(user => user.email === email)) {
-        return { success: false, message: 'Este e-mail já está em uso. Por favor, use outro.' };
+        return { success: false, message: 'createUser.error.emailExists' };
     }
 
     // Cria o novo perfil do usuário
@@ -121,13 +122,13 @@ function processUserCreation() {
     if (registerUser(userProfile)) {
         return { 
             success: true, 
-            message: 'Usuário criado com sucesso!',
+            message: 'createUser.feedback.success',
             autoClose: true
         };
     } else {
         return { 
             success: false, 
-            message: 'Ocorreu um erro ao criar o usuário. Verifique os dados e tente novamente.',
+            message: 'createUser.error.generic',
             autoClose: true
         };
     }
@@ -176,17 +177,16 @@ function applyTheme() {
 }
 
 function showSaveConfirmationDialog() {
-    showConfirmationDialog( // Agora usa a função global de ui-controls.js
-        'Deseja registrar este usuário?',
+    showConfirmationDialog(t('createUser.confirm.register'), // "Confirmar cadastro do novo usuário?"
         async (dialog) => {
             const result = processUserCreation();
             
             if (result.success) {
-                showDialogMessage(dialog, 'Usuário registrado com sucesso! Redirecionando...', 'success');
+                showDialogMessage(dialog, t('createUser.feedback.success'), 'success');
                 setTimeout(() => window.location.href = 'list-users.html', 1500);
                 return true; // Sinaliza para fechar o diálogo
             } else {
-                showDialogMessage(dialog, result.message, 'error');
+                showDialogMessage(dialog, t(result.message), 'error');
                 return false; // Mantém o diálogo aberto para correção
             }
         }

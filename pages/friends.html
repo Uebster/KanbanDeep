@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amigos - KanbanDeep</title>
+    <title data-i18n-title="friends.pageTitle">Amigos - KanbanDeep</title>
     <link rel="stylesheet" href="../static/universal.css">
     <link rel="stylesheet" href="../static/friends.css">
 </head>
@@ -17,39 +17,39 @@
                 <img id="user-avatar" src="" alt="Avatar do Usuário">
             </button>
             <div id="profile-dropdown" class="dropdown">            
-                <button id="switch-user-btn">🔁 Trocar Perfil</button>
-                <button id="user-profile-btn">👤 Meu Perfil</button>
-                <button id="kanban-btn">📋 Meus Quadros</button>
-                <button id="my-groups-btn">👥 Meus Grupos</button>
-                <button id="templates-btn">🎨 Gerenciar Templates</button>
-                <button id="notifications-btn">🔔 Notificações</button>
+                <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+                <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+                <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+                <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
+                <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
                 <hr>
-                <button id="exit-btn">🚪 Sair</button>
+                <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
             </div>
         </div>
-        <h1 id="page-title">Amigos</h1>
+        <h1 id="page-title" data-i18n="friends.pageTitle"></h1>
         <div class="menu-container">
-            <button id="actions-dropdown-btn" class="btn">⚡ Ações</button>
+            <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
             <div id="actions-dropdown" class="dropdown">
-                <button id="undo-btn">↩️ Desfazer</button>
-                <button id="redo-btn">↪️ Refazer</button>
+                <button id="undo-btn" data-i18n="kanban.actions.undo">↩️ Desfazer</button>
+                <button id="redo-btn" data-i18n="kanban.actions.redo">↪️ Refazer</button>
             </div>
         </div>
     </header>
 
     <main class="card">
         <nav class="showcase-navbar">
-            <button class="nav-item active" data-tab="my-friends">Meus Amigos</button>
-            <button class="nav-item" data-tab="pending-requests">Solicitações</button>
-            <button class="nav-item" data-tab="find-users">Buscar Usuários</button>
+            <button class="nav-item active" data-tab="my-friends" data-i18n="kanban.profileMenu.friends"></button>
+            <button class="nav-item" data-tab="pending-requests" data-i18n="friends.tab.requests"></button>
+            <button class="nav-item" data-tab="find-users" data-i18n="friends.tab.findUsers"></button>
         </nav>
 
         <!-- Conteúdo da Aba: Meus Amigos -->
         <div id="my-friends" class="tab-content active">
             <section class="form-section">
                 <div class="card-header">
-                    <h2 class="card-title">Lista de Amigos</h2>
-                    <input type="text" id="friend-filter-input" class="filter-input" placeholder="Filtrar amigos por nome...">
+                    <h2 class="card-title" data-i18n="friends.list.title"></h2>
+                    <input type="text" id="friend-filter-input" class="filter-input" data-i18n-placeholder="friends.list.filterPlaceholder">
                 </div>
                 <div id="friends-list" class="user-list">
                     <!-- Amigos serão renderizados aqui -->
@@ -61,13 +61,13 @@
         <div id="pending-requests" class="tab-content">
             <section class="form-section">
                 <div class="card-header">
-                    <h2 class="card-title">Solicitações Recebidas</h2>
+                    <h2 class="card-title" data-i18n="friends.requests.receivedTitle"></h2>
                 </div>
                 <div id="received-requests-list" class="request-list"></div>
             </section>
             <section class="form-section">
                 <div class="card-header">
-                    <h2 class="card-title">Solicitações Enviadas</h2>
+                    <h2 class="card-title" data-i18n="friends.requests.sentTitle"></h2>
                 </div>
                 <div id="sent-requests-list" class="request-list"></div>
             </section>
@@ -77,10 +77,10 @@
         <div id="find-users" class="tab-content">
             <section class="form-section">
                 <div class="card-header">
-                    <h2 class="card-title">Encontrar Novos Amigos</h2>
+                    <h2 class="card-title" data-i18n="friends.find.title"></h2>
                 </div>
                 <div class="search-container">
-                    <input type="text" id="user-search-input" class="filter-input" placeholder="Digite um nome ou nome de usuário para buscar...">
+                    <input type="text" id="user-search-input" class="filter-input" data-i18n-placeholder="friends.find.searchPlaceholder">
                 </div>
                 <div id="user-search-results" class="user-list">
                     <!-- Resultados da busca serão renderizados aqui -->

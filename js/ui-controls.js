@@ -5,6 +5,7 @@ import {
     saveUserTagTemplates, getUserTagTemplates,
     getGroup, saveGroup, getAllGroups
 } from './storage.js';
+import { t } from './translations.js';
 
 /**
  * Biblioteca de ícones padrão para uso em toda a aplicação.
@@ -290,11 +291,11 @@ export function showFloatingMessage(message, type = 'info', duration = 4000) {
  * @param {string} confirmText - O texto do botão de confirmação.
  * @param {string} cancelText - O texto do botão de cancelamento.
  */
-export function showConfirmationDialog(message, onConfirm, onCancel = null, confirmText = 'Sim', cancelText = 'Não') {
+export function showConfirmationDialog(message, onConfirm, onCancel = null, confirmText = t('ui.yes'), cancelText = t('ui.no')) {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
-        <h3 class="drag-handle">Confirmação</h3>
+        <h3 class="drag-handle">${t('ui.confirmation')}</h3>
         <p>${message}</p>
         <div class="feedback"></div>
         <div class="modal-actions">
@@ -321,7 +322,7 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
                 setTimeout(closeAndCleanup, 1500);
             }
         } else {
-            showDialogMessage(dialog, 'Operação cancelada.', 'info');
+            showDialogMessage(dialog, t('ui.operationCancelled'), 'info');
             confirmBtn.disabled = true;
             cancelBtn.disabled = true;
             setTimeout(closeAndCleanup, 1500);
@@ -403,7 +404,7 @@ export function updateUserAvatar(user) {
     }
     
     // Adicionar tooltip com nome do usuário
-    avatarBtn.title = `Logado como: ${user.name}`;
+    avatarBtn.title = t('ui.loggedInAs', { name: user.name });
 }
 
 // ===== FUNÇÕES DE TEMA E FONTE UNIVERSAIS =====
@@ -430,19 +431,19 @@ export function applyUserTheme() {
 
     // Aplica a classe correta com base no tema final
     switch (themeToApply) {
-        case 'light':
-            document.body.classList.add('light-mode');
-            break;
-        case 'light-gray':
-            document.body.classList.add('light-gray-mode');
-            break;
-        case 'dark':
-            document.body.classList.add('dark-mode');
-            break;
-        case 'dark-gray':
-        default:
-            // O tema cinza escuro padrão não precisa de classe, pois é o :root
-            break;
+      case 'light':
+        document.body.classList.add('light-mode');
+        break;
+      case 'dark':
+        document.body.classList.add('dark-mode');
+        break;
+      case 'light-gray':
+        document.body.classList.add('light-gray-mode');
+        break;
+      case 'dark-gray':
+      default:
+        // O tema 'dark-gray' é o padrão do :root, então apenas limpamos as outras classes.
+        break;
     }
 
     // 2. Aplica a fonte
@@ -551,12 +552,12 @@ export function showIconPickerDialog(callback) {
         dialog.id = 'icon-picker-dialog';
         dialog.className = 'draggable';
         dialog.innerHTML = `
-            <h3 class="drag-handle">Selecione um Ícone</h3>
+            <h3 class="drag-handle">${t('iconPicker.title')}</h3>
             <div id="icon-grid">
                 <!-- Ícones serão inseridos aqui -->
             </div>
             <div class="modal-actions">
-                <button id="close-icon-picker-btn" class="btn cancel">Fechar</button>
+                <button id="close-icon-picker-btn" class="btn cancel">${t('ui.close')}</button>
             </div>
         `;
         document.body.appendChild(dialog);
@@ -597,7 +598,7 @@ export function showCustomColorPickerDialog(currentColor, callback) {
     }
 
     dialog.innerHTML = `
-        <h3 class="drag-handle">Escolha uma Cor</h3>
+        <h3 class="drag-handle">${t('colorPicker.title')}</h3>
         <div class="custom-color-picker-body">
             <div class="saturation-value-area">
                 <div class="sv-picker-handle"></div>
@@ -613,8 +614,8 @@ export function showCustomColorPickerDialog(currentColor, callback) {
         </div>
         <div class="custom-palette-container">
             <div class="custom-palette-header">
-                <span>Cores Salvas</span>
-                <button class="btn btn-sm btn-add-color" title="Adicionar cor atual à paleta">+</button>
+                <span>${t('colorPicker.savedColors')}</span>
+                <button class="btn btn-sm btn-add-color" title="${t('colorPicker.add')}">+</button>
             </div>
             <div class="custom-palette-grid"></div>
         </div>
@@ -629,8 +630,8 @@ export function showCustomColorPickerDialog(currentColor, callback) {
             </div>
         </div>
         <div class="modal-actions">
-            <button class="btn cancel">Cancelar</button>
-            <button class="btn confirm">OK</button>
+            <button class="btn cancel">${t('ui.cancel')}</button>
+            <button class="btn confirm">${t('colorPicker.ok')}</button>
         </div>
     `;
 
@@ -709,7 +710,7 @@ export function showCustomColorPickerDialog(currentColor, callback) {
             swatch.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 showContextMenu(e, [{
-                    label: 'Remover Cor', icon: '🗑️', isDestructive: true,
+                    label: t('colorPicker.remove'), icon: '🗑️', isDestructive: true,
                     action: () => {
                         let colors = getSavedColors().filter(c => c !== color);
                         saveColors(colors);
@@ -789,25 +790,24 @@ export function debounce(func, wait) {
  * em dropdowns estilizados e funcionais.
  */
 export function initCustomSelects() {
+    // Remove o listener antigo para evitar duplicação ao chamar a função várias vezes
+    document.removeEventListener("click", closeAllSelect);
+
     // Função para fechar todos os selects abertos, exceto o atual
     function closeAllSelect(elmnt) {
         const selectItems = document.getElementsByClassName("select-items");
         const selectSelected = document.getElementsByClassName("select-selected");
-        const arrNo = [];
-        for (let i = 0; i < selectSelected.length; i++) {
-            if (elmnt == selectSelected[i]) {
-                arrNo.push(i);
-            }
-        }
+
         for (let i = 0; i < selectItems.length; i++) {
-            if (arrNo.indexOf(i)) {
+            // Se o elemento clicado não for o "select-selected" correspondente, fecha a lista de itens.
+            if (elmnt !== selectSelected[i]) {
                 selectItems[i].classList.add("select-hide");
             }
         }
     }
 
     // Adiciona o listener para fechar ao clicar fora
-    document.addEventListener("click", () => closeAllSelect(null));
+    document.addEventListener("click", closeAllSelect);
 
     const customSelects = document.getElementsByClassName("custom-select");
 
@@ -959,11 +959,11 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
     const dialog = createTemplateEditorDialog(type);
     makeDraggable(dialog);
 
-    const title = isBoard ? 'Template de Quadro' : 'Conjunto de Etiquetas';
-    const item = isBoard ? 'Coluna' : 'Etiqueta';
+    const title = isBoard ? t('templateEditor.boardTitle') : t('templateEditor.tagTitle');
+    const item = isBoard ? t('templateEditor.column') : t('templateEditor.tag');
     const icon = isBoard ? '📋' : '🏷️';
 
-    dialog.querySelector('.dialog-title').textContent = templateId ? `Editar ${title}` : `Criar Novo ${title}`;
+    dialog.querySelector('.dialog-title').textContent = templateId ? t('templateEditor.editTitle', { type: title }) : t('templateEditor.createTitle', { type: title });
     dialog.querySelector('.template-icon-input').value = icon;
     dialog.querySelector('.template-name-input').value = '';
     dialog.querySelector('.template-desc-input').value = '';
@@ -978,7 +978,7 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
         const groupSelect = groupSelectorContainer.querySelector('select');
         const adminGroups = getAllGroups().filter(g => g.adminId === getCurrentUser().id);
 
-        groupSelect.innerHTML = '<option value="">-- Selecione um grupo --</option>';
+        groupSelect.innerHTML = `<option value="">${t('templateEditor.selectGroup')}</option>`;
         adminGroups.forEach(g => {
             groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
         });
@@ -1017,7 +1017,7 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
         const items = isBoard ? template.columns : template.tags;
     if (items) items.forEach(it => addTemplateItemToEditor(dialog, it.name, it.color));
     } else {
-        addTemplateItemToEditor(dialog, `Nova ${item}`, isBoard ? '#e74c3c' : '#3498db');
+        addTemplateItemToEditor(dialog, t('templateEditor.newItemName', { item: item }), isBoard ? '#e74c3c' : '#3498db');
     }
 
     // Configura os botões
@@ -1041,44 +1041,44 @@ function createTemplateEditorDialog(type) {
     dialog.id = isBoard ? 'board-template-dialog' : 'tag-template-dialog';
     dialog.className = 'draggable';
 
-    const title = isBoard ? 'Template de Quadro' : 'Conjunto de Etiquetas';
-    const item = isBoard ? 'Coluna' : 'Etiqueta';
+    const title = isBoard ? t('templateEditor.boardTitle') : t('templateEditor.tagTitle');
+    const item = isBoard ? t('templateEditor.column') : t('templateEditor.tag');
 
     // Adiciona o diálogo ao corpo da página.
     document.body.appendChild(dialog);
 
     dialog.innerHTML = `
-        <h3 class="drag-handle dialog-title">Criar ${title}</h3>
+        <h3 class="drag-handle dialog-title">${t('templateEditor.createTitle', { type: title })}</h3>
         <div class="form-group group-selector-container" style="display: none;">
-            <label>Salvar no Grupo:</label>
+            <label>${t('templateEditor.saveInGroup')}</label>
             <div class="custom-select">
                 <select class="template-group-select"></select>
             </div>
         </div>
         <div class="form-group">
-            <label>Nome do ${title}</label>
-            <input type="text" class="template-name-input" placeholder="Digite o nome aqui...">
+            <label>${t('templateEditor.nameLabel', { type: title })}</label>
+            <input type="text" class="template-name-input" placeholder="${t('templateEditor.namePlaceholder')}">
         </div>
         <div class="form-group">
-            <label>Ícone</label>
+            <label>${t('templateEditor.iconLabel')}</label>
             <div class="icon-input-group">
                 <input type="text" class="icon-display template-icon-input" readonly>
-                <button type="button" class="btn btn-sm btn-choose-icon">Escolher</button>
+                <button type="button" class="btn btn-sm btn-choose-icon">${t('ui.choose')}</button>
             </div>
         </div>
         <div class="form-group">
-            <label>Descrição:</label>
+            <label>${t('templateEditor.descriptionLabel')}</label>
             <textarea class="template-desc-input" rows="2"></textarea>
         </div>
         <div class="form-group">
-            <label>${isBoard ? 'Colunas' : 'Etiquetas'} (<span class="item-count">0</span>/8):</label>
+            <label class="items-label">${t('templateEditor.itemsLabel', { itemType: (isBoard ? t('templateEditor.column') : t('templateEditor.tag')) + 's', count: 0 })}</label>
             <div class="editor-container"></div>
-            <button type="button" class="btn alternative1 btn-add-item" style="width:100%; margin-top:10px;">Adicionar ${item}</button>
+            <button type="button" class="btn alternative1 btn-add-item" style="width:100%; margin-top:10px;">${t('templateEditor.addItem', { item: item })}</button>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
-            <button class="btn cancel">Cancelar</button>
-            <button class="btn confirm btn-save-template">Salvar</button>
+            <button class="btn cancel">${t('ui.cancel')}</button>
+            <button class="btn confirm btn-save-template">${t('ui.save')}</button>
         </div>
     `;
 
@@ -1088,16 +1088,16 @@ function createTemplateEditorDialog(type) {
 function addTemplateItemToEditor(dialog, name = '', color = '#333') {
     const editor = dialog.querySelector('.editor-container');
     if (editor.children.length >= 8) {
-        showDialogMessage(dialog, 'Limite de 8 itens atingido.', 'warning');
+        showDialogMessage(dialog, t('templateEditor.limitReached'), 'warning');
         return;
     }
     editor.classList.remove('hidden'); // Garante que o container esteja visível ao adicionar
     const itemEl = document.createElement('div');
     itemEl.className = 'editor-item';
     itemEl.innerHTML = `
-        <input type="text" value="${name}" placeholder="Nome do item">
-        <div class="color-picker-trigger" style="background-color: ${color};" data-color="${color}" title="Clique para alterar a cor"></div>
-        <button class="remove-btn" title="Remover">-</button>
+        <input type="text" value="${name}" placeholder="${t('templateEditor.itemNamePlaceholder')}">
+        <div class="color-picker-trigger" style="background-color: ${color};" data-color="${color}" title="${t('templateEditor.changeColorTitle')}"></div>
+        <button class="remove-btn" title="${t('templateEditor.removeItemTitle')}">-</button>
     `;
     const colorTrigger = itemEl.querySelector('.color-picker-trigger');
     colorTrigger.addEventListener('click', () => {
@@ -1117,7 +1117,8 @@ function addTemplateItemToEditor(dialog, name = '', color = '#333') {
 
 function updateItemCount(dialog) {
     const count = dialog.querySelector('.editor-container').children.length;
-    dialog.querySelector('.item-count').textContent = count;
+    const isBoard = dialog.id === 'board-template-dialog';
+    dialog.querySelector('.items-label').innerHTML = t('templateEditor.itemsLabel', { itemType: (isBoard ? t('templateEditor.column') : t('templateEditor.tag')) + 's', count: count });
     dialog.querySelector('.btn-add-item').disabled = count >= 8;
 }
 
@@ -1133,7 +1134,7 @@ function saveTemplateFromEditor(dialog, type) {
     const templateId = dialog.dataset.editingId;
     const name = dialog.querySelector('.template-name-input').value.trim();
     if (!name) {
-        showDialogMessage(dialog, 'O nome é obrigatório.', 'error');
+        showDialogMessage(dialog, t('templateEditor.nameRequired'), 'error');
         return;
     }
 
@@ -1141,19 +1142,19 @@ function saveTemplateFromEditor(dialog, type) {
     if (context.ownerType === 'group') {
         const groupId = dialog.querySelector('.template-group-select').value;
         if (!groupId) {
-            showDialogMessage(dialog, 'É necessário selecionar um grupo.', 'error');
+            showDialogMessage(dialog, t('templateEditor.groupRequired'), 'error');
             return;
         }
         context.ownerId = groupId; // Atualiza o ownerId com o grupo selecionado
     }
 
     const items = Array.from(dialog.querySelectorAll('.editor-container .editor-item')).map(item => ({
-        name: item.querySelector('input[type="text"]').value.trim() || 'Item sem nome',
+        name: item.querySelector('input[type="text"]').value.trim() || t('templateEditor.unnamedItem'),
         color: item.querySelector('.color-picker-trigger').dataset.color
     }));
 
     if (items.length === 0) {
-        showDialogMessage(dialog, 'Adicione pelo menos um item.', 'error');
+        showDialogMessage(dialog, t('templateEditor.itemRequired'), 'error');
         return;
     }
 
@@ -1166,7 +1167,7 @@ function saveTemplateFromEditor(dialog, type) {
     if (type === 'board') newTemplateData.columns = items;
     else newTemplateData.tags = items;
 
-    showConfirmationDialog('Deseja salvar este template?', (confirmDialog) => {
+    showConfirmationDialog(t('templateEditor.confirmSave'), (confirmDialog) => {
         let success = false;
         if (context.ownerType === 'user') {
             const userId = getCurrentUser().id;
@@ -1190,13 +1191,13 @@ function saveTemplateFromEditor(dialog, type) {
         }
 
         if (success) {
-            showDialogMessage(confirmDialog, 'Template salvo com sucesso!', 'success');
+            showDialogMessage(confirmDialog, t('templateEditor.saveSuccess'), 'success');
             // Recarrega a lista de templates na página que chamou
             window.dispatchEvent(new CustomEvent('templatesUpdated'));
             setTimeout(() => dialog.close(), 1500);
             return true;
         } else {
-            showDialogMessage(confirmDialog, 'Erro ao salvar o template.', 'error');
+            showDialogMessage(confirmDialog, t('templateEditor.saveError'), 'error');
             return false;
         }
     });

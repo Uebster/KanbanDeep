@@ -1,23 +1,4 @@
-    body {
-      min-height: 100vh;
-      display: flex;
-      justify-content: center; /* Centraliza horizontalmente */
-      align-items: center;    /* Centraliza verticalmente */
-      flex-direction: column;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    /* ===== CABEÇALHO ===== */
-    header {
-      width: 100%;
-      max-width: 800px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
+/* static/list-users.css - VERSÃO CORRIGIDA */
 
 .container {
     width: 100%;
@@ -27,6 +8,7 @@
     box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
     padding: 30px;
     border: 1px solid var(--primary);
+    margin: 40px auto; /* Adiciona margem para centralizar na página */
 }
 
 /* ===== CABEÇALHO ===== */
@@ -44,9 +26,10 @@ header h1 {
     color: var(--text);
 }
 
-header div {
+.header-actions {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 15px;
 }
 
 /* ===== AÇÕES SUPERIORES ===== */
