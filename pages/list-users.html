@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-i18n-title="listUsers.pageTitle">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lista de Usuários - Ecache</title>
+  <title data-i18n-title="listUsers.pageTitle">KanbanDeep - Seleção de Perfil</title>
   <link rel="stylesheet" href="../static/universal.css">
   <link rel="stylesheet" href="../static/list-users.css">
 </head>
@@ -75,12 +75,12 @@
     </dialog>
 
     <dialog id="confirm-dialog" class="draggable">
-      <h3 class="drag-handle" id="confirm-title">Confirmar ação</h3>
-      <p id="confirm-message">Tem certeza que deseja continuar?</p>
+      <h3 class="drag-handle" id="confirm-title" data-i18n="ui.confirmation"></h3>
+      <p id="confirm-message" data-i18n="ui.areYouSure"></p>
       <div class="feedback"></div>
       <div class="modal-actions">
-        <button id="confirm-ok" class="btn confirm">Confirmar</button>
-        <button id="confirm-cancel" class="btn cancel">Cancelar</button>
+        <button id="confirm-ok" class="btn confirm" data-i18n="ui.confirm"></button>
+        <button id="confirm-cancel" class="btn cancel" data-i18n="ui.cancel"></button>
       </div>
     </dialog>
   </div>

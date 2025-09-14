@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" data-i18n-title="createUser.pageTitle">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Criar Novo Usuário</title>
+  <title data-i18n-title="createUser.pageTitle">Criar Novo Usuário</title>
   <link rel="stylesheet" href="../static/universal.css">
   <link rel="stylesheet" href="../static/create-user.css">
   <style> 
@@ -60,12 +60,12 @@
               <label for="gender" data-i18n="createUser.label.gender"></label>
               <div class="custom-select">
                 <select id="gender">
-                  <option value="" data-i18n="createUser.gender.select">Selecionar</option>
-                  <option value="male" data-i18n="createUser.gender.male">Masculino</option>
-                  <option value="female" data-i18n="createUser.gender.female">Feminino</option>
-                  <option value="non-binary" data-i18n="createUser.gender.nonBinary">Não-binário</option>
-                  <option value="other" data-i18n="createUser.gender.other">Outro</option>
-                  <option value="prefer-not-to-say" data-i18n="createUser.gender.preferNotToSay">Prefiro não informar</option>
+                  <option value="" data-i18n="createUser.gender.select"></option>
+                  <option value="male" data-i18n="createUser.gender.male"></option>
+                  <option value="female" data-i18n="createUser.gender.female"></option>
+                  <option value="non-binary" data-i18n="createUser.gender.nonBinary"></option>
+                  <option value="other" data-i18n="createUser.gender.other"></option>
+                  <option value="prefer-not-to-say" data-i18n="createUser.gender.preferNotToSay"></option>
                 </select>
               </div>
             </div>
@@ -99,9 +99,9 @@
               <label for="language" data-i18n="preferences.language"></label>
               <div class="custom-select">
                 <select id="language">
-                  <option value="pt-BR" data-i18n="preferences.language.pt">Português (Brasil)</option>
-                  <option value="en-US" data-i18n="preferences.language.en">Inglês (EUA)</option>
-                  <option value="es-ES" data-i18n="preferences.language.es">Español (España)</option>
+                  <option value="pt-BR" data-i18n="preferences.language.pt"></option>
+                  <option value="en-US" data-i18n="preferences.language.en"></option>
+                  <option value="es-ES" data-i18n="preferences.language.es"></option>
                   <option value="fr-FR" data-i18n="preferences.language.fr"></option>
                   <option value="de-DE" data-i18n="preferences.language.de"></option>
                   <option value="it-IT" data-i18n="preferences.language.it"></option>
@@ -112,21 +112,19 @@
               <label for="theme" data-i18n="preferences.theme"></label>
               <div class="custom-select">
                 <select id="theme">
-                  <option value="auto" data-i18n="preferences.theme.systemDefault">Padrão do Sistema</option>
-                  <option value="dark" data-i18n="preferences.theme.dark">Escuro (Preto)</option>
-                  <option value="dark-gray" data-i18n="preferences.theme.darkGray">Cinza Escuro</option>
-                  <option value="light-gray" data-i18n="preferences.theme.lightGray">Cinza Claro</option>
-                  <option value="light" data-i18n="preferences.theme.light">Claro (Branco)</option>
+                  <option value="auto" data-i18n="preferences.theme.systemDefault"></option>
+                  <option value="dark" data-i18n="preferences.theme.dark"></option>
+                  <option value="dark-gray" data-i18n="preferences.theme.darkGray"></option>
+                  <option value="light-gray" data-i18n="preferences.theme.lightGray"></option>
+                  <option value="light" data-i18n="preferences.theme.light"></option>
                 </select>
               </div>
             </div>
             <div class="form-group">
               <label data-i18n="preferences.primaryColor"></label>
               <div id="color-palette-container" class="color-palette">
-                  <!-- Opção "Nenhuma Cor" -->
-                  <div class="color-swatch special" data-action="remove-primary" title="Nenhuma cor primária">🚫</div>
-                  <!-- Paleta de Cores -->
-                  <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" title="Padrão"></div>
+                  <div class="color-swatch special" data-action="remove-primary" data-i18n-title="preferences.primaryColor.none">🚫</div>
+                  <div class="color-swatch" style="background-color: #4cd4e6;" data-hex="#4cd4e6" data-rgb="76, 212, 230" data-i18n-title="preferences.primaryColor.default"></div>
                   <div class="color-swatch" style="background-color: #9a1eff;" data-hex="#9a1eff" data-rgb="154, 30, 255"></div>
                   <div class="color-swatch" style="background-color: #1eff1e;" data-hex="#1eff1e" data-rgb="30, 255, 30"></div>
                   <div class="color-swatch" style="background-color: #f552ed;" data-hex="#f552ed" data-rgb="245, 82, 237"></div>
@@ -161,16 +159,13 @@
       <div class="form-section privacy-full-width">
         <h2 data-i18n="createUser.section.privacy"></h2>
         <p data-i18n="createUser.privacy.description">Quem pode ver suas informações pessoais?</p>
-        <div style="margin-top: 8px;" class="privacy-options">
-          <div class="privacy-option" data-value="public"><h4>🌍 Público</h4>
-            <p>Todos podem ver suas informações</p>
-          </div>
-          <div class="privacy-option" data-value="friends"><h4>🧑‍🤝‍🧑 Amigos</h4>
-            <p>Apenas seus amigos podem ver</p>
-          </div>
-          <div class="privacy-option selected" data-value="private"><h4>🔒 Privado</h4>
-            <p>Apenas você pode ver</p>
-          </div>
+        <div class="privacy-options" style="margin-top: 8px;">
+          <div class="privacy-option" data-value="public"><h4 data-i18n="profile.privacy.public.title"></h4>
+            <p data-i18n="profile.privacy.public.desc"></p></div>
+          <div class="privacy-option" data-value="friends"><h4 data-i18n="profile.privacy.friends.title"></h4>
+            <p data-i18n="profile.privacy.friends.desc"></p></div>
+          <div class="privacy-option selected" data-value="private"><h4 data-i18n="profile.privacy.private.title"></h4>
+            <p data-i18n="profile.privacy.private.desc"></p></div>
         </div>
       </div>
 

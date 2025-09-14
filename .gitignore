@@ -13,3 +13,8 @@ yarn-error.log*
 erros.txt
 
 test.html
+check_locales.js
+
+find_untranslated.js
+
+tools/

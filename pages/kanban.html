@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-i18n-title="kanban.pageTitle">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KanbanDeep - My Boards</title>
+    <title data-i18n-title="kanban.pageTitle">KanbanDeep - My Boards</title>
     <link rel="stylesheet" href="../static/universal.css">
     <link rel="stylesheet" href="../static/kanban.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -27,7 +27,7 @@
             <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
             <hr>     
             <button id="preferences-btn" data-i18n="kanban.profileMenu.preferences"></button>
-            <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
+            <button id="exit-btn" data-i18n="kanban.profileMenu.exit"></button>
         </div>
     </div>
 
@@ -55,12 +55,12 @@
     <div class="menu-container">
         <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
         <div id="actions-dropdown" class="dropdown">
-            <button id="undo-btn" data-i18n="kanban.actions.undo">↩️ Desfazer</button>
-            <button id="redo-btn" data-i18n="kanban.actions.redo">↪️ Refazer</button>
+            <button id="undo-btn" data-i18n="kanban.actions.undo"></button>
+            <button id="redo-btn" data-i18n="kanban.actions.redo"></button>
             <hr>
-            <button id="save-as-template-btn" data-i18n="kanban.actions.saveAsTemplate">💾 Salvar como Template</button>
-            <button id="print-btn" data-i18n="kanban.actions.print">🖨️ Imprimir</button>
-            <button id="export-img" data-i18n="kanban.actions.exportImage">🖼️ Exportar Imagem</button>
+            <button id="save-as-template-btn" data-i18n="kanban.actions.saveAsTemplate"></button>
+            <button id="print-btn" data-i18n="kanban.actions.print"></button>
+            <button id="export-img" data-i18n="kanban.actions.exportImage"></button>
         </div>
     </div>
 </header>
@@ -214,11 +214,11 @@
 </dialog>
 
     <dialog id="confirm-dialog">
-        <h3 id="confirm-title" class="drag-handle">Confirmar Ação</h3>
-        <p id="confirm-message">Você tem certeza?</p>
+        <h3 id="confirm-title" class="drag-handle" data-i18n="ui.confirmation"></h3>
+        <p id="confirm-message" data-i18n="ui.areYouSure"></p>
         <div class="modal-actions">
-            <button id="confirm-cancel-btn" class="btn cancel">Cancelar</button>
-            <button id="confirm-ok-btn" class="btn danger">Confirmar</button>
+            <button id="confirm-cancel-btn" class="btn cancel" data-i18n="ui.cancel"></button>
+            <button id="confirm-ok-btn" class="btn danger" data-i18n="ui.confirm"></button>
         </div>
     </dialog>
 
@@ -293,7 +293,7 @@
     </div>
 
     <div class="form-group">
-        <label for="search-tags">Etiqueta:</label>
+        <label for="search-tags" data-i18n="kanban.dialog.search.tagsLabel"></label>
         <select id="search-tags">
             <!-- Opções preenchidas pelo JS -->
         </select>
@@ -307,7 +307,7 @@
 </dialog>
 
 <dialog id="details-dialog" class="draggable">
-    <h3 class="drag-handle" id="details-title">Detalhes do Item</h3>
+    <h3 class="drag-handle" id="details-title" data-i18n="kanban.dialog.details.title"></h3>
     <div id="details-content">
         <!-- O conteúdo será preenchido pelo JavaScript -->
     </div>

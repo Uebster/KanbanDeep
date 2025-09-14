@@ -32,7 +32,7 @@ export async function initProfilePage() {
     await initTranslations();
     document.getElementById('page-title').textContent = t('profile.pageTitle');
 
-    loadUserData(); // 1. Carrega os dados e popula os selects
+    loadUserData(t); // 1. Carrega os dados, passando a função de tradução.
     setupEventListeners();
     setupColorPicker();
     setupPrivacyOptions();
@@ -69,7 +69,7 @@ function translateProfilePage() {
     safeSetText('legend[data-i18n="preferences.displayOnCard"]', 'preferences.displayOnCard');
     // O seletor '#privacy-settings-label' não existe em profile.html, então foi removido para evitar o erro.
 }
-function loadUserData() {
+function loadUserData(t) { // Recebe a função de tradução como argumento
     const currentUser = getCurrentUser();
     if (!currentUser) return;
 
@@ -82,6 +82,9 @@ function loadUserData() {
 
         // Traduz os labels da página
         translateProfilePage();
+
+        // Carrega os grupos do usuário APÓS a tradução inicial estar pronta
+        loadUserGroups(t); // Passa a função 't' para a função que carrega os grupos
         
         // Salvar os dados originais para restauração
         originalUserData = {...userData};
@@ -196,7 +199,6 @@ tagTemplateSelect.value = prefs.defaultTagTemplateId || 'system-tags-prio';
         console.error('Erro ao carregar dados do usuário:', error);
         showFloatingMessage(t('profile.error.loading'), 'error');
     }
-    loadUserGroups();
     initCustomSelects(); // Chamado aqui, no final, para garantir que todos os selects estão populados
 }
 
@@ -248,9 +250,13 @@ function setupEventListeners() {
     if (languageSelect) {
         languageSelect.addEventListener('change', async (e) => {
             isSaved = false;
-            await loadLanguage(e.target.value);
-            applyTranslations();
-            initCustomSelects(); // Atualiza o texto do select customizado
+            await loadLanguage(e.target.value); // Carrega o novo dicionário
+            applyTranslations(); // Traduz elementos com data-i18n
+            
+            // Re-renderiza as partes dinâmicas da página que precisam de tradução
+            translateProfilePage(); // Traduz labels estáticos
+            loadUserGroups(t);      // Re-renderiza os cards de grupo com a nova tradução
+            initCustomSelects();    // Atualiza o texto dos selects customizados
         });
     }
 
@@ -766,7 +772,7 @@ function confirmDeleteAccount() {
 // profile.js - Adicione estas funções
 
 // Função para carregar e exibir os grupos do usuário
-function loadUserGroups() {
+function loadUserGroups(t) { // Recebe a função de tradução como argumento
     const groupsContainer = document.getElementById('groups-container');
     if (!groupsContainer) return;
     
@@ -796,17 +802,22 @@ function loadUserGroups() {
     userGroups.forEach(group => {
         const isAdmin = group.adminId === currentUser.id;
         
+        // Determina o texto do papel ANTES de criar o HTML.
+        // Isso garante que a função t() seja chamada no contexto correto e facilita a depuração.
+        const roleText = isAdmin ? t('profile.groups.roleAdmin') : t('profile.groups.roleMember');
+        const statsButtonText = t('profile.groups.buttonStats');
+
         const groupCard = document.createElement('div');
         groupCard.className = 'group-card';
         groupCard.innerHTML = `
-            <div class="group-icon">👥</div>
+            <div class="group-icon">${group.icon || '👥'}</div>
             <div class="group-info">
                 <div class="group-name">${group.name}</div>
-                <div class="group-role">${isAdmin ? t('profile.groups.roleAdmin') : t('profile.groups.roleMember')}</div>
+                <div class="group-role">${roleText}</div>
             </div>
             <div class="group-actions">
                 <button type="button" class="btn btn-sm view-group-stats" data-group-id="${group.id}">
-                    ${t('profile.groups.buttonStats')}
+                    ${statsButtonText}
                 </button>
             </div>
         `;

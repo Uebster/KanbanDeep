@@ -101,5 +101,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // Redirecionar após animação completa
     setTimeout(() => {
         window.location.href = 'list-users.html';
-    }, 8000); // 8 segundos para a animação completa
+    }, 7000); // Tempo ajustado para 7 segundos
 });

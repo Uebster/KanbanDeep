@@ -2,23 +2,32 @@
 
 import { registerUser, getAllUsers } from './auth.js';
 import { showFloatingMessage, initDraggableElements, initCustomSelects, showConfirmationDialog, showDialogMessage } from './ui-controls.js';
-import { t, initTranslations } from './translations.js';
+import { t, initTranslations, loadLanguage, applyTranslations } from './translations.js';
 
 // Função de inicialização exportada para ser chamada pelo main.js
 export async function initCreateUserPage() {
-    await initTranslations();
-    initApp();
-    initCustomSelects(); // Inicializa os selects customizados
+    // 1. Lê as preferências temporárias da tela de login ANTES de tudo.
+    const tempLanguage = localStorage.getItem('appLanguage') || 'pt-BR';
+    const tempTheme = localStorage.getItem('appTheme') || 'dark-gray';
+    
+    // 2. Carrega o idioma correto.
+    await loadLanguage(tempLanguage);
+    applyTranslations();
+
+    // 3. Aplica o tema visualmente.
+    applyTheme(tempTheme);
+
+    // 4. Pré-seleciona os valores nos selects.
+    document.getElementById('language').value = tempLanguage;
+    document.getElementById('theme').value = tempTheme;
+
+    // 5. Inicializa o restante da página.
+    setupDateInput();
+    initCustomSelects();
     setupEventListeners();
-    initDraggableElements();
 }
 
-// ===== FUNÇÕES DA PÁGINA =====
-
-function initApp() {
-    applyTheme(); // Aplica o tema ao carregar a página
-
-    // Configurar data de nascimento máxima (usuários com pelo menos 13 anos)
+function setupDateInput() {
     const today = new Date();
     const maxDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
     const birthdateInput = document.getElementById('birthdate');
@@ -38,6 +47,17 @@ function setupEventListeners() {
     document.getElementById('password')?.addEventListener('input', updatePasswordStrength);
     
 // Função de cancelamento corrigida
+    // Adiciona listeners para pré-visualização de idioma e tema
+    document.getElementById('language')?.addEventListener('change', async (e) => {
+        await loadLanguage(e.target.value);
+        applyTranslations();
+        initCustomSelects(); // Atualiza o texto dos selects customizados
+    });
+
+    document.getElementById('theme')?.addEventListener('change', (e) => {
+        applyTheme(e.target.value);
+    });
+
     document.getElementById('btn-cancel')?.addEventListener('click', () => {
         showConfirmationDialog(t('createUser.confirm.cancel'), // "Tem certeza que deseja cancelar o cadastro? As informações inseridas serão perdidas."
             (dialog) => { // onConfirm
@@ -164,16 +184,14 @@ function updatePasswordStrength() {
     strengthMeter.classList.add(`strength-${strength}`);
 }
 
-function applyTheme() {
-    // Lê a preferência do sistema, definida na tela de login
-    const systemTheme = localStorage.getItem('appTheme') || 'dark-gray';
-    
+function applyTheme(theme) {
     document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
 
-    if (systemTheme === 'light') {
-        document.body.classList.add('light-mode');
+    switch (theme) {
+        case 'light': document.body.classList.add('light-mode'); break;
+        case 'dark': document.body.classList.add('dark-mode'); break;
+        case 'light-gray': document.body.classList.add('light-gray-mode'); break;
     }
-    // Se for 'dark-gray', nenhuma classe é adicionada, usando o :root.
 }
 
 function showSaveConfirmationDialog() {

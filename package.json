@@ -6,5 +6,8 @@
   },
   "devDependencies": {
     "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2"
   }
 }

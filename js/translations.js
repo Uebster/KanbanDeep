@@ -78,9 +78,10 @@ export function applyTranslations() {
     });
 
     // Atualiza o título da página
-    const pageTitleKey = document.documentElement.dataset.i18nTitle;
-    if (pageTitleKey) {
-        document.title = t(pageTitleKey);
+    const pageTitleEl = document.querySelector('title[data-i18n-title]');
+    if (pageTitleEl) {
+        const key = pageTitleEl.getAttribute('data-i18n-title');
+        document.title = t(key);
     }
 }
 

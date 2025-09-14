@@ -2101,7 +2101,7 @@ async function saveBoardAsTemplate() {
             id: 'user-board-' + Date.now(),
             name: templateName,
             icon: currentBoard.icon || '📋',
-            description: `Template criado a partir do quadro '${currentBoard.title}'.`,
+            description: t('kanban.template.descriptionFromBoard', { boardTitle: currentBoard.title }),
             columns: currentBoard.columns.map(col => ({ name: col.title, color: col.color }))
         };
 

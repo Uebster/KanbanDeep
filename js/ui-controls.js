@@ -513,6 +513,8 @@ function initSmartHeader() {
     }
 }
 
+let hideHeaderTimeout; // Variável para controlar o delay de fechamento
+
 /**
  * Lida com o movimento do mouse para mostrar/ocultar o header.
  */
@@ -520,23 +522,44 @@ function handleHeaderMouseMove(e) {
     const header = document.getElementById('main-header');
     if (!header) return;
 
-    // Se o mouse está sobre o header, ele deve permanecer visível.
-    if (header.matches(':hover')) {
+    const openDropdown = document.querySelector('.dropdown.show');
+
+    // Se o mouse está sobre o header ou um dropdown aberto, cancela qualquer ação de esconder e mantém visível.
+    if (header.matches(':hover') || (openDropdown && openDropdown.matches(':hover'))) {
+        clearTimeout(hideHeaderTimeout);
         header.classList.add('show-header');
         document.body.classList.add('header-is-visible');
-        return; // Sai para não executar a lógica de esconder
+        return;
     }
 
     // Se o mouse está na área de ativação (10px), mostra o header.
     if (e.clientY < 10) {
+        clearTimeout(hideHeaderTimeout);
         header.classList.add('show-header');
         document.body.classList.add('header-is-visible');
     } 
     // Se o mouse está na área de desativação (além de 75px), esconde o header.
     else if (e.clientY > 75) {
-        header.classList.remove('show-header');
-        document.body.classList.remove('header-is-visible');
-        document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+        // Se um dropdown está aberto, usa o período de cortesia para dar tempo ao usuário.
+        if (openDropdown) {
+            clearTimeout(hideHeaderTimeout);
+            hideHeaderTimeout = setTimeout(() => {
+                // Checa novamente antes de fechar. Se o mouse alcançou o dropdown, não fecha.
+                const currentOpenDropdown = document.querySelector('.dropdown.show');
+                if (currentOpenDropdown && currentOpenDropdown.matches(':hover')) {
+                    return;
+                }
+                header.classList.remove('show-header');
+                document.body.classList.remove('header-is-visible');
+                // Fecha qualquer dropdown que ainda esteja aberto
+                document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+            }, 300); // 300ms de "período de cortesia"
+        } else {
+            // Se nenhum dropdown estiver aberto, esconde o header imediatamente.
+            clearTimeout(hideHeaderTimeout);
+            header.classList.remove('show-header');
+            document.body.classList.remove('header-is-visible');
+        }
     }
 }
 
