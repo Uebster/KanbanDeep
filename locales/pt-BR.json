@@ -299,6 +299,8 @@
     "kanban.dialog.board.useTemplate": "Usar um Template (Opcional):",
     "kanban.dialog.board.visibilityFriends": "Amigos (só amigos veem)",
     "kanban.dialog.board.visibilityGroup": "Grupo (membros do grupo veem)",
+    "kanban.dialog.card.backgroundColor": "Cor de Fundo:",
+    "kanban.dialog.card.textColor": "Cor do Texto:",
     "kanban.dialog.board.visibilityPrivate": "Privado (só você vê)",
     "kanban.dialog.board.visibilityPublic": "Público (todos veem)",
     "kanban.dialog.card.columnLabel": "Coluna:",

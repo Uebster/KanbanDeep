@@ -299,6 +299,8 @@
     "kanban.dialog.board.useTemplate": "Eine Vorlage verwenden (Optional):",
     "kanban.dialog.board.visibilityFriends": "Freunde (nur Freunde sehen es)",
     "kanban.dialog.board.visibilityGroup": "Gruppe (Gruppenmitglieder sehen es)",
+    "kanban.dialog.card.backgroundColor": "Hintergrundfarbe:",
+    "kanban.dialog.card.textColor": "Textfarbe:",
     "kanban.dialog.board.visibilityPrivate": "Privat (nur Sie sehen es)",
     "kanban.dialog.board.visibilityPublic": "Öffentlich (jeder sieht es)",
     "kanban.dialog.card.columnLabel": "Spalte:",

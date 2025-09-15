@@ -606,6 +606,15 @@ function createCardElement(card) {
     cardEl.dataset.cardId = card.id;
     cardEl.draggable = true;
 
+    // NOVA LÓGICA: Aplica cores customizadas ao cartão, se existirem.
+    // Usa 'var(--bg-card)' e 'var(--text)' como fallbacks se as cores não estiverem definidas.
+    if (card.backgroundColor) {
+        cardEl.style.backgroundColor = card.backgroundColor;
+    }
+    if (card.textColor) {
+        cardEl.style.color = card.textColor;
+    }
+
     // Constrói a linha da etiqueta (se houver)
     let tagLineHtml = '';
     if (card.tags && card.tags.length > 0) {
@@ -1038,7 +1047,8 @@ function handleSaveColumn() {
             const columnData = { 
                 title, 
                 description: document.getElementById('column-description').value, 
-                color: document.getElementById('column-color-trigger').dataset.color 
+                color: document.getElementById('column-color-trigger').dataset.color,
+                textColor: document.getElementById('column-text-color-trigger').dataset.color // <-- CORREÇÃO AQUI
             };
 
             if (columnId && columnId !== 'null') {
@@ -1136,6 +1146,32 @@ function showCardDialog(cardId = null, columnId) {
         document.getElementById('card-due-date').value = '';
         document.getElementById('card-due-time').value = '';
     }
+
+    // NOVA LÓGICA: Cores do Cartão
+    const cardBgColorTrigger = document.getElementById('card-bg-color-trigger');
+    const cardTextColorTrigger = document.getElementById('card-text-color-trigger');
+
+    // Define a cor inicial do seletor de fundo
+    const initialBgColor = card ? card.backgroundColor || 'var(--bg-card)' : 'var(--bg-card)';
+    cardBgColorTrigger.style.backgroundColor = initialBgColor;
+    cardBgColorTrigger.dataset.color = initialBgColor;
+    cardBgColorTrigger.onclick = () => {
+        showCustomColorPickerDialog(cardBgColorTrigger.dataset.color, (newColor) => {
+            cardBgColorTrigger.style.backgroundColor = newColor;
+            cardBgColorTrigger.dataset.color = newColor;
+        });
+    };
+
+    // Define a cor inicial do seletor de texto
+    const initialTextColor = card ? card.textColor || 'var(--text)' : 'var(--text)';
+    cardTextColorTrigger.style.backgroundColor = initialTextColor;
+    cardTextColorTrigger.dataset.color = initialTextColor;
+    cardTextColorTrigger.onclick = () => {
+        showCustomColorPickerDialog(cardTextColorTrigger.dataset.color, (newColor) => {
+            cardTextColorTrigger.style.backgroundColor = newColor;
+            cardTextColorTrigger.dataset.color = newColor;
+        });
+    };
 
         // Lógica do select de coluna
     const columnSelectGroup = document.getElementById('card-column-select-group');
@@ -1256,7 +1292,15 @@ function handleSaveCard() {
             const dateValue = document.getElementById('card-due-date').value;
             const timeValue = document.getElementById('card-due-time').value;
             let combinedDateTime = dateValue ? (timeValue ? `${dateValue}T${timeValue}:00` : `${dateValue}T00:00:00`) : null;
-            const cardData = { title, description: document.getElementById('card-description').value.trim(), dueDate: combinedDateTime, tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), assignedTo: document.getElementById('card-assigned-to').value };
+            const cardData = { 
+                title, 
+                description: document.getElementById('card-description').value.trim(), 
+                dueDate: combinedDateTime, 
+                tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), 
+                assignedTo: document.getElementById('card-assigned-to').value,
+                backgroundColor: document.getElementById('card-bg-color-trigger').dataset.color, // Salva a cor de fundo
+                textColor: document.getElementById('card-text-color-trigger').dataset.color // Salva a cor do texto
+            };
 
             const previousAssignee = getCard(cardId)?.assignedTo;
             if (cardId && cardId !== 'null') {

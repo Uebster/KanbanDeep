@@ -107,6 +107,12 @@ body {
     border-bottom: 3px solid var(--border);
 }
 
+/* CORREÇÃO: Garante que o título (h3) da coluna herde a cor customizada
+   definida em .column-header, sobrescrevendo a regra global de h3. */
+.column-header h3 {
+    color: inherit;
+}
+
 #columns-container {
   display: flex;
   gap: 20px;
@@ -146,7 +152,7 @@ body {
 
 /* --- NOVO ESTILO DE CARTÃO DETALHADO E CORRETO --- */
 .card {
-    background-color: var(--bg-card);
+    background-color: var(--bg-card); /* A cor de fundo será sobrescrita pelo JS se houver cor customizada */
     border: 2px solid var(--border); /* Borda mais grossa para combinar com a coluna */
     border-radius: 6px;
     cursor: grab;
@@ -210,15 +216,18 @@ body {
 .card-hover-info {
     /* Adiciona o espaçamento que faltava */
     padding: 10px 15px 5px 15px;
-    font-size: 0.9rem;
-    color: var(--text-muted);
+    font-size: 0.85rem;
+    color: inherit; /* Herda a cor do texto do cartão */
+    opacity: 0.8; /* Deixa um pouco mais sutil que o título */
 }
 .card-hover-info p {
     margin: 0 0 5px 0;
     text-align: left; /* Alinha os detalhes à esquerda */
+    color: inherit;
 }
 .card-hover-info p strong {
-    color: var(--text); /* Destaca o label (ex: "Criador:") */
+    color: inherit; /* Garante que o negrito também herde a cor customizada do cartão */
+    opacity: 1; /* Faz o label (ex: "Criador:") ter um pouco mais de destaque */
 }
 
 .card-footer-details {
@@ -229,7 +238,8 @@ body {
 
 .card-due-date-display {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: inherit; /* Herda a cor do texto do cartão */
+    opacity: 0.8; /* Deixa um pouco mais sutil que o título */
 }
 
 .card-status-box {

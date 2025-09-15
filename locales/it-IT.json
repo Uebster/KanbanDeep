@@ -299,6 +299,8 @@
     "kanban.dialog.board.useTemplate": "Usa un Modello (Opzionale):",
     "kanban.dialog.board.visibilityFriends": "Amici (solo gli amici possono vederlo)",
     "kanban.dialog.board.visibilityGroup": "Gruppo (i membri del gruppo possono vederlo)",
+    "kanban.dialog.card.backgroundColor": "Colore Sfondo:",
+    "kanban.dialog.card.textColor": "Colore Testo:",
     "kanban.dialog.board.visibilityPrivate": "Privato (solo tu puoi vederlo)",
     "kanban.dialog.board.visibilityPublic": "Pubblico (tutti possono vederlo)",
     "kanban.dialog.card.columnLabel": "Colonna:",
