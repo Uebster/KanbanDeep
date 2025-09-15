@@ -1026,6 +1026,19 @@ function showColumnDialog(columnId = null) {
             textColorTrigger.dataset.color = newColor;
         });
     };
+
+    // NOVA LÓGICA: Botão para resetar as cores da coluna
+    const resetBtn = document.getElementById('reset-column-colors-btn');
+    resetBtn.onclick = () => {
+        const defaultBg = 'var(--bg-column-header)';
+        const defaultText = 'var(--text)';
+
+        colorTrigger.style.backgroundColor = defaultBg;
+        colorTrigger.dataset.color = defaultBg;
+
+        textColorTrigger.style.backgroundColor = defaultText;
+        textColorTrigger.dataset.color = defaultText;
+    };
     dialog.querySelector('.btn.danger').style.display = columnId ? 'inline-block' : 'none';
     dialog.showModal();
 }
@@ -1044,11 +1057,17 @@ function handleSaveColumn() {
         (confirmationDialog) => {
             saveState(); // Salva o estado para o Desfazer
             const columnId = dialog.dataset.editingId;
+            
+            const bgColor = document.getElementById('column-color-trigger').dataset.color;
+            const textColor = document.getElementById('column-text-color-trigger').dataset.color;
+
             const columnData = { 
                 title, 
                 description: document.getElementById('column-description').value, 
-                color: document.getElementById('column-color-trigger').dataset.color,
-                textColor: document.getElementById('column-text-color-trigger').dataset.color // <-- CORREÇÃO AQUI
+                // Se a cor for uma variável CSS (padrão), salva null para que a coluna herde o tema.
+                // Caso contrário, salva a cor customizada.
+                color: bgColor.startsWith('var(') ? null : bgColor,
+                textColor: textColor.startsWith('var(') ? null : textColor
             };
 
             if (columnId && columnId !== 'null') {
@@ -1173,6 +1192,19 @@ function showCardDialog(cardId = null, columnId) {
         });
     };
 
+    // NOVA LÓGICA: Botão para resetar as cores
+    const resetBtn = document.getElementById('reset-card-colors-btn');
+    resetBtn.onclick = () => {
+        const defaultBg = 'var(--bg-card)';
+        const defaultText = 'var(--text)';
+
+        cardBgColorTrigger.style.backgroundColor = defaultBg;
+        cardBgColorTrigger.dataset.color = defaultBg;
+
+        cardTextColorTrigger.style.backgroundColor = defaultText;
+        cardTextColorTrigger.dataset.color = defaultText;
+    };
+
         // Lógica do select de coluna
     const columnSelectGroup = document.getElementById('card-column-select-group');
     const columnSelect = document.getElementById('card-column-select');
@@ -1292,14 +1324,20 @@ function handleSaveCard() {
             const dateValue = document.getElementById('card-due-date').value;
             const timeValue = document.getElementById('card-due-time').value;
             let combinedDateTime = dateValue ? (timeValue ? `${dateValue}T${timeValue}:00` : `${dateValue}T00:00:00`) : null;
-            const cardData = { 
+            
+            const bgColor = document.getElementById('card-bg-color-trigger').dataset.color;
+            const textColor = document.getElementById('card-text-color-trigger').dataset.color;
+
+            const cardData = {
                 title, 
                 description: document.getElementById('card-description').value.trim(), 
                 dueDate: combinedDateTime, 
                 tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), 
                 assignedTo: document.getElementById('card-assigned-to').value,
-                backgroundColor: document.getElementById('card-bg-color-trigger').dataset.color, // Salva a cor de fundo
-                textColor: document.getElementById('card-text-color-trigger').dataset.color // Salva a cor do texto
+                // Se a cor for uma variável CSS (padrão), salva null para que o cartão herde o tema.
+                // Caso contrário, salva a cor customizada.
+                backgroundColor: bgColor.startsWith('var(') ? null : bgColor,
+                textColor: textColor.startsWith('var(') ? null : textColor
             };
 
             const previousAssignee = getCard(cardId)?.assignedTo;
