@@ -207,6 +207,20 @@ body {
     right: 15px;
 }
 
+.card-hover-info {
+    /* Adiciona o espaçamento que faltava */
+    padding: 10px 15px 5px 15px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.card-hover-info p {
+    margin: 0 0 5px 0;
+    text-align: left; /* Alinha os detalhes à esquerda */
+}
+.card-hover-info p strong {
+    color: var(--text); /* Destaca o label (ex: "Criador:") */
+}
+
 .card-footer-details {
     position: absolute;
     bottom: 8px;
