@@ -622,7 +622,7 @@ function loadTagTemplatesForGroup() {
         systemTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
-            option.textContent = template.name;
+            option.textContent = t(template.name);
             optgroupSystem.appendChild(option);
         });
         templateSelect.appendChild(optgroupSystem);

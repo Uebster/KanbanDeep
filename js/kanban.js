@@ -2253,10 +2253,13 @@ function setupPreferencesControlsListeners(dialog) {
     const fieldsToTrack = [
         { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
         { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
-        { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) },
+        { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) }, // Corrigido: era 'action'
         { id: 'pref-language', action: async (e) => {
             await loadLanguage(e.target.value);
             applyTranslations(); // Aplica em elementos com data-i18n
+            // Recria o select de templates de tags para traduzir as opções
+            const selectedTemplateId = dialog.querySelector('#pref-default-tag-template').value;
+            populateTagTemplatesSelect(selectedTemplateId);
             initCustomSelects(); // Re-inicializa para traduzir as opções dos selects
         } },
         { id: 'pref-default-tag-template', action: null },
@@ -2323,21 +2326,21 @@ function savePreferencesData() {
 
     const updatedUser = {
         ...user,
-        theme: document.getElementById('pref-theme').value,
-        language: document.getElementById('pref-language').value,
+        theme: dialog.querySelector('#pref-theme').value,
+        language: dialog.querySelector('#pref-language').value,
         preferences: {
             ...user.preferences,
-            fontFamily: document.getElementById('pref-font-family').value,
-            fontSize: document.getElementById('pref-font-size').value,
-            showTags: document.getElementById('pref-card-show-tags').checked,
-            showDate: document.getElementById('pref-card-show-date').checked,
-            showStatus: document.getElementById('pref-card-show-status').checked,
-            showAssignment: document.getElementById('pref-card-show-assignment').checked,
-            defaultTagTemplateId: document.getElementById('pref-default-tag-template').value,
-            showBoardIcon: document.getElementById('pref-board-show-icon').checked,
-            showBoardTitle: document.getElementById('pref-board-show-title').checked,
-            showCardDetails: document.getElementById('pref-card-show-details').checked,
-            smartHeader: document.getElementById('pref-smart-header').checked,
+            fontFamily: dialog.querySelector('#pref-font-family').value,
+            fontSize: dialog.querySelector('#pref-font-size').value,
+            showTags: dialog.querySelector('#pref-card-show-tags').checked,
+            showDate: dialog.querySelector('#pref-card-show-date').checked,
+            showStatus: dialog.querySelector('#pref-card-show-status').checked,
+            showAssignment: dialog.querySelector('#pref-card-show-assignment').checked,
+            defaultTagTemplateId: dialog.querySelector('#pref-default-tag-template').value,
+            showBoardIcon: dialog.querySelector('#pref-board-show-icon').checked,
+            showBoardTitle: dialog.querySelector('#pref-board-show-title').checked,
+            showCardDetails: dialog.querySelector('#pref-card-show-details').checked,
+            smartHeader: dialog.querySelector('#pref-smart-header').checked,
             primaryColor: primaryColor
         }
     };
@@ -2384,7 +2387,7 @@ function populateTagTemplatesSelect(selectedId = null) {
         systemTagTemplates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
-            option.textContent = template.name;
+            option.textContent = t(template.name); // Traduz o nome do template do sistema
             if (template.id === selectedId) option.selected = true;
             optgroupSystem.appendChild(option);
         });

@@ -105,51 +105,8 @@ function loadUserData(t) { // Recebe a função de tradução como argumento
         document.getElementById('language').value = userData.language || 'pt-BR';
         document.getElementById('theme').value = userData.theme || 'auto';
 
-// --- Preenchimento do Select de Etiquetas (COM A NOVA LÓGICA) ---
-const tagTemplateSelect = document.getElementById('default-tag-template');
-const userTagTemplates = getUserTagTemplates(currentUser.id);
-const systemTagTemplates = getSystemTagTemplates();
-
-// Limpa as opções existentes
-tagTemplateSelect.innerHTML = '';
-
-// Adiciona a opção padrão (nenhum) no topo
-const defaultOption = document.createElement('option');
-defaultOption.value = '';
-defaultOption.textContent = t('preferences.tagTemplate.none');
-tagTemplateSelect.appendChild(defaultOption);
-
-// Adiciona os templates do usuário primeiro, se existirem
-if (userTagTemplates.length > 0) {
-    const optgroupUser = document.createElement('optgroup');
-    optgroupUser.label = t('preferences.tagTemplate.mySets');
-    userTagTemplates.forEach(template => {
-        const option = document.createElement('option');
-        option.value = template.id;
-        option.textContent = template.name;
-        optgroupUser.appendChild(option);
-    });
-    tagTemplateSelect.appendChild(optgroupUser);
-}
-
-// Adiciona os templates do sistema
-if (systemTagTemplates.length > 0) {
-    const optgroupSystem = document.createElement('optgroup');
-    optgroupSystem.label = t('preferences.tagTemplate.systemSets');
-    systemTagTemplates.forEach(template => {
-        const option = document.createElement('option');
-        option.value = template.id;
-        option.textContent = template.name;
-        optgroupSystem.appendChild(option);
-    });
-    tagTemplateSelect.appendChild(optgroupSystem);
-}
-
-// --- LÓGICA DE SELEÇÃO PADRÃO ---
-const prefs = userData.preferences || {};
-// 1. Tenta usar a preferência salva do usuário.
-// 2. Se não houver, seleciona o "Padrão 1" do sistema.
-tagTemplateSelect.value = prefs.defaultTagTemplateId || 'system-tags-prio';
+        const prefs = userData.preferences || {};
+        populateProfileTagTemplatesSelect(prefs.defaultTagTemplateId || 'system-tags-prio');
         
         // Configuração de privacidade
         const privacyValue = userData.privacy || 'private';
@@ -256,6 +213,10 @@ function setupEventListeners() {
             // Re-renderiza as partes dinâmicas da página que precisam de tradução
             translateProfilePage(); // Traduz labels estáticos
             loadUserGroups(t);      // Re-renderiza os cards de grupo com a nova tradução
+            // Recria o select de templates de tags para traduzir as opções
+            const selectedTemplateId = document.getElementById('default-tag-template').value;
+            populateProfileTagTemplatesSelect(selectedTemplateId);
+
             initCustomSelects();    // Atualiza o texto dos selects customizados
         });
     }
@@ -335,6 +296,56 @@ function setupEventListeners() {
             }
         }
     });
+}
+
+/**
+ * Popula o seletor de templates de etiquetas na página de perfil.
+ * @param {string|null} selectedId O ID do template a ser pré-selecionado.
+ */
+function populateProfileTagTemplatesSelect(selectedId = null) {
+    const tagTemplateSelect = document.getElementById('default-tag-template');
+    if (!tagTemplateSelect) return;
+
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    const userTagTemplates = getUserTagTemplates(currentUser.id);
+    const systemTagTemplates = getSystemTagTemplates();
+
+    tagTemplateSelect.innerHTML = '';
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = t('preferences.tagTemplate.none');
+    tagTemplateSelect.appendChild(defaultOption);
+
+    if (userTagTemplates.length > 0) {
+        const optgroupUser = document.createElement('optgroup');
+        optgroupUser.label = t('preferences.tagTemplate.mySets');
+        userTagTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            optgroupUser.appendChild(option);
+        });
+        tagTemplateSelect.appendChild(optgroupUser);
+    }
+
+    if (systemTagTemplates.length > 0) {
+        const optgroupSystem = document.createElement('optgroup');
+        optgroupSystem.label = t('preferences.tagTemplate.systemSets');
+        systemTagTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = t(template.name);
+            optgroupSystem.appendChild(option);
+        });
+        tagTemplateSelect.appendChild(optgroupSystem);
+    }
+
+    if (selectedId) {
+        tagTemplateSelect.value = selectedId;
+    }
 }
 
 function setupColorPicker() {
@@ -497,13 +508,15 @@ async function processProfileUpdate() {
         return { success: false, message: 'profile.error.loading' };
     }
     
+    const form = document.getElementById('profile-form');
+
     // Validar campos obrigatórios
-    const name = document.getElementById('name').value.trim();
+    const name = form.querySelector('#name').value.trim();
     if (!name) {
         return { success: false, message: 'profile.error.nameRequired' };
     }
     
-    const username = document.getElementById('username').value.trim();
+    const username = form.querySelector('#username').value.trim();
     if (!username) {
         return { success: false, message: 'profile.error.usernameRequired' };
     }
@@ -512,7 +525,7 @@ async function processProfileUpdate() {
     const privacy = privacyOption ? privacyOption.dataset.value : 'private';
     
     // Coletar cor primária
-    const activeSwatch = document.querySelector('#color-palette-container .color-swatch.active');
+    const activeSwatch = form.querySelector('#color-palette-container .color-swatch.active');
     let primaryColor = null;
     if (activeSwatch) {
         if (activeSwatch.dataset.action === 'remove-primary') {
@@ -529,34 +542,34 @@ async function processProfileUpdate() {
     const updatedUser = {
         name: name,
         username: username,
-        bio: document.getElementById('bio').value.trim(),
-        birthdate: document.getElementById('birthdate').value,
-        gender: document.getElementById('gender').value,
-        location: document.getElementById('location').value.trim(),
-        email: document.getElementById('email').value.trim(),
-        whatsapp: document.getElementById('whatsapp').value.trim(),
-        linkedin: document.getElementById('linkedin').value.trim(),
+        bio: form.querySelector('#bio').value.trim(),
+        birthdate: form.querySelector('#birthdate').value,
+        gender: form.querySelector('#gender').value,
+        location: form.querySelector('#location').value.trim(),
+        email: form.querySelector('#email').value.trim(),
+        whatsapp: form.querySelector('#whatsapp').value.trim(),
+        linkedin: form.querySelector('#linkedin').value.trim(),
         privacy: privacy,
-        language: document.getElementById('language').value,
-        theme: document.getElementById('theme').value,
+        language: form.querySelector('#language').value,
+        theme: form.querySelector('#theme').value,
         preferences: {
-            fontFamily: document.getElementById('font-family').value,
-            fontSize: document.getElementById('font-size').value,
-            showTags: document.getElementById('pref-card-show-tags').checked,
-            showDate: document.getElementById('pref-card-show-date').checked,
-            showStatus: document.getElementById('pref-card-show-status').checked,
-            showAssignment: document.getElementById('pref-card-show-assignment').checked,
-            showBoardIcon: document.getElementById('pref-board-show-icon').checked,
-            showBoardTitle: document.getElementById('pref-board-show-title').checked,
-            showCardDetails: document.getElementById('pref-card-show-details').checked,
-            smartHeader: document.getElementById('pref-smart-header').checked,
-            defaultTagTemplateId: document.getElementById('default-tag-template').value,
+            fontFamily: form.querySelector('#font-family').value,
+            fontSize: form.querySelector('#font-size').value,
+            showTags: form.querySelector('#pref-card-show-tags').checked,
+            showDate: form.querySelector('#pref-card-show-date').checked,
+            showStatus: form.querySelector('#pref-card-show-status').checked,
+            showAssignment: form.querySelector('#pref-card-show-assignment').checked,
+            showBoardIcon: form.querySelector('#pref-board-show-icon').checked,
+            showBoardTitle: form.querySelector('#pref-board-show-title').checked,
+            showCardDetails: form.querySelector('#pref-card-show-details').checked,
+            smartHeader: form.querySelector('#pref-smart-header').checked,
+            defaultTagTemplateId: form.querySelector('#default-tag-template').value,
             primaryColor: primaryColor // Salva a nova preferência de cor
         }
     };
     
     // Processar avatar se houver upload
-    const avatarFile = document.getElementById('avatar-upload').files[0];
+    const avatarFile = form.querySelector('#avatar-upload').files[0];
     if (avatarFile) {
         try {
             const toBase64 = file => new Promise((resolve, reject) => {

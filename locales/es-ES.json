@@ -531,7 +531,7 @@
     "preferences.showAssignee": "Usuario Asignado",
     "preferences.showBoardIcon": "Mostrar Icono del Tablero",
     "preferences.showBoardTitle": "Mostrar Título del Tablero",
-    "preferences.showDetailsOnHover": "Detalles al Pasar el Ratón",
+    "preferences.showCardDetails": "Mostrar Detalles",
     "preferences.showDueDate": "Fecha de Vencimiento",
     "preferences.showStatus": "Estado (Completado)",
     "preferences.showTags": "Etiquetas",

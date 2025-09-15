@@ -531,7 +531,7 @@
     "preferences.showAssignee": "Zugewiesener Benutzer",
     "preferences.showBoardIcon": "Board-Symbol anzeigen",
     "preferences.showBoardTitle": "Board-Titel anzeigen",
-    "preferences.showDetailsOnHover": "Details beim Überfahren anzeigen",
+    "preferences.showCardDetails": "Details anzeigen",
     "preferences.showDueDate": "Fälligkeitsdatum",
     "preferences.showStatus": "Status (Abgeschlossen)",
     "preferences.showTags": "Labels",

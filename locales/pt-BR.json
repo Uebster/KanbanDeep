@@ -531,7 +531,7 @@
     "preferences.showAssignee": "Usuário Atribuído",
     "preferences.showBoardIcon": "Mostrar Ícone do Quadro",
     "preferences.showBoardTitle": "Mostrar Título do Quadro",
-    "preferences.showDetailsOnHover": "Detalhes ao Passar o Mouse",
+    "preferences.showCardDetails": "Exibir Detalhes",
     "preferences.showDueDate": "Data de Vencimento",
     "preferences.showStatus": "Status (Concluído)",
     "preferences.showTags": "Etiquetas",
