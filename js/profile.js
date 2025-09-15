@@ -65,6 +65,7 @@ function translateProfilePage() {
     safeSetText('label[for="font-size"]', 'preferences.fontSize');
     safeSetText('label[for="default-tag-template"]', 'preferences.defaultTagSet');
     safeSetText('label[for="color-palette-container"]', 'preferences.primaryColor');
+    safeSetText('label[for="pref-enable-card-tooltip"]', 'preferences.enableCardTooltip');
     safeSetText('legend[data-i18n="preferences.displayOnBoard"]', 'preferences.displayOnBoard');
     safeSetText('legend[data-i18n="preferences.displayOnCard"]', 'preferences.displayOnCard');
     // O seletor '#privacy-settings-label' não existe em profile.html, então foi removido para evitar o erro.
@@ -120,7 +121,7 @@ function loadUserData(t) { // Recebe a função de tradução como argumento
         // Preferências de visualização
         if (userData.preferences) {
             document.getElementById('font-family').value = userData.preferences.fontFamily || 'Segoe UI, Inter, sans-serif';
-            document.getElementById('font-size').value = userData.preferences.fontSize || 'medium'; // <-- CORREÇÃO: fontSizeValue -> fontSize
+            document.getElementById('font-size').value = userData.preferences.fontSize || 'medium';
             document.getElementById('pref-card-show-tags').checked = userData.preferences.showTags !== false;
             document.getElementById('pref-card-show-date').checked = userData.preferences.showDate !== false;
             document.getElementById('pref-card-show-status').checked = userData.preferences.showStatus !== false;
@@ -128,6 +129,7 @@ function loadUserData(t) { // Recebe a função de tradução como argumento
             document.getElementById('pref-board-show-icon').checked = userData.preferences.showBoardIcon !== false;
             document.getElementById('pref-board-show-title').checked = userData.preferences.showBoardTitle !== false;
             document.getElementById('pref-card-show-details').checked = userData.preferences.showCardDetails !== false;
+            document.getElementById('pref-enable-card-tooltip').checked = userData.preferences.enableCardTooltip === true;
             document.getElementById('pref-smart-header').checked = userData.preferences.smartHeader === true;
         }
         
@@ -252,7 +254,7 @@ function setupEventListeners() {
 
     // Para checkboxes
     [
-        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details', 'pref-smart-header'
+        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details', 'pref-enable-card-tooltip', 'pref-smart-header'
     ].forEach(id => document.getElementById(id)?.addEventListener('change', () => { isSaved = false; }));
     
     // Para opções de privacidade
@@ -562,6 +564,7 @@ async function processProfileUpdate() {
             showBoardIcon: form.querySelector('#pref-board-show-icon').checked,
             showBoardTitle: form.querySelector('#pref-board-show-title').checked,
             showCardDetails: form.querySelector('#pref-card-show-details').checked,
+            enableCardTooltip: form.querySelector('#pref-enable-card-tooltip').checked,
             smartHeader: form.querySelector('#pref-smart-header').checked,
             defaultTagTemplateId: form.querySelector('#default-tag-template').value,
             primaryColor: primaryColor // Salva a nova preferência de cor
@@ -1063,6 +1066,7 @@ function restoreOriginalData() {
     document.getElementById('pref-board-show-icon').checked = prefs.showBoardIcon !== false;
     document.getElementById('pref-board-show-title').checked = prefs.showBoardTitle !== false;
     document.getElementById('pref-card-show-details').checked = prefs.showCardDetails !== false;
+    document.getElementById('pref-enable-card-tooltip').checked = prefs.enableCardTooltip === true;
     document.getElementById('pref-smart-header').checked = prefs.smartHeader === true;
 
     // Opção de privacidade

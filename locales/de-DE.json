@@ -516,6 +516,7 @@
     "preferences.confirm.save": "Möchten Sie die Änderungen an den Einstellungen speichern?",
     "preferences.defaultTagSet": "Standard-Label-Set:",
     "preferences.displayOnBoard": "Auf dem Board anzeigen:",
+    "preferences.enableCardTooltip": "Details beim Hovern anzeigen (Tooltip)",
     "preferences.displayOnCard": "Auf der Karte anzeigen:",
     "preferences.feedback.discarded": "Änderungen verworfen.",
     "preferences.feedback.error": "Fehler beim Speichern der Einstellungen.",

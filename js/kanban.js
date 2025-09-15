@@ -17,8 +17,7 @@ let allUsers = [];
 let boards = [];
 let currentBoard = null;
 let draggedElement = null;
-let currentBoardFilter = 'personal'; // 'personal' ou 'group'
-let customDragGhost = null; // Para o "fantasma" customizado ao arrastar
+let currentBoardFilter = 'personal';
 let undoStack = [];
 let redoStack = [];
 let clipboard = null; // Para copiar/colar
@@ -34,7 +33,12 @@ let originalShowDate = null;
 let originalShowStatus = null;
 let originalShowAssignment = null;
 let originalShowCardDetails = null;
+let originalEnableCardTooltip = null; // Para a nova preferência
 let kanbanIsSaved = true;
+
+let tooltipElement = null;
+let tooltipTimeout = null;
+let isDragging = false;
 
 function translatePreferencesDialog() {
     const dialog = document.getElementById('preferences-dialog');
@@ -58,6 +62,7 @@ function translatePreferencesDialog() {
     safeSetText('legend[data-i18n="preferences.displayOnBoard"]', 'preferences.displayOnBoard');
     safeSetText('legend[data-i18n="preferences.displayOnCard"]', 'preferences.displayOnCard');
     safeSetText('label[for="pref-default-tag-template"]', 'preferences.defaultTagSet');
+    safeSetText('label[for="pref-enable-card-tooltip"]', 'preferences.enableCardTooltip');
 }
 // ===== INICIALIZAÇÃO =====
 
@@ -85,6 +90,7 @@ export async function initKanbanPage() {
     // 3. Configuração da UI e Eventos
     setupEventListeners();
     initDraggableElements();
+    tooltipElement = document.getElementById('card-tooltip');
     checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId)
 
     // 4. Renderização Inicial
@@ -166,7 +172,7 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('edit-items-btn')?.addEventListener('click', showEditDialog);
     document.getElementById('undo-btn')?.addEventListener('click', undoAction);
     document.getElementById('redo-btn')?.addEventListener('click', redoAction);
-    document.getElementById('export-img')?.addEventListener('click', handleExportImage);
+    document.getElementById('export-img')?.addEventListener('click', () => handleExportImage());
     document.getElementById('save-as-template-btn')?.addEventListener('click', saveBoardAsTemplate);
     document.getElementById('print-btn')?.addEventListener('click', handlePrintBoard);
     document.getElementById('my-groups-btn')?.addEventListener('click', () => window.location.href = 'groups.html');
@@ -189,7 +195,14 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
 
     // --- Atalhos e Contexto ---
     document.addEventListener('keydown', handleKeyDown);
-    document.getElementById('columns-container').addEventListener('contextmenu', handleContextMenu);
+    const columnsContainer = document.getElementById('columns-container');
+    columnsContainer.addEventListener('contextmenu', handleContextMenu);
+    // --- NOVA LÓGICA DE DRAG & DROP ---
+    columnsContainer.addEventListener('dragstart', handleDragStart);
+    columnsContainer.addEventListener('dragend', handleDragEnd);
+    columnsContainer.addEventListener('dragover', handleDragOver);
+    columnsContainer.addEventListener('dragleave', handleDragLeave);
+    columnsContainer.addEventListener('drop', handleDrop);
 
     // --- NOVA LÓGICA PARA FILTRO DE QUADROS ---
     document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
@@ -565,8 +578,6 @@ function renderCurrentBoard() {
         }
     });
 
-    // Adiciona a lógica de drag-and-drop para os novos elementos
-    setupDragAndDrop();
 }
 
 function createColumnElement(column) {
@@ -587,6 +598,20 @@ function createColumnElement(column) {
         </div>
         <button class="add-card-btn">+ ${t('kanban.button.addCard')}</button>
     `;
+    
+    // Adiciona listeners de tooltip aos cartões dentro da coluna
+    columnEl.querySelectorAll('.card').forEach(cardEl => {
+        cardEl.addEventListener('mouseenter', (e) => {
+            // Só mostra o tooltip se a preferência estiver ativa e não estiver arrastando
+            if (!isDragging && currentUser.preferences.enableCardTooltip === true) {
+                tooltipTimeout = setTimeout(() => showTooltip(cardEl.dataset.cardId, e), 1500);
+            }
+        });
+        cardEl.addEventListener('mouseleave', () => {
+            clearTimeout(tooltipTimeout);
+            hideTooltip();
+        });
+    });
 
     columnEl.querySelector('.add-card-btn').addEventListener('click', () => {
         showCardDialog(null, column.id);
@@ -679,6 +704,46 @@ function createCardElement(card) {
     `;
     
     return cardEl;
+}
+
+// --- NOVAS FUNÇÕES DE TOOLTIP ---
+
+/**
+ * Mostra o tooltip com os detalhes de um cartão.
+ * @param {string} cardId O ID do cartão.
+ * @param {MouseEvent} event O evento do mouse para posicionamento.
+ */
+function showTooltip(cardId, event) {
+    const { card } = findCardAndColumn(cardId);
+    if (!card || !tooltipElement) return;
+
+    const creator = allUsers.find(u => u.id === card.creatorId);
+    const assignee = allUsers.find(u => u.id === card.assignedTo);
+
+    // Formata os dados adicionais para o tooltip
+    const statusText = card.isComplete ? t('kanban.dialog.details.statusCompleted') : t('kanban.dialog.details.statusActive');
+
+    tooltipElement.innerHTML = `
+        <div class="tooltip-title">${card.title}</div>
+        <div class="tooltip-details">
+            ${card.description ? `<p><strong>${t('kanban.dialog.details.description')}</strong> ${card.description.replace(/\n/g, '<br>')}</p>` : ''}
+            <hr style="margin: 8px 0; border-color: var(--border);">
+            <p><strong>${t('kanban.dialog.details.status')}</strong> ${statusText}</p>
+            ${card.dueDate ? `<p><strong>${t('kanban.dialog.details.dueDate')}</strong> ${new Date(card.dueDate).toLocaleString()}</p>` : ''}
+            ${creator ? `<p><strong>${t('kanban.card.hover.creator')}</strong> ${creator.name}</p>` : ''}
+            ${assignee ? `<p><strong>${t('kanban.card.hover.assignedTo')}</strong> ${assignee.name}</p>` : ''}
+            ${card.tags && card.tags.length > 0 ? `<p><strong>${t('kanban.dialog.details.tags')}</strong> ${card.tags.join(', ')}</p>` : ''}
+        </div>
+    `;
+
+    tooltipElement.style.left = `${event.clientX + 15}px`;
+    tooltipElement.style.top = `${event.clientY + 15}px`;
+    tooltipElement.classList.add('visible');
+}
+
+function hideTooltip() {
+    if (tooltipTimeout) clearTimeout(tooltipTimeout);
+    if (tooltipElement) tooltipElement.classList.remove('visible');
 }
 
 // Adicione esta NOVA FUNÇÃO em kanban.js
@@ -1475,151 +1540,130 @@ function handlePrintBoard() {
 
 // ===== LÓGICA DE DRAG-AND-DROP =====
 
-function setupDragAndDrop() {
-    const container = document.getElementById('columns-container');
-    if (!container) return;
-
-    // Usar delegação de eventos para performance e simplicidade
-    document.addEventListener('dragstart', handleDragStart);
-    document.addEventListener('drag', handleDrag); // Evento para mover o fantasma
-    document.addEventListener('dragend', handleDragEnd);
-    
-    // Listeners no container para a lógica de soltar
-    container.addEventListener('dragover', handleDragOver);
-    container.addEventListener('drop', handleDrop);
-}
-
 function handleDragStart(e) {
-    // Lógica aprimorada para determinar o que está sendo arrastado.
+    hideTooltip(); // Esconde qualquer tooltip ao começar a arrastar
+    isDragging = true;
+
     const targetCard = e.target.closest('.card');
     const targetColumnHeader = e.target.closest('.column-header');
 
     if (targetCard) {
-        // Se o clique foi em um cartão, arrasta o cartão.
         draggedElement = targetCard;
+        e.dataTransfer.setData('text/plain', draggedElement.dataset.cardId);
     } else if (targetColumnHeader) {
-        // Se o clique foi no cabeçalho de uma coluna, arrasta a coluna inteira.
         draggedElement = targetColumnHeader.closest('.column');
+        e.dataTransfer.setData('text/plain', draggedElement.dataset.columnId);
+    } else {
+        return; // Não é um elemento arrastável
     }
+
     if (draggedElement) {
-        // Aplica um estilo sutil ao item original que fica para trás
-        setTimeout(() => draggedElement.classList.add('dragging-source'), 0);
-
-        const rect = draggedElement.getBoundingClientRect();
-        let offsetX = e.clientX - rect.left;
-        let offsetY = e.clientY - rect.top;
-
-        // Se for uma coluna, fixa o ponto de "pegar" na parte superior para um arrastar mais natural
-        if (draggedElement.classList.contains('column')) {
-            offsetY = Math.min(offsetY, 40); // Limita o ponto de agarre vertical ao cabeçalho
-        }
-
-        // Armazena os offsets para uso no evento 'drag'
-        draggedElement.dataset.offsetX = offsetX;
-        draggedElement.dataset.offsetY = offsetY;
-
-        // Cria o "fantasma" customizado
-        customDragGhost = draggedElement.cloneNode(true);
-        customDragGhost.classList.add('drag-ghost');
-        document.body.appendChild(customDragGhost);
-
-        // Posiciona o fantasma inicial
-        customDragGhost.style.width = `${rect.width}px`;
-        customDragGhost.style.height = `${rect.height}px`;
-        customDragGhost.style.left = `${e.clientX - offsetX}px`;
-        customDragGhost.style.top = `${e.clientY - offsetY}px`;
-
-        // Esconde o fantasma padrão do navegador
-        e.dataTransfer.setDragImage(new Image(), 0, 0);
+        // Adiciona um pequeno delay para o navegador registrar o início do arraste antes de aplicar a classe
+        setTimeout(() => {
+            draggedElement.classList.add('dragging');
+        }, 0);
         e.dataTransfer.effectAllowed = 'move';
     }
 }
 
-function handleDrag(e) {
-    // Move o fantasma customizado para seguir o cursor
-    if (customDragGhost && draggedElement) {
-        // Previne o reposicionamento no evento final que tem coordenadas (0,0)
-        if (e.clientX === 0 && e.clientY === 0) return;
-        
-        const offsetX = parseFloat(draggedElement.dataset.offsetX) || 0;
-        const offsetY = parseFloat(draggedElement.dataset.offsetY) || 0;
-
-        customDragGhost.style.left = `${e.clientX - offsetX}px`;
-        customDragGhost.style.top = `${e.clientY - offsetY}px`;
-    }
-}
-
 function handleDragEnd(e) {
+    isDragging = false;
     if (draggedElement) {
-        draggedElement.classList.remove('dragging-source');
-        delete draggedElement.dataset.offsetX;
-        delete draggedElement.dataset.offsetY;
+        draggedElement.classList.remove('dragging');
         draggedElement = null;
     }
-    if (customDragGhost) {
-        customDragGhost.remove();
-        customDragGhost = null;
-    }
-
-    // Re-renderiza o quadro APÓS a operação de arrastar ser totalmente concluída.
-    // Isso garante que toda a limpeza (como remover o fantasma) tenha acontecido.
-    if (currentBoard) renderCurrentBoard();
+    // Remove o realce de todas as colunas
+    document.querySelectorAll('.column.drag-over').forEach(col => col.classList.remove('drag-over'));
 }
 
 function handleDragOver(e) {
     e.preventDefault();
+    const targetColumn = e.target.closest('.column');
+    if (targetColumn) {
+        // Remove a classe de outras colunas para ter apenas um alvo por vez
+        document.querySelectorAll('.column.drag-over').forEach(col => {
+            if (col !== targetColumn) col.classList.remove('drag-over');
+        });
+        targetColumn.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    const targetColumn = e.target.closest('.column');
+    // Só remove a classe se o mouse realmente saiu da coluna (e não apenas de um elemento filho)
+    if (targetColumn && !targetColumn.contains(e.relatedTarget)) {
+        targetColumn.classList.remove('drag-over');
+    }
 }
 
 function handleDrop(e) {
     e.preventDefault();
     if (!draggedElement) return;
 
+    const targetColumnEl = e.target.closest('.column');
+    if (!targetColumnEl) return;
+
+    targetColumnEl.classList.remove('drag-over');
+
     const isCard = draggedElement.classList.contains('card');
+    const isColumn = draggedElement.classList.contains('column');
 
     if (isCard) {
         const cardId = draggedElement.dataset.cardId;
         const sourceColumnId = draggedElement.closest('.column').dataset.columnId;
-        const targetColumnEl = e.target.closest('.column');
-        if (!targetColumnEl) return;
         const targetColumnId = targetColumnEl.dataset.columnId;
 
         const sourceColumn = currentBoard.columns.find(c => c.id === sourceColumnId);
         const targetColumn = currentBoard.columns.find(c => c.id === targetColumnId);
         if (!sourceColumn || !targetColumn) return;
 
+        // Move o elemento no DOM para feedback visual imediato
+        const cardsContainer = targetColumnEl.querySelector('.cards-container');
+        const afterElement = getDragAfterElement(cardsContainer, e.clientY, false);
+        if (afterElement) {
+            cardsContainer.insertBefore(draggedElement, afterElement);
+        } else {
+            cardsContainer.appendChild(draggedElement);
+        }
+
+        // Atualiza o modelo de dados
         const originalCardIndex = sourceColumn.cardIds.indexOf(cardId);
         if (originalCardIndex === -1) return;
 
         const [removedCardObject] = sourceColumn.cards.splice(originalCardIndex, 1);
         sourceColumn.cardIds.splice(originalCardIndex, 1);
 
-        const afterElement = getDragAfterElement(targetColumnEl.querySelector('.cards-container'), e.clientY, false);
-        const newIndex = afterElement ? targetColumn.cardIds.indexOf(afterElement.dataset.cardId) : targetColumn.cardIds.length;
+        const newIndex = afterElement ? Array.from(cardsContainer.children).indexOf(afterElement) : targetColumn.cardIds.length;
 
         targetColumn.cardIds.splice(newIndex, 0, cardId);
         targetColumn.cards.splice(newIndex, 0, removedCardObject);
 
         saveColumn(sourceColumn);
         if (sourceColumnId !== targetColumnId) saveColumn(targetColumn);
-    } else {
+
+    } else if (isColumn) {
         const columnId = draggedElement.dataset.columnId;
-        const afterElement = getDragAfterElement(document.getElementById('columns-container'), e.clientX, true);
+        const columnsContainer = document.getElementById('columns-container');
+        const afterElement = getDragAfterElement(columnsContainer, e.clientX, true);
+
+        // Move no DOM
+        if (afterElement) {
+            columnsContainer.insertBefore(draggedElement, afterElement);
+        } else {
+            columnsContainer.appendChild(draggedElement);
+        }
 
         // Reordena os IDs no objeto do quadro
-        const oldIndex = currentBoard.columnIds.indexOf(columnId);
-        if (oldIndex > -1) currentBoard.columnIds.splice(oldIndex, 1);
-        const newIndex = afterElement ? currentBoard.columnIds.indexOf(afterElement.dataset.columnId) : currentBoard.columnIds.length;
-        currentBoard.columnIds.splice(newIndex, 0, columnId);
-
+        const newOrderIds = Array.from(columnsContainer.children).map(col => col.dataset.columnId);
+        currentBoard.columnIds = newOrderIds;
         saveBoard(currentBoard);
     }
     
     saveState(); // Salva o estado APÓS a modificação
-    // A renderização foi movida para o 'handleDragEnd' para garantir a limpeza correta do fantasma.
 }
 
 function getDragAfterElement(container, coordinate, isHorizontal) {
-    const draggableElements = [...container.querySelectorAll('.card:not(.dragging-source), .column:not(.dragging-source)')];
+    const draggableElements = [...container.querySelectorAll('.card:not(.dragging), .column:not(.dragging)')];
 
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
@@ -2286,6 +2330,7 @@ function showPreferencesDialog() { // REFEITA
         showStatus: prefs.showStatus !== false,
         showAssignment: prefs.showAssignment !== false,
         showCardDetails: prefs.showCardDetails !== false,
+        enableCardTooltip: prefs.enableCardTooltip === true, // Nova preferência
         smartHeader: prefs.smartHeader === true,
         defaultTagTemplateId: prefs.defaultTagTemplateId || 'system-tags-prio'
     };
@@ -2303,6 +2348,7 @@ function showPreferencesDialog() { // REFEITA
     dialog.querySelector('#pref-card-show-assignment').checked = originalPreferences.showAssignment;
     dialog.querySelector('#pref-card-show-details').checked = originalPreferences.showCardDetails;
     dialog.querySelector('#pref-smart-header').checked = originalPreferences.smartHeader;
+    dialog.querySelector('#pref-enable-card-tooltip').checked = originalPreferences.enableCardTooltip; // Define o estado do novo checkbox
 
     // Popula e seleciona o template de tags
     populateTagTemplatesSelect(originalPreferences.defaultTagTemplateId);
@@ -2349,6 +2395,7 @@ function setupPreferencesControlsListeners(dialog) {
         { id: 'pref-card-show-date', action: applyCardPreview },
         { id: 'pref-card-show-status', action: applyCardPreview },
         { id: 'pref-card-show-details', action: applyCardPreview },
+        { id: 'pref-enable-card-tooltip', action: applyCardPreview }, // Adiciona ao rastreamento de alterações
         { id: 'pref-card-show-assignment', action: applyCardPreview },
         { id: 'pref-board-show-title', action: applyTitlePreview },
         { id: 'pref-board-show-icon', action: applyTitlePreview },
@@ -2422,6 +2469,7 @@ function savePreferencesData() {
             showBoardIcon: dialog.querySelector('#pref-board-show-icon').checked,
             showBoardTitle: dialog.querySelector('#pref-board-show-title').checked,
             showCardDetails: dialog.querySelector('#pref-card-show-details').checked,
+            enableCardTooltip: dialog.querySelector('#pref-enable-card-tooltip').checked, // Salva a nova preferência
             smartHeader: dialog.querySelector('#pref-smart-header').checked,
             primaryColor: primaryColor
         }

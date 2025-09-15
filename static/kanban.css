@@ -102,15 +102,43 @@ body {
     border-radius: 6px 6px 0 0; /* Arredonda cantos superiores */
     text-align: center;
     font-size: 1.5rem;
-    font-weight: bold;
+    font-weight: 600; /* Um pouco mais forte */
     color: var(--column-text-color);
     border-bottom: 3px solid var(--border);
+    display: flex; /* Adicionado para alinhar o botão de colar */
+    justify-content: center;
+    align-items: center;
+    position: relative; /* Para posicionar o botão de colar */
 }
 
 /* CORREÇÃO: Garante que o título (h3) da coluna herde a cor customizada
    definida em .column-header, sobrescrevendo a regra global de h3. */
 .column-header h3 {
     color: inherit;
+    flex-grow: 1; /* Ocupa o espaço disponível */
+}
+
+/* Botão de colar cartão, agora posicionado à direita */
+.paste-card-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.paste-card-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
 }
 
 #columns-container {
@@ -164,20 +192,18 @@ body {
 
 /* --- EFEITOS DE ARRASTAR E SOLTAR --- */
 
-/* Estilo para o "fantasma" customizado que segue o mouse */
-.drag-ghost {
-    position: fixed;
-    pointer-events: none; /* Impede que o fantasma interfira com os eventos de drop */
-    z-index: 9999;
-    opacity: 0.9; /* Levemente transparente, mas ainda bem visível */
-    box-shadow: 0 0 25px 5px rgba(var(--primary-rgb)); /* Sombra neon forte */
-}
-
-/* Estilo para o item original que fica para trás (o "marcador de origem") */
-.dragging-source {
+/* Estilo para o cartão que está sendo arrastado */
+.card.dragging {
     opacity: 0.4;
     border-style: dashed;
     box-shadow: none; /* Remove a sombra do item original */
+}
+
+/* Estilo para a coluna quando um cartão está sendo arrastado sobre ela */
+.column.drag-over .cards-container {
+    outline: 2px dashed var(--primary);
+    outline-offset: -10px;
+    background-color: rgba(var(--primary-rgb), 0.1);
 }
 
 /* O conteúdo agora tem seu próprio padding e posicionamento */
@@ -276,6 +302,44 @@ body {
 .card-tag-line { height: 9px; border: 2px solid #777; border-radius: 3px; margin-top: 8px; }
 
 .form-group input[type="color"] { padding: 5px; height: 45px; }
+
+/* --- NOVO: ESTILOS DO TOOLTIP --- */
+.card-tooltip {
+    position: fixed;
+    background-color: var(--bg-card);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 15px;
+    z-index: 10000;
+    max-width: 320px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    pointer-events: none; /* Impede que o tooltip intercepte eventos do mouse */
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.card-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tooltip-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.tooltip-details p {
+    margin: 6px 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.tooltip-details strong { color: var(--text); }
 
 /* Em kanban.css */
 

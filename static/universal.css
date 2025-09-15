@@ -971,22 +971,30 @@ body.no-primary-effects .nav-item.active {
     line-height: 1;
 }
 
+/* CORREÇÃO: Layout da paleta de cores salvas no Color Picker.
+   Garante uma grade de 8 colunas que não é afetada pelo tamanho da fonte. */
 .custom-palette-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
-    gap: 8px;
-    max-height: 64px; /* Altura para 2 linhas de 28px com 8px de gap */
-    overflow-y: auto;
+    grid-template-columns: repeat(8, 1fr); /* Força 8 colunas de largura igual */
+    gap: 6px; /* Espaçamento consistente entre as cores */
+    padding: 2px; /* Pequeno preenchimento para evitar que as cores colem nas bordas */
 }
 
+/* Garante que cada amostra de cor seja um quadrado perfeito. */
 .custom-palette-swatch {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    border: 1px solid var(--border-light);
+    width: 100%;
+    height: 0;
+    padding-top: 100%; /* Truque para manter a proporção 1:1 */
+    box-sizing: border-box;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: all 0.2s ease;
+    border-radius: 6px; /* Cantos arredondados, como no estilo antigo */
+    border: 1px solid var(--border-light); /* Borda sutil para definição */
+    position: relative; /* Necessário para o pseudo-elemento de fundo */
+    background-color: currentColor; /* A cor é definida via style inline, isso é um fallback */
 }
 .custom-palette-swatch:hover {
     transform: scale(1.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.7); /* Sombra com a cor primária */
 }

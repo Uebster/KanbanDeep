@@ -516,6 +516,7 @@
     "preferences.confirm.save": "Vuoi salvare le modifiche alle preferenze?",
     "preferences.defaultTagSet": "Set di Etichette Predefinito:",
     "preferences.displayOnBoard": "Visualizza sulla Lavagna:",
+    "preferences.enableCardTooltip": "Mostra dettagli al passaggio del mouse (tooltip)",
     "preferences.displayOnCard": "Visualizza sulla Scheda:",
     "preferences.feedback.discarded": "Modifiche scartate.",
     "preferences.feedback.error": "Errore durante il salvataggio delle preferenze.",

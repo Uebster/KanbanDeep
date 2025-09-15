@@ -1,20 +1,4 @@
 # Arquivos de dependências do Node (se usar no futuro)
 node_modules/
 
-# Arquivos de log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Arquivos de configuração de editores
-.vscode/
-.idea/
-
-erros.txt
-
-test.html
-check_locales.js
-
-find_untranslated.js
-
 tools/

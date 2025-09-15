@@ -516,6 +516,7 @@
     "preferences.confirm.save": "Voulez-vous enregistrer les modifications des préférences ?",
     "preferences.defaultTagSet": "Ensemble d'Étiquettes par Défaut :",
     "preferences.displayOnBoard": "Afficher sur le Tableau :",
+    "preferences.enableCardTooltip": "Afficher les détails au survol (infobulle)",
     "preferences.displayOnCard": "Afficher sur la Carte :",
     "preferences.feedback.discarded": "Modifications annulées.",
     "preferences.feedback.error": "Erreur lors de l'enregistrement des préférences.",

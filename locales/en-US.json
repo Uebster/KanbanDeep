@@ -516,6 +516,7 @@
     "preferences.confirm.save": "Do you want to save the changes to your preferences?",
     "preferences.defaultTagSet": "Default Tag Set:",
     "preferences.displayOnBoard": "Display on Board:",
+    "preferences.enableCardTooltip": "Show details on hover (tooltip)",
     "preferences.displayOnCard": "Display on Card:",
     "preferences.feedback.discarded": "Changes discarded.",
     "preferences.feedback.error": "Error saving preferences.",

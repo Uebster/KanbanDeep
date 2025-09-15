@@ -516,6 +516,7 @@
     "preferences.confirm.save": "Deseja salvar as alterações nas preferências?",
     "preferences.defaultTagSet": "Conjunto de Etiquetas Padrão:",
     "preferences.displayOnBoard": "Exibir no Quadro:",
+    "preferences.enableCardTooltip": "Exibir detalhes ao passar o mouse (tooltip)",
     "preferences.displayOnCard": "Exibir no Cartão:",
     "preferences.feedback.discarded": "Alterações descartadas.",
     "preferences.feedback.error": "Erro ao salvar as preferências.",
