@@ -341,6 +341,80 @@ body {
 
 .tooltip-details strong { color: var(--text); }
 
+/* --- NOVO: ESTILOS DO TOUR GUIADO --- */
+.tour-highlight {
+    position: relative;
+    z-index: 9999; /* Acima do overlay */
+    /* box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); <-- REMOVIDO para evitar flash */
+    border-radius: 4px; /* Um pequeno arredondamento para o destaque */
+    /* NOVO: Borda para dar mais ênfase ao elemento destacado */
+    outline: 2px solid var(--primary);
+    outline-offset: 4px; /* Offset padrão para a borda de destaque */
+}
+
+#tour-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 9998;
+}
+
+#tour-popover {
+    position: absolute;
+    background-color: var(--bg-card);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 10000;
+    max-width: 350px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+#tour-popover.hidden {
+    display: none;
+}
+
+.tour-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.tour-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.tour-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 15px;
+}
+
+#tour-step-counter {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Seta do popover */
+.tour-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    display: none; /* REMOVIDO: A seta não estava se comportando bem em todas as posições. */
+}
+
+.tour-arrow.top { border-width: 0 8px 8px 8px; border-color: transparent transparent var(--primary) transparent; top: -8px; left: 50%; transform: translateX(-50%); }
+.tour-arrow.bottom { border-width: 8px 8px 0 8px; border-color: var(--primary) transparent transparent transparent; bottom: -8px; left: 50%; transform: translateX(-50%); }
+.tour-arrow.left { border-width: 8px 8px 8px 0; border-color: transparent var(--primary) transparent transparent; left: -8px; top: 50%; transform: translateY(-50%); }
+.tour-arrow.right { border-width: 8px 0 8px 8px; border-color: transparent transparent transparent var(--primary); right: -8px; top: 50%; transform: translateY(-50%); }
+
 /* Em kanban.css */
 
 /* Estilos para a busca de usuários */

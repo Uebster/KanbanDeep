@@ -58,6 +58,7 @@
             <button id="undo-btn" data-i18n="kanban.actions.undo"></button>
             <button id="redo-btn" data-i18n="kanban.actions.redo"></button>
             <hr>
+            <button id="start-tour-btn" data-i18n="kanban.actions.startTour">❓ Tour Guiado</button>
             <button id="save-as-template-btn" data-i18n="kanban.actions.saveAsTemplate"></button>
             <button id="print-btn" data-i18n="kanban.actions.print"></button>
             <button id="export-img" data-i18n="kanban.actions.exportImage"></button>
@@ -82,6 +83,20 @@
                 <!-- As colunas serão renderizadas aqui pelo JavaScript -->
             </div>
         </main>
+
+        <!-- Elementos do Tour Guiado -->
+        <div id="tour-overlay" class="hidden"></div>
+        <div id="tour-popover" class="hidden">
+            <div class="tour-arrow"></div>
+            <div id="tour-title" class="tour-title"></div>
+            <div id="tour-text" class="tour-text"></div>
+            <div class="tour-nav">
+                <span id="tour-step-counter"></span>
+                <button id="tour-skip-btn" class="btn btn-sm cancel"></button>
+                <button id="tour-prev-btn" class="btn btn-sm"></button>
+                <button id="tour-next-btn" class="btn btn-sm confirm"></button>
+            </div>
+        </div>
     </div>
 
     <!-- Diálogos (Modais) - Estrutura mantida -->

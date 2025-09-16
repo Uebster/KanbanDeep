@@ -40,6 +40,15 @@ let tooltipElement = null;
 let tooltipTimeout = null;
 let isDragging = false;
 
+// Variáveis do Tour Guiado
+let isTourActive = false;
+let currentTourStep = 0;
+let tourCreatedItems = {
+    boardId: null,
+    columnId: null,
+    cardId: null,
+};
+
 function translatePreferencesDialog() {
     const dialog = document.getElementById('preferences-dialog');
     if (!dialog) return;
@@ -172,6 +181,7 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     document.getElementById('edit-items-btn')?.addEventListener('click', showEditDialog);
     document.getElementById('undo-btn')?.addEventListener('click', undoAction);
     document.getElementById('redo-btn')?.addEventListener('click', redoAction);
+    document.getElementById('start-tour-btn')?.addEventListener('click', startTour);
     document.getElementById('export-img')?.addEventListener('click', () => handleExportImage());
     document.getElementById('save-as-template-btn')?.addEventListener('click', saveBoardAsTemplate);
     document.getElementById('print-btn')?.addEventListener('click', handlePrintBoard);
@@ -236,6 +246,280 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
                 document.documentElement.style.setProperty('--primary-rgb', swatch.dataset.rgb);
             }
         });
+    }
+}
+
+// ===== LÓGICA DO TOUR GUIADO =====
+
+const tourSteps = [
+    { element: '#user-avatar-btn', title: 'tour.step1.title', text: 'tour.step1.text', position: 'right', context: null },
+    { element: '#user-profile-btn', title: 'tour.step_profile.title', text: 'tour.step_profile.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { element: '#my-groups-btn', title: 'tour.step2.title', text: 'tour.step2.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { element: '#friends-btn', title: 'tour.step_friends.title', text: 'tour.step_friends.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { element: '#templates-btn', title: 'tour.step3.title', text: 'tour.step3.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { element: '#notifications-btn', title: 'tour.step4.title', text: 'tour.step4.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { element: '#preferences-btn', title: 'tour.step5.title', text: 'tour.step5.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { element: '#boards-dropdown-btn', title: 'tour.step6.title', text: 'tour.step6.text', position: 'bottom', context: null },
+    { element: '#board-filter-toggle', title: 'tour.step7.title', text: 'tour.step7.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { element: () => document.querySelector('#boards-dropdown .no-boards-message') || document.querySelector('#board-select + .select-selected'), title: 'tour.step_board_selector.title', text: 'tour.step_board_selector.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { element: '#add-board-btn', title: 'tour.step8.title', text: 'tour.step8.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { element: '#add-column-btn', title: 'tour.step9.title', text: 'tour.step9.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { element: '#add-card-btn', title: 'tour.step10.title', text: 'tour.step10.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { element: '#actions-dropdown-btn', title: 'tour.step11.title', text: 'tour.step11.text', position: 'bottom', context: null },
+    { element: '#save-as-template-btn', title: 'tour.step_save_template.title', text: 'tour.step_save_template.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    { element: '#print-btn', title: 'tour.step13.title', text: 'tour.step13.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    { element: '#export-img', title: 'tour.step12.title', text: 'tour.step12.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    { element: '#kanban-title', title: 'tour.step14.title', text: 'tour.step14.text', position: 'bottom', preAction: createTourBoard, undoAction: undoTourBoard, context: null, isCreation: true },
+    { element: '#kanban-title', title: 'tour.step15.title', text: 'tour.step15.text', position: 'bottom', context: null, noHighlight: true },
+    { element: '#kanban-title', title: 'tour.step16.title', text: 'tour.step16.text', position: 'bottom', preAction: createTourColumn, undoAction: undoTourColumn, context: null, noHighlight: true, isCreation: true },
+    { element: '.card', title: 'tour.step17.title', text: 'tour.step17.text', position: 'bottom', preAction: createTourCard, undoAction: undoTourCard, context: null, isCreation: true }
+];
+
+function startTour() {
+    isTourActive = true;
+    currentTourStep = 0;
+    document.getElementById('tour-overlay').classList.remove('hidden');
+    showTourStep(currentTourStep);
+}
+
+function endTour(wasSkipped = false) {
+    isTourActive = false;
+    document.getElementById('tour-overlay').classList.add('hidden');
+    document.getElementById('tour-popover').classList.add('hidden');
+
+    // Limpa os itens criados pelo tour APENAS se o usuário pular
+    if (wasSkipped) {
+        if (tourCreatedItems.cardId) undoTourCard();
+        if (tourCreatedItems.columnId) undoTourColumn();
+        if (tourCreatedItems.boardId) undoTourBoard();
+    }
+
+    const highlighted = document.querySelector('.tour-highlight');
+    if (highlighted) {
+        highlighted.classList.remove('tour-highlight');
+    }
+    closeAllDropdowns();
+
+    // Marca que o tour foi visto para não mostrar novamente
+    if (!currentUser.preferences.hasSeenTour) {
+        currentUser.preferences.hasSeenTour = true;
+        updateUser(currentUser.id, { preferences: currentUser.preferences });
+    }
+}
+
+async function showTourStep(index, direction = 'forward') { // Adicionado 'direction'
+    const oldHighlight = document.querySelector('.tour-highlight');
+    if (oldHighlight) {
+        oldHighlight.classList.remove('tour-highlight');
+    }
+
+    const currentStep = tourSteps[index];
+
+    // Lógica aprimorada para evitar o "flash" dos menus.
+    // Só fecha todos os menus se estivermos saindo de um menu para outro, ou para uma área sem menu.
+    const previousStep = index > 0 ? tourSteps[index - 1] : null;
+    if (!previousStep || currentStep.context !== previousStep.context) {
+        closeAllDropdowns();
+    }
+
+    // Ação de pré-execução (abrir menus, criar itens)
+    if (currentStep.preAction) {
+        // Ações de criação (isCreation: true) só rodam ao avançar.
+        // Outras ações (abrir menus) rodam sempre.
+        if (!currentStep.isCreation || direction === 'forward') {
+        currentStep.preAction();
+        }
+    }
+
+    // Aguarda um pequeno instante para garantir que a preAction (que pode criar elementos) termine.
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    let targetElement;
+    if (typeof currentStep.element === 'function') {
+        targetElement = currentStep.element();
+    } else {
+        targetElement = document.querySelector(currentStep.element);
+    }
+    targetElement = targetElement || document.getElementById('app');
+    if (!targetElement) {
+        console.warn(`Elemento do tour não encontrado: ${currentStep.element}`);
+        endTour();
+        return;
+    }
+
+    const popover = document.getElementById('tour-popover');
+    popover.querySelector('#tour-title').textContent = t(currentStep.title);
+    popover.querySelector('#tour-text').textContent = t(currentStep.text);
+    popover.querySelector('#tour-step-counter').textContent = `${index + 1} / ${tourSteps.length}`;
+
+    const prevBtn = popover.querySelector('#tour-prev-btn');
+    const nextBtn = popover.querySelector('#tour-next-btn');
+    const skipBtn = popover.querySelector('#tour-skip-btn');
+
+    prevBtn.textContent = t('tour.button.prev');
+    nextBtn.textContent = (index === tourSteps.length - 1) ? t('tour.button.finish') : t('tour.button.next');
+    skipBtn.textContent = t('tour.button.skip');
+
+    prevBtn.style.display = (index === 0) ? 'none' : 'inline-flex';
+
+    prevBtn.onclick = (e) => {
+        e.stopPropagation();
+        // Ação de desfazer do passo ATUAL antes de ir para o anterior
+        const stepToUndo = tourSteps[index];
+        if (stepToUndo.undoAction) {
+            stepToUndo.undoAction();
+        }
+        showTourStep(index - 1, 'backward'); // Informa que estamos voltando
+    };
+    nextBtn.onclick = (e) => { e.stopPropagation(); (index === tourSteps.length - 1) ? endTour(false) : showTourStep(index + 1, 'forward'); };
+    skipBtn.onclick = (e) => { e.stopPropagation(); endTour(true); };
+
+    if (!currentStep.noHighlight) {
+        targetElement.classList.add('tour-highlight');
+    }
+    positionPopover(targetElement, popover, currentStep.position);
+    popover.classList.remove('hidden');
+}
+
+function positionPopover(target, popover, position) {
+    const targetRect = target.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const arrow = popover.querySelector('.tour-arrow');
+    arrow.className = 'tour-arrow hidden'; // Reset classes e mantém escondido
+
+    let top, left;
+    const offset = 15; // Distância entre o popover e o elemento
+
+    switch (position) {
+        case 'top':
+            top = targetRect.top - popoverRect.height - offset;
+            left = targetRect.left + (targetRect.width / 2) - (popoverRect.width / 2);
+            break;
+        case 'bottom':
+            top = targetRect.bottom + offset;
+            left = targetRect.left + (targetRect.width / 2) - (popoverRect.width / 2);
+            break;
+        case 'left':
+            top = targetRect.top + (targetRect.height / 2) - (popoverRect.height / 2);
+            left = targetRect.left - popoverRect.width - offset;
+            break;
+        case 'right':
+            top = targetRect.top + (targetRect.height / 2) - (popoverRect.height / 2);
+            left = targetRect.right + offset;
+            break;
+        case 'center':
+            top = window.innerHeight / 2 - popoverRect.height / 2;
+            left = window.innerWidth / 2 - popoverRect.width / 2;
+            arrow.classList.add('hidden');
+            break;
+    }
+
+    // Ajusta para não sair da tela
+    if (left < 10) left = 10;
+    if (top < 10) top = 10;
+    if (left + popoverRect.width > window.innerWidth - 10) left = window.innerWidth - popoverRect.width - 10;
+    if (top + popoverRect.height > window.innerHeight - 10) top = window.innerHeight - popoverRect.height - 10;
+
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+}
+
+function createTourBoard() {
+    const boardData = {
+        title: t('tour.item.boardTitle'),
+        icon: '🚀',
+        ownerId: currentUser.id,
+        visibility: 'private',
+        columnIds: [],
+        columns: []
+    };
+    const newBoard = saveBoard(boardData);
+    tourCreatedItems.boardId = newBoard.id; // Salva o ID para o "desfazer"
+    boards.push(newBoard); // Adiciona à lista em memória
+    currentBoard = newBoard; // Define como quadro atual
+    localStorage.setItem(`currentBoardId_${currentUser.id}`, newBoard.id);
+    renderBoardSelector();
+    renderCurrentBoard();
+    initCustomSelects();
+}
+
+function createTourColumn() {
+    if (!currentBoard) return;
+    const columnData = {
+        title: t('tour.item.columnTitle'),
+        color: '#9b59b6',
+        textColor: '#ffffff',
+        cardIds: [],
+        cards: []
+    };
+    const newColumn = saveColumn(columnData);
+    tourCreatedItems.columnId = newColumn.id; // Salva o ID
+    currentBoard.columnIds.push(newColumn.id);
+    currentBoard.columns.push(newColumn);
+    saveBoard(currentBoard);
+    renderCurrentBoard();
+}
+
+function createTourCard() {
+    if (!currentBoard || currentBoard.columns.length === 0) return;
+    const targetColumn = currentBoard.columns[0];
+    const cardData = {
+        title: t('tour.item.cardTitle'),
+        description: t('tour.item.cardDescription'),
+        creatorId: currentUser.id,
+        assignedTo: currentUser.id,
+        isComplete: false,
+        tags: [t('tour.item.cardTag1'), t('tour.item.cardTag2')], // Certifique-se que essas tags existam em algum template
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Vence em 3 dias
+        createdAt: new Date().toISOString()
+    };
+    const newCard = saveCard(cardData);
+    tourCreatedItems.cardId = newCard.id; // Salva o ID
+    targetColumn.cardIds.push(newCard.id);
+    targetColumn.cards.push(newCard);
+    saveColumn(targetColumn);
+    renderCurrentBoard();
+}
+
+/**
+ * Funções para DESFAZER as criações do tour.
+ */
+function undoTourBoard() {
+    if (tourCreatedItems.boardId) {
+        deleteBoard(tourCreatedItems.boardId);
+        tourCreatedItems.boardId = null;
+        loadData(); // Recarrega todos os quadros
+        renderBoardSelector();
+        renderCurrentBoard();
+        initCustomSelects();
+    }
+}
+
+function undoTourColumn() {
+    if (tourCreatedItems.columnId && tourCreatedItems.boardId) {
+        const board = getBoard(tourCreatedItems.boardId);
+        if (board) {
+            board.columnIds = board.columnIds.filter(id => id !== tourCreatedItems.columnId);
+            saveBoard(board);
+        }
+        deleteColumn(tourCreatedItems.columnId);
+        tourCreatedItems.columnId = null;
+        currentBoard = getFullBoardData(tourCreatedItems.boardId);
+        renderCurrentBoard();
+    }
+}
+
+function undoTourCard() {
+    if (tourCreatedItems.cardId && tourCreatedItems.columnId) {
+        const column = getColumn(tourCreatedItems.columnId);
+        if (column) {
+            column.cardIds = column.cardIds.filter(id => id !== tourCreatedItems.cardId);
+            saveColumn(column);
+        }
+        deleteCard(tourCreatedItems.cardId);
+        tourCreatedItems.cardId = null;
+        currentBoard = getFullBoardData(tourCreatedItems.boardId);
+        renderCurrentBoard();
     }
 }
 
@@ -544,6 +828,12 @@ function renderCurrentBoard() {
     if (!currentBoard) {
         document.getElementById('kanban-title').textContent = t('kanban.feedback.noBoardSelectedTitle');
         document.getElementById('columns-container').innerHTML = `<p>${t('kanban.feedback.noBoardSelected')}</p>`;
+
+        // NOVO: Iniciar o tour automaticamente na primeira vez
+        if (!currentUser.preferences.hasSeenTour) {
+            startTour();
+        }
+
         return;
     }
 
@@ -956,7 +1246,7 @@ function showBoardDialog(boardId = null) {
     }
     if (systemTemplates.length > 0) {
         templateSelect.innerHTML += `<optgroup label="${t('kanban.dialog.board.systemTemplates')}">`;
-        systemTemplates.forEach(t => templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+        systemTemplates.forEach(template => templateSelect.innerHTML += `<option value="${template.id}">${t(template.name)}</option>`);
         templateSelect.innerHTML += '</optgroup>';
     }
     
@@ -1004,7 +1294,7 @@ function handleSaveBoard() {
                 const allTemplates = [...getUserBoardTemplates(currentUser.id), ...getSystemBoardTemplates()];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
                 if (selectedTemplate && !title) title = `${selectedTemplate.name} ${t('kanban.board.copySuffix')}`;
-                const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: colTmpl.name, color: colTmpl.color, cardIds: [] })) : [];
+                const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] })) : [];
                 const newBoardData = { 
                     title, 
                     description, 
@@ -2308,7 +2598,12 @@ function handlePreferencesCancel() {
 
 //Preferências
 
-function showPreferencesDialog() { // REFEITA
+/**
+ * Exibe o diálogo de preferências, populando-o com os dados do usuário.
+ * Se `isTour` for verdadeiro, apenas exibe o diálogo sem anexar os listeners de salvamento.
+ * @param {boolean} isTour - Indica se a chamada é do tour.
+ */
+function showPreferencesDialog(isTour = false) {
     const dialog = document.getElementById('preferences-dialog');
     const user = getCurrentUser();
     const prefs = user.preferences || {};
@@ -2371,8 +2666,10 @@ function showPreferencesDialog() { // REFEITA
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
 
-    // Anexa os listeners aos controles INTERNOS do diálogo
-    setupPreferencesControlsListeners(dialog);
+    // Anexa os listeners de salvamento/cancelamento apenas se não for o tour
+    if (!isTour) {
+        setupPreferencesControlsListeners(dialog);
+    }
 
     dialog.showModal();
 }

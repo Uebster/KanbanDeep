@@ -264,12 +264,36 @@ export function saveGroup(groupData) {
 // --- Templates do Sistema (Hardcoded) ---
 export function getSystemBoardTemplates() {
     // Seus dados de template de quadro aqui
-     return [
-        { id: 'system-kanban', name: 'templates.system.kanban.name', icon: '📋', description: 'templates.system.kanban.desc', columns: [ { name: 'A fazer', color: '#e74c3c' }, { name: 'Em Andamento', color: '#f39c12' }, { name: 'Concluído', color: '#2ecc71' }, { name: 'Em Teste', color: '#9b59b6' } ] },
-        { id: 'system-leisure', name: 'templates.system.leisure.name', icon: '🎮', description: 'templates.system.leisure.desc', columns: [ { name: 'Quero Fazer', color: '#e74c3c' }, { name: 'Preciso Fazer', color: '#f39c12' }, { name: 'Feito', color: '#2ecc71' } ] },
-        { id: 'system-market', name: 'templates.system.market.name', icon: '🛒', description: 'templates.system.market.desc', columns: [ { name: 'Condimentos', color: '#3498db' }, { name: 'Snacks', color: '#e67e22' }, { name: 'Higiene e Limpeza', color: '#f1c40f' }, { name: 'Comprado', color: '#2ecc71' } ] },
-        { id: 'system-work', name: 'templates.system.work.name', icon: '💼', description: 'templates.system.work.desc', columns: [ { name: 'Backlog', color: '#95a5a6' }, { name: 'Em andamento', color: '#3498db' }, { name: 'Revisão/Teste', color: '#9b59b6' }, { name: 'Entregue', color: '#2ecc71' } ] },
-        { id: 'system-studies', name: 'templates.system.studies.name', icon: '📚', description: 'templates.system.studies.desc', columns: [ { name: 'Atividades', color: '#e84393' }, { name: 'Trabalhos', color: '#6c5ce7' }, { name: 'Provas', color: '#e74c3c' }, { name: 'Entregue', color: '#3498db' } ] }
+    return [
+        { id: 'system-kanban', name: 'templates.system.kanban.name', icon: '📋', description: 'templates.system.kanban.desc', columns: [
+            { name: 'templates.system.kanban.column.todo', color: '#e74c3c' },
+            { name: 'templates.system.kanban.column.inprogress', color: '#f39c12' },
+            { name: 'templates.system.kanban.column.done', color: '#2ecc71' },
+            { name: 'templates.system.kanban.column.test', color: '#9b59b6' }
+        ]},
+        { id: 'system-leisure', name: 'templates.system.leisure.name', icon: '🎮', description: 'templates.system.leisure.desc', columns: [
+            { name: 'templates.system.leisure.column.want', color: '#e74c3c' },
+            { name: 'templates.system.leisure.column.need', color: '#f39c12' },
+            { name: 'templates.system.leisure.column.done', color: '#2ecc71' }
+        ]},
+        { id: 'system-market', name: 'templates.system.market.name', icon: '🛒', description: 'templates.system.market.desc', columns: [
+            { name: 'templates.system.market.column.seasonings', color: '#3498db' },
+            { name: 'templates.system.market.column.snacks', color: '#e67e22' },
+            { name: 'templates.system.market.column.hygiene', color: '#f1c40f' },
+            { name: 'templates.system.market.column.bought', color: '#2ecc71' }
+        ]},
+        { id: 'system-work', name: 'templates.system.work.name', icon: '💼', description: 'templates.system.work.desc', columns: [
+            { name: 'templates.system.work.column.backlog', color: '#95a5a6' },
+            { name: 'templates.system.work.column.inprogress', color: '#3498db' },
+            { name: 'templates.system.work.column.review', color: '#9b59b6' },
+            { name: 'templates.system.work.column.delivered', color: '#2ecc71' }
+        ]},
+        { id: 'system-studies', name: 'templates.system.studies.name', icon: '📚', description: 'templates.system.studies.desc', columns: [
+            { name: 'templates.system.studies.column.activities', color: '#e84393' },
+            { name: 'templates.system.studies.column.papers', color: '#6c5ce7' },
+            { name: 'templates.system.studies.column.exams', color: '#e74c3c' },
+            { name: 'templates.system.studies.column.delivered', color: '#3498db' }
+        ]}
     ];
 }
 export function getSystemTagTemplates() {

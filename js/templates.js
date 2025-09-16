@@ -366,10 +366,10 @@ function showTemplateDetails(template, type) {
         <div class="form-group">
             <label>${type === 'board' ? t('templates.details.columns') : t('templates.details.tags')}:</label>
             <ul>
-                ${type === 'board' 
-                    ? template.columns.map(col => `<li style="color: ${col.color}">${col.name} (${col.color})</li>`).join('')
-                    : template.tags.map(tag => `<li style="color: ${tag.color}">${tag.name} (${tag.color})</li>`).join('')
-                }
+                    ${type === 'board'
+                        ? template.columns.map(col => `<li style="color: ${col.color}">${t(col.name)} (${col.color})</li>`).join('')
+                        : template.tags.map(tag => `<li style="color: ${tag.color}">${t(tag.name)} (${tag.color})</li>`).join('')
+                    }
             </ul>
         </div>
         <div class="modal-actions">
