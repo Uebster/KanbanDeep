@@ -699,19 +699,60 @@ fieldset.form-group legend {
 
 /* 
   Quando esta classe está no body, ela desativa os efeitos da cor primária,
-  revertendo para bordas e sombras padrão.
+  revertendo para bordas e sombras padrão em todos os contêineres principais.
 */
 body.no-primary-effects .card,
 body.no-primary-effects #main-header,
 body.no-primary-effects dialog,
 body.no-primary-effects .form-section,
-body.no-primary-effects .btn:hover,
-body.no-primary-effects .select-selected:hover,
-body.no-primary-effects .select-items,
-body.no-primary-effects .nav-item.active {
+body.no-primary-effects .template-section, /* Adicionado */
+body.no-primary-effects .profile-content-section, /* Adicionado */
+body.no-primary-effects .showcase-navbar, /* Adicionado */
+body.no-primary-effects .dropdown,
+body.no-primary-effects .select-items {
     border-color: var(--border);
     box-shadow: none !important; /* !important para sobrescrever os :hover */
 }
+
+/* CORREÇÃO: Garante que os títulos voltem à cor de texto padrão */
+body.no-primary-effects h1,
+body.no-primary-effects h2,
+body.no-primary-effects h3,
+body.no-primary-effects h4 {
+    color: var(--text);
+}
+
+/* CORREÇÃO: Adiciona um hover sutil e neutro para botões, dropdowns, navbars e selects. */
+body.no-primary-effects .btn:hover,
+body.no-primary-effects .dropdown button:hover,
+body.no-primary-effects .nav-item:hover,
+body.no-primary-effects .select-selected:hover,
+body.no-primary-effects .select-item:hover {
+    background-color: rgba(255, 255, 255, 0.05); /* Fundo sutil para feedback */
+    color: var(--text); /* Garante que o texto não fique colorido */
+    border-color: var(--border); /* Garante que a borda não fique colorida */
+    box-shadow: none !important;
+}
+
+
+/* CORREÇÃO: Neutraliza completamente o estado :active e outros hovers. */
+body.no-primary-effects .nav-item.active,
+body.no-primary-effects .filter-btn.active,
+body.no-primary-effects .privacy-option.selected,
+body.no-primary-effects .privacy-option:hover,
+body.no-primary-effects .checkbox-container input:checked ~ .checkmark,
+body.no-primary-effects .checkbox-container:hover .checkmark,
+body.no-primary-effects .color-swatch:hover,
+body.no-primary-effects .color-swatch.active {
+    box-shadow: none !important;
+    border-color: var(--border);
+    background-color: transparent;
+    color: var(--text);
+}
+body.no-primary-effects .color-swatch.special:hover {
+    color: var(--text-muted); /* Mantém a cor original do ícone */
+}
+
 
 /* ===== ESTILOS PARA EDITOR DE TEMPLATES (Universal) ===== */
 .editor-container {
@@ -828,11 +869,11 @@ body.no-primary-effects .nav-item.active {
     grid-template-columns: repeat(6, 1fr);
     gap: 10px;
     justify-items: center;
+    align-items: center; /* NOVO: Alinha todos os itens verticalmente no centro da sua "célula" na grade */
     margin-top: 10px;
 }
 
 .color-swatch {
-  margin-top: 3px;
     width: 45px;
     height: 45px;
     border-radius: 50%;
@@ -845,7 +886,7 @@ body.no-primary-effects .nav-item.active {
     transform: scale(1.1);
     border-color: var(--primary);
     /* A sombra da cor selecionada será da própria cor */
-    box-shadow: 0 0 10px 3px currentColor; 
+    box-shadow: 0 0 10px 3px var(--primary); 
 }
 
 /* Estilo para as opções especiais (Nenhum, Padrão) */
@@ -860,12 +901,21 @@ body.no-primary-effects .nav-item.active {
     justify-content: center;
     font-size: 45px; /* Tamanho fixo em pixels para não ser afetado pela mudança de fonte global */
     color: var(--text-muted);
-    line-height: 0; /* Melhora o alinhamento vertical do emoji */
+}
+/* CORREÇÃO: Aplica o transform apenas ao conteúdo (ícone) e não à caixa inteira. */
+.color-swatch.special span {
+    display: block; /* Necessário para que o transform funcione de forma consistente */
+    transform: translateY(-4px);
 }
 .color-swatch.special:hover {
     color: var(--primary); /* O ícone fica da cor primária no hover */
-    box-shadow: none !important; /* Garante que nenhuma sombra apareça no hover */
+    box-shadow: 0 0 10px 3px var(--primary); 
     background-color: transparent;
+}
+.color-swatch.special.active {
+    transform: scale(1.1);
+    border-color: none;
+    box-shadow: none !important; /* Garante que nenhuma sombra apareça no hover */
 }
 
 /* Gatilho para abrir o seletor de cor customizado (MOVIMENTEI DE KANBAN.CSS) */
