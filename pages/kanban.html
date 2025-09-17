@@ -261,32 +261,37 @@
         </div>
     </dialog>
 
-    <dialog id="edit-dialog" class="draggable">
-    <h3 class="drag-handle" data-i18n="kanban.dialog.edit.title"></h3>
-    
-    <div class="form-group">
-        <label for="edit-select-board" data-i18n="kanban.dialog.edit.selectBoard"></label>
-        <select id="edit-select-board"></select>
-    </div>
-    
-    <div class="form-group" id="edit-column-group" style="display: none;">
-        <label for="edit-select-column" data-i18n="kanban.dialog.edit.selectColumn"></label>
-        <select id="edit-select-column"></select>
-    </div>
-    
-    <div class="form-group" id="edit-card-group" style="display: none;">
-        <label for="edit-select-card" data-i18n="kanban.dialog.edit.selectCard"></label>
-        <select id="edit-select-card"></select>
-    </div>
-    
-    <p class="edit-info" data-i18n="kanban.dialog.edit.info"></p>
-    
-    <div class="modal-actions">
-        <button id="edit-dialog-cancel-btn" class="btn cancel" data-i18n="ui.cancel"></button>
-        <button id="edit-dialog-delete-btn" class="btn danger" data-i18n="kanban.dialog.edit.deleteButton" disabled></button>
-        <button id="edit-dialog-edit-btn" class="btn edit" data-i18n="kanban.dialog.edit.editButton" disabled></button>
-    </div>
-</dialog>
+    <!-- NOVO DIÁLOGO GERENCIADOR COM ABAS -->
+    <dialog id="manager-dialog" class="draggable">
+        <h3 class="drag-handle" data-i18n="kanban.dialog.manager.title"></h3>
+        
+        <div class="showcase-navbar manager-tabs">
+            <button class="nav-item active" data-tab="manager-boards" data-i18n="kanban.dialog.manager.tabBoards"></button>
+            <button class="nav-item" data-tab="manager-columns" data-i18n="kanban.dialog.manager.tabColumns"></button>
+            <button class="nav-item" data-tab="manager-cards" data-i18n="kanban.dialog.manager.tabCards"></button>
+        </div>
+
+        <div class="manager-content">
+            <!-- Aba de Quadros -->
+            <div id="manager-boards" class="manager-tab-content active">
+                <div id="manager-boards-list" class="manager-item-list"></div>
+            </div>
+            <!-- Aba de Colunas -->
+            <div id="manager-columns" class="manager-tab-content">
+                <div class="form-group"><div class="custom-select" id="manager-column-board-select-container"></div></div>
+                <div id="manager-columns-list" class="manager-item-list"></div>
+            </div>
+            <!-- Aba de Cartões -->
+            <div id="manager-cards" class="manager-tab-content">
+                <div class="form-row"><div class="form-group" style="flex:1;"><div class="custom-select" id="manager-card-board-select-container"></div></div><div class="form-group" style="flex:1;"><div class="custom-select" id="manager-card-column-select-container"></div></div></div>
+                <div id="manager-cards-list" class="manager-item-list"></div>
+            </div>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel" data-i18n="ui.close"></button>
+        </div>
+    </dialog>
 
 <dialog id="search-dialog" class="draggable">
     <h3 class="drag-handle" data-i18n="kanban.dialog.search.title"></h3>

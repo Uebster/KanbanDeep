@@ -230,7 +230,7 @@ function setupEventListeners() {
     });
 
     document.getElementById('board-select')?.addEventListener('change', switchBoard);
-    document.getElementById('edit-items-btn')?.addEventListener('click', showEditDialog);
+    document.getElementById('edit-items-btn')?.addEventListener('click', showManagerDialog);
     document.getElementById('undo-btn')?.addEventListener('click', undoAction);
     document.getElementById('redo-btn')?.addEventListener('click', redoAction);
     document.getElementById('start-tour-btn')?.addEventListener('click', startTour);
@@ -1137,160 +1137,352 @@ function hideTooltip() {
     if (tooltipElement) tooltipElement.classList.remove('visible');
 }
 
-// Adicione esta NOVA FUNÇÃO em kanban.js
-function showEditDialog() {
-    const dialog = document.getElementById('edit-dialog');
-    const boardSelect = document.getElementById('edit-select-board');
-    const columnSelect = document.getElementById('edit-select-column');
-    const cardSelect = document.getElementById('edit-select-card');
-    const columnGroup = document.getElementById('edit-column-group');
-    const cardGroup = document.getElementById('edit-card-group');
-    const editBtn = document.getElementById('edit-dialog-edit-btn');
-    const deleteBtn = document.getElementById('edit-dialog-delete-btn');
+/**
+ * Exibe o novo diálogo gerenciador com abas.
+ */
+function showManagerDialog() {
+    const dialog = document.getElementById('manager-dialog');
+    if (!dialog) return;
 
-    // Reseta o estado
-    columnGroup.style.display = 'none';
-    cardGroup.style.display = 'none';
-    editBtn.disabled = true;
-    deleteBtn.disabled = true;
+    const tabs = dialog.querySelectorAll('.nav-item');
+    const contents = dialog.querySelectorAll('.manager-tab-content');
 
-    // Popula o select de quadros
-    boardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
-    
-    // CORREÇÃO: Filtra os quadros que aparecem no seletor de edição.
-    // Um usuário só pode editar quadros que ele pode ver.
-    const editableBoards = boards.filter(board => {
-        if (!board.groupId) return true; // Quadros pessoais são sempre editáveis pelo dono.
-        const group = getGroup(board.groupId);
-        if (!group) return false;
-        if (group.adminId === currentUser.id) return true; // Admin pode editar tudo do grupo.
-        // Membro pode editar quadros de grupo com visibilidade 'group' ou os 'privados' que ele mesmo criou.
-        return board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
+    // Lógica para trocar de aba
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            tab.classList.add('active');
+            const contentId = tab.dataset.tab;
+            document.getElementById(contentId).classList.add('active');
+
+            // Futuramente, aqui chamaremos a função para popular a lista da aba ativa
+            if (contentId === 'manager-boards') {
+                populateManagerBoards();
+            } else if (contentId === 'manager-columns') {
+                populateManagerColumns();
+            } else if (contentId === 'manager-cards') {
+                populateManagerCards();
+            }
+        };
     });
 
-    editableBoards.forEach(board => boardSelect.innerHTML += `<option value="${board.id}">${board.title}</option>`);
-
-    boardSelect.onchange = () => {
-        const boardId = boardSelect.value;
-        columnGroup.style.display = 'none';
-        cardGroup.style.display = 'none';
-        editBtn.title = ''; // Limpa o title
-        deleteBtn.title = '';
-        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
-        if (!boardId) {
-            editBtn.disabled = true;
-            deleteBtn.disabled = true;
-            return;
-        }
-
-        const canEditBoard = hasPermission(boards.find(b => b.id === boardId), 'editBoards');
-        if (!canEditBoard) {
-            editBtn.disabled = true;
-            editBtn.title = t('kanban.feedback.noPermission');
-        }
-
-        const selectedBoard = boards.find(b => b.id === boardId);
-        editBtn.disabled = false;
-        deleteBtn.disabled = false;
-        columnGroup.style.display = 'block';
-
-        selectedBoard.columns.forEach(col => {
-            columnSelect.innerHTML += `<option value="${col.id}">${col.title}</option>`;
-        });
-    };
-
-    columnSelect.onchange = () => {
-        const columnId = columnSelect.value;
-        const boardId = boardSelect.value; // CORREÇÃO: Declarar boardId no início do escopo.
-        cardGroup.style.display = 'none';
-        editBtn.title = ''; // Limpa o title
-
-        const canEditColumn = hasPermission(boards.find(b => b.id === boardId), 'editColumns');
-        if (columnId && !canEditColumn) {
-            editBtn.disabled = true;
-            editBtn.title = t('kanban.feedback.noPermission');
-        }
-        cardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectCardPlaceholder')}</option>`;
-        if (!columnId) return;
-
-        const selectedBoard = boards.find(b => b.id === boardId); // Usa o boardId já declarado
-        if (!selectedBoard) return; // Segurança
-
-        const selectedColumn = selectedBoard.columns.find(c => c.id === columnId);
-        if (!selectedColumn) return; // Segurança
-
-        cardGroup.style.display = 'block';
-
-        selectedColumn.cards.forEach(card => {
-            cardSelect.innerHTML += `<option value="${card.id}">${card.title}</option>`;
-        });
-    };
-
-    editBtn.onclick = () => {
-        const cardId = cardSelect.value;
-        const columnId = columnSelect.value;
-        const boardId = boardSelect.value;
-        const board = boards.find(b => b.id === boardId);
-
-        if (cardId) {
-            // A edição de cartão é sempre permitida para membros, conforme nosso plano.
-            showCardDialog(cardId);
-        } else if (columnId) {
-            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-            if (!hasPermission(board, 'editColumns')) {
-                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-                return;
-            }
-            showColumnDialog(columnId);
-        } else if (boardId) {
-            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-            if (!hasPermission(board, 'editBoards')) {
-                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-                return;
-            }
-            showBoardDialog(boardId);
-        }
-        dialog.close();
-    };
-
-    deleteBtn.onclick = () => {
-        const cardId = cardSelect.value;
-        const columnId = columnSelect.value;
-        const boardId = boardSelect.value;
-        const board = boards.find(b => b.id === boardId);
-
-        if (cardId) {
-            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO (Excluir cartão usa a permissão de editar coluna)
-            if (!hasPermission(board, 'editColumns')) {
-                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-                return;
-            }
-            handleDeleteCard(cardId);
-        } else if (columnId) {
-            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-            if (!hasPermission(board, 'editColumns')) {
-                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-                return;
-            }
-            handleDeleteColumnFromMenu(columnId);
-        } else if (boardId) {
-            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-            if (!hasPermission(board, 'editBoards')) {
-                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-                return;
-            }
-            currentBoard = board; // Garante que o currentBoard é o correto
-            handleDeleteBoard();
-        }
-        dialog.close();
-    };
-    
-    document.getElementById('edit-dialog-cancel-btn').onclick = () => dialog.close();
+    // Abre o diálogo na primeira aba por padrão
+    tabs[0].click();
+    populateManagerBoards(); // Popula a primeira aba ao abrir
 
     dialog.showModal();
 }
 
 // ===== LÓGICA DE MENUS (DROPDOWNS) =====
+
+/**
+ * Popula a aba "Quadros" do diálogo gerenciador.
+ */
+function populateManagerBoards() {
+    const listContainer = document.getElementById('manager-boards-list');
+    listContainer.innerHTML = ''; // Limpa a lista
+
+    // 1. Filtra os quadros que o usuário pode ver, respeitando a privacidade
+    const visibleBoards = boards.filter(board => {
+        if (!board.groupId) return true; // Quadros pessoais
+        const group = getGroup(board.groupId);
+        if (!group) return false;
+        if (group.adminId === currentUser.id) return true; // Admin vê tudo do grupo
+        // Membro vê quadros de grupo ou os privados que ele criou
+        return board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
+    });
+
+    // 2. Separa os quadros em pessoais e de grupo
+    const personalBoards = visibleBoards.filter(b => !b.groupId);
+    const groupBoards = visibleBoards.filter(b => b.groupId);
+
+    if (personalBoards.length === 0 && groupBoards.length === 0) {
+        listContainer.innerHTML = `<p>${t('kanban.feedback.noPersonalBoards')}</p>`; // Reutiliza a tradução
+        return;
+    }
+
+    // 3. Função auxiliar para criar cada item da lista
+    const createItemElement = (board) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'manager-item';
+
+        // Adiciona o nome do grupo ao lado do título se for um quadro de grupo
+        let titleHtml = `<span>${board.icon || '📋'} ${board.title}</span>`;
+        if (board.groupId) {
+            const group = getGroup(board.groupId);
+            if (group) {
+                titleHtml += ` <span class="board-group-name">(${group.name})</span>`;
+            }
+        }
+
+        itemEl.innerHTML = `
+            <div class="manager-item-title">${titleHtml}</div>
+            <div class="manager-item-actions">
+                <button class="btn btn-sm edit" data-id="${board.id}">✏️</button>
+                <button class="btn btn-sm danger" data-id="${board.id}">🗑️</button>
+            </div>
+        `;
+
+        itemEl.querySelector('.btn.edit').onclick = () => {
+            if (hasPermission(board, 'editBoards')) {
+                document.getElementById('manager-dialog').close();
+                showBoardDialog(board.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+
+        itemEl.querySelector('.btn.danger').onclick = () => {
+            if (hasPermission(board, 'editBoards')) {
+                document.getElementById('manager-dialog').close();
+                currentBoard = board; // Define o quadro a ser excluído
+                handleDeleteBoard();
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+        return itemEl;
+    };
+
+    // 4. Renderiza as seções
+    if (personalBoards.length > 0) {
+        const heading = document.createElement('h5');
+        heading.className = 'manager-list-heading';
+        heading.textContent = t('kanban.dialog.manager.personalBoards');
+        listContainer.appendChild(heading);
+        personalBoards.forEach(board => listContainer.appendChild(createItemElement(board)));
+    }
+
+    if (groupBoards.length > 0) {
+        const heading = document.createElement('h5');
+        heading.className = 'manager-list-heading';
+        heading.textContent = t('kanban.dialog.manager.groupBoards');
+        listContainer.appendChild(heading);
+        groupBoards.forEach(board => listContainer.appendChild(createItemElement(board)));
+    }
+}
+
+/**
+ * Popula a aba "Colunas" do diálogo gerenciador.
+ */
+function populateManagerColumns() {
+    const boardSelectContainer = document.getElementById('manager-column-board-select-container');
+    const listContainer = document.getElementById('manager-columns-list');
+    
+    // 1. Cria o seletor de quadros
+    const select = document.createElement('select');
+    select.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
+
+    // Reutiliza a mesma lógica de filtro da aba de quadros
+    const visibleBoards = boards.filter(board => {
+        if (!board.groupId) return true;
+        const group = getGroup(board.groupId);
+        if (!group) return false;
+        if (group.adminId === currentUser.id) return true;
+        return board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
+    });
+
+    // CORREÇÃO: Aplica o mesmo padrão de agrupamento da aba "Quadros"
+    const personalBoards = visibleBoards.filter(b => !b.groupId);
+    const groupBoards = visibleBoards.filter(b => b.groupId);
+
+    if (personalBoards.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = t('kanban.dialog.manager.personalBoards');
+        personalBoards.forEach(board => {
+            const option = document.createElement('option');
+            option.value = board.id;
+            option.textContent = board.title;
+            optgroup.appendChild(option);
+        });
+        select.appendChild(optgroup);
+    }
+
+    if (groupBoards.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = t('kanban.dialog.manager.groupBoards');
+        groupBoards.forEach(board => {
+            const group = getGroup(board.groupId);
+            const groupName = group ? ` (${group.name})` : '';
+            const option = document.createElement('option');
+            option.value = board.id;
+            option.textContent = `${board.title}${groupName}`;
+            optgroup.appendChild(option);
+        });
+        select.appendChild(optgroup);
+    }
+
+    boardSelectContainer.innerHTML = ''; // Limpa o container
+    boardSelectContainer.appendChild(select);
+    initCustomSelects(); // Estiliza o novo select
+
+    // 2. Adiciona o listener para quando um quadro for selecionado
+    select.onchange = () => {
+        const boardId = select.value;
+        if (boardId) {
+            const board = boards.find(b => b.id === boardId);
+            renderManagerColumnList(board, listContainer);
+        } else {
+            listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectBoard')}</div>`;
+        }
+    };
+
+    listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectBoard')}</div>`;
+}
+
+/**
+ * Renderiza a lista de colunas para um quadro selecionado na aba "Colunas".
+ * @param {object} board - O objeto do quadro selecionado.
+ * @param {HTMLElement} listContainer - O elemento container da lista.
+ */
+function renderManagerColumnList(board, listContainer) {
+    listContainer.innerHTML = '';
+
+    if (!board.columns || board.columns.length === 0) {
+        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noColumnForCard')}</div>`;
+        return;
+    }
+
+    board.columns.forEach(column => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'manager-item';
+        itemEl.innerHTML = `
+            <span>${column.title}</span>
+            <div class="manager-item-actions">
+                <button class="btn btn-sm edit" data-id="${column.id}">✏️</button>
+                <button class="btn btn-sm danger" data-id="${column.id}">🗑️</button>
+            </div>
+        `;
+
+        itemEl.querySelector('.btn.edit').onclick = () => {
+            if (hasPermission(board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                showColumnDialog(column.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+
+        itemEl.querySelector('.btn.danger').onclick = () => {
+            if (hasPermission(board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                handleDeleteColumnFromMenu(column.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+
+        listContainer.appendChild(itemEl);
+    });
+}
+
+/**
+ * Popula a aba "Cartões" do diálogo gerenciador.
+ */
+function populateManagerCards() {
+    const boardSelectContainer = document.getElementById('manager-card-board-select-container');
+    const columnSelectContainer = document.getElementById('manager-card-column-select-container');
+    const listContainer = document.getElementById('manager-cards-list');
+
+    // 1. Cria e popula o seletor de quadros
+    const boardSelect = document.createElement('select');
+    boardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
+    
+    // Reutiliza a mesma lógica de filtro e agrupamento
+    const visibleBoards = boards.filter(b => !b.groupId || getGroup(b.groupId));
+    const personalBoards = visibleBoards.filter(b => !b.groupId);
+    const groupBoards = visibleBoards.filter(b => b.groupId);
+
+    if (personalBoards.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = t('kanban.dialog.manager.personalBoards');
+        personalBoards.forEach(board => optgroup.innerHTML += `<option value="${board.id}">${board.title}</option>`);
+        boardSelect.appendChild(optgroup);
+    }
+    if (groupBoards.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = t('kanban.dialog.manager.groupBoards');
+        groupBoards.forEach(board => {
+            const groupName = getGroup(board.groupId)?.name || '';
+            optgroup.innerHTML += `<option value="${board.id}">${board.title} (${groupName})</option>`;
+        });
+        boardSelect.appendChild(optgroup);
+    }
+
+    boardSelectContainer.innerHTML = '';
+    boardSelectContainer.appendChild(boardSelect);
+
+    // 2. Cria o seletor de colunas (inicialmente vazio)
+    const columnSelect = document.createElement('select');
+    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
+    columnSelectContainer.innerHTML = '';
+    columnSelectContainer.appendChild(columnSelect);
+
+    initCustomSelects(); // Estiliza os novos selects
+
+    // 3. Adiciona listeners
+    boardSelect.onchange = () => {
+        const boardId = boardSelect.value;
+        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
+        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectColumn')}</div>`;
+        if (boardId) {
+            const board = boards.find(b => b.id === boardId);
+            board.columns.forEach(col => {
+                columnSelect.innerHTML += `<option value="${col.id}">${col.title}</option>`;
+            });
+        }
+        initCustomSelects(); // Re-estiliza o select de colunas
+    };
+
+    columnSelect.onchange = () => {
+        const boardId = boardSelect.value;
+        const columnId = columnSelect.value;
+        if (boardId && columnId) {
+            const board = boards.find(b => b.id === boardId);
+            const column = board.columns.find(c => c.id === columnId);
+            renderManagerCardList(board, column, listContainer);
+        } else {
+            listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectColumn')}</div>`;
+        }
+    };
+
+    listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectBoard')}</div>`;
+}
+
+function renderManagerCardList(board, column, listContainer) {
+    listContainer.innerHTML = '';
+    if (!column.cards || column.cards.length === 0) {
+        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noColumnForCard')}</div>`;
+        return;
+    }
+
+    column.cards.forEach(card => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'manager-item';
+        itemEl.innerHTML = `
+            <span>${card.title}</span>
+            <div class="manager-item-actions">
+                <button class="btn btn-sm edit" data-id="${card.id}">✏️</button>
+                <button class="btn btn-sm danger" data-id="${card.id}">🗑️</button>
+            </div>
+        `;
+        itemEl.querySelector('.btn.edit').onclick = () => {
+            document.getElementById('manager-dialog').close();
+            showCardDialog(card.id);
+        };
+        itemEl.querySelector('.btn.danger').onclick = () => {
+            if (hasPermission(board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                handleDeleteCard(card.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+        listContainer.appendChild(itemEl);
+    });
+}
 
 function toggleDropdown(e, dropdownId) {
     e.stopPropagation();

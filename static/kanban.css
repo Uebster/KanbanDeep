@@ -57,8 +57,16 @@ body {
     font-weight: 500;
     transition: all 0.2s ease;
 }
-.filter-btn:hover { color: var(--primary); }
-.filter-btn.active { background-color: var(--primary); color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.filter-btn:hover { 
+            background-color: rgba(var(--primary-rgb), 0.2);
+            box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+            color: var(--primary);
+        }
+.filter-btn.active {            background-color: rgba(var(--primary-rgb), 0.2);
+            box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.1), 0 0 8px rgba(var(--primary-rgb), 0.2);
+            color: var(--primary);
+            border: 1px solid rgba(var(--primary-rgb), 0.8);
+}
 
 /* ===== ÁREA PRINCIPAL DO KANBAN ===== */
 #main-area {
@@ -493,11 +501,79 @@ fieldset.form-group label {
     color: var(--text-muted);
     text-align: center;
     font-style: italic;
-    margin: 10px 0;
+    min-width: 250px; /* Garante a mesma largura mínima do seletor de quadros */
+    /* CORREÇÃO DEFINITIVA: Faz o placeholder ter o mesmo "box model" do select */
+    padding: 12px; /* Mesmo padding do .select-selected */
+    border: 1px solid transparent; /* Mesma borda */
+    border-radius: 6px; /* Mesmo border-radius */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Adiciona espaçamento vertical para os botões de adicionar coluna/etiqueta nos diálogos */
 #add-group-board-column-btn,
 #add-group-tag-btn {
     margin-top: 8px;
+}
+
+/* ===== NOVO: ESTILOS PARA O DIÁLOGO GERENCIADOR ===== */
+#manager-dialog {
+    max-width: 800px; /* Aumentado para dar mais espaço */
+    width: 90%;
+}
+
+/* USA O PADRÃO .showcase-navbar de universal.css */
+.manager-tabs {
+    /* Reutiliza o estilo da navbar principal para consistência */
+    margin-bottom: 20px; /* Adiciona um espaçamento abaixo das abas */
+}
+
+.manager-tab-content {
+    display: none;
+}
+
+.manager-tab-content.active {
+    display: block;
+}
+
+.manager-item-list {
+    max-height: 45vh; /* Aumentado para mais espaço vertical */
+    min-height: 200px; /* Garante uma altura mínima para o diálogo não encolher */
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.manager-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-radius: 4px;
+}
+.manager-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-light);
+}
+.manager-item-title { flex-grow: 1; }
+.manager-item-actions { display: flex; gap: 8px; }
+
+.manager-list-heading {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 15px 10px 5px 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 5px;
+}
+
+.manager-list-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    font-style: italic;
 }
