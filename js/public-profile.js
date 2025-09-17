@@ -517,7 +517,8 @@ function sendMessage() {
     dialog.innerHTML = `
         <h3 class="drag-handle">${t('publicProfile.messageDialog.title', { name: viewedUser.name })}</h3>
         <div class="form-group">
-            <textarea id="private-message-textarea" placeholder="${t('publicProfile.messageDialog.placeholder')}" rows="5"></textarea>
+            <label for="friend-request-message">${t('publicProfile.friendRequest.description')}</label>
+            <textarea id="friend-request-message" placeholder="${t('publicProfile.friendRequest.placeholder')}" rows="3"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">

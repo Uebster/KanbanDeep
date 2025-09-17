@@ -257,9 +257,8 @@ export function showFloatingMessage(message, type = 'info', duration = 4000) {
 
     const messageEl = document.createElement('div');
     
-    // --- A CORREÇÃO PRINCIPAL ESTÁ AQUI ---
-    // Adiciona a classe .feedback para herdar o estilo que você já padronizou
-    messageEl.className = `feedback ${type}`; 
+    // Adiciona a classe .feedback para herdar o estilo base e .floating-message para o estilo sólido
+    messageEl.className = `feedback floating-message ${type}`;
     messageEl.textContent = message;
     
     // Adiciona alguns estilos inline para garantir a aparência
@@ -452,6 +451,8 @@ export function applyUserTheme() {
     // 3. Aplica a cor primária
     applyPrimaryColor(user.preferences?.primaryColor);
 
+    // 4. Aplica o comportamento do header inteligente
+    initSmartHeader();
 }
 
 /**

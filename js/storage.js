@@ -301,7 +301,7 @@ export function getSystemTagTemplates() {
     return [
         { id: 'system-tags-prio', name: 'templates.system.tags.default1.name', icon: '🔥', description: 'templates.system.tags.default.desc', tags: [ { name: 'Tag A', color: '#e74c3c' }, { name: 'Tag B', color: '#f39c12' }, { name: 'Tag C', color: '#3498db' }, { name: 'Tag D', color: '#d622cdff' }, 
           { name: 'Tag E', color: '#1019a5ff' }, { name: 'Tag F', color: '#694d1fff' }, { name: 'Tag G', color: '#a7f091ff' }, { name: 'Tag H', color: '#57800bff' } ] },
-        { id: 'system-tags-status', name: 'templates.system.tags.default2.name', icon: '📊', description: 'templates.system.tags.default.desc', tags: [ { name: 'Tag E', color: '#34dbd3ff' }, { name: 'Tag F', color: '#2ecc71' }, { name: 'Tag G', color: '#e74c3c' }, { name: 'Tag H', color: '#9b59b6' },
+        { id: 'system-tags-status', name: 'templates.system.tags.default2.name', icon: '📊', description: 'templates.system.tags.default.desc', tags: [ { name: 'Tag A', color: '#34dbd3ff' }, { name: 'Tag B', color: '#2ecc71' }, { name: 'Tag C', color: '#e74c3c' }, { name: 'Tag D', color: '#9b59b6' },
           { name: 'Tag E', color: '#611d16ff' }, { name: 'Tag F', color: '#f39c12' }, { name: 'Tag G', color: '#3498db' }, { name: 'Tag H', color: '#d622cdff' }
          ] }
     ];

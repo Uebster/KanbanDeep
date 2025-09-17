@@ -96,12 +96,34 @@ export async function initKanbanPage() {
     // 2. Carregamento de Dados
     await loadData(); // <-- AGUARDA o carregamento dos dados
 
+    // --- CORREÇÃO: Lógica para definir o quadro inicial ---
+    // Filtra os quadros com base no filtro ativo ('personal' por padrão).
+    const filteredBoards = boards.filter(board => {
+        if (currentBoardFilter === 'personal') return !board.groupId;
+        if (currentBoardFilter === 'group') return !!board.groupId;
+        return true;
+    });
+
+    const lastBoardId = localStorage.getItem(`currentBoardId_${currentUser.id}`);
+    
+    // Tenta encontrar o último quadro visualizado DENTRO da lista filtrada.
+    let initialBoard = filteredBoards.find(b => b.id === lastBoardId);
+
+    // Se o último quadro não pertencer a este filtro, pega o primeiro da lista filtrada.
+    if (!initialBoard) {
+        initialBoard = filteredBoards[0] || null;
+    }
+    
+    currentBoard = initialBoard;
+
+    // Atualiza o localStorage com um ID de quadro válido para o contexto atual.
+    localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+
     // 3. Configuração da UI e Eventos
     setupEventListeners();
     initDraggableElements();
     tooltipElement = document.getElementById('card-tooltip');
     checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId)
-
     // 4. Renderização Inicial
     initUIControls();
     renderBoardSelector();
@@ -116,22 +138,39 @@ export async function initKanbanPage() {
  */
 async function loadData() {
     allUsers = getAllUsers();
-    
     const userProfile = getUserProfile(currentUser.id);
-    const userBoardIds = userProfile.boardIds || [];
-    const personalBoards = userBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
 
-    // --- NOVA LÓGICA PARA CARREGAR QUADROS DE GRUPO ---
+    // Carrega todos os quadros de todos os grupos dos quais o usuário é membro
     const allGroups = getAllGroups();
     const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
-    
     const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
-    const groupBoards = groupBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
 
-    // Combina quadros pessoais e de grupo, evitando duplicatas
+    // Combina todos os IDs de quadros (pessoais e de grupo) em um conjunto para evitar duplicatas
+    const allVisibleBoardIds = new Set([...(userProfile.boardIds || []), ...groupBoardIds]);
+
     const allBoardMap = new Map();
-    personalBoards.forEach(b => allBoardMap.set(b.id, b));
-    groupBoards.forEach(b => allBoardMap.set(b.id, b));
+
+    // Itera sobre todos os IDs de quadros visíveis e aplica a lógica de permissão
+    for (const boardId of allVisibleBoardIds) {
+        const board = getFullBoardData(boardId);
+        if (!board) continue;
+
+        const owner = getUserProfile(board.ownerId);
+        const isOwner = board.ownerId === currentUser.id;
+        const isPublic = board.visibility === 'public';
+        const isFriendBoard = board.visibility === 'friends' && owner?.friends?.includes(currentUser.id);
+        
+        // CORREÇÃO: A visibilidade de um quadro de grupo agora é verificada explicitamente.
+        // Um quadro só é visível para o grupo se ele pertencer ao grupo E sua visibilidade for 'group'.
+        const isMemberOfBoardGroup = board.groupId && memberGroups.some(g => g.id === board.groupId);
+        const isVisibleToGroup = isMemberOfBoardGroup && board.visibility === 'group';
+
+        // Um quadro privado (visibility: 'private') agora só será visível se 'isOwner' for verdadeiro.
+        if (isOwner || isPublic || isFriendBoard || isVisibleToGroup) {
+            allBoardMap.set(board.id, board);
+        }
+    }
+
     boards = Array.from(allBoardMap.values());
 
     tagColorMap.clear();
@@ -139,9 +178,6 @@ async function loadData() {
     const userTags = getUserTagTemplates(currentUser.id);
     systemTags.forEach(t => t.tags.forEach(tag => tagColorMap.set(tag.name, tag.color)));
     userTags.forEach(t => t.tags.forEach(tag => tagColorMap.set(tag.name, tag.color)));
-
-    const lastBoardId = localStorage.getItem(`currentBoardId_${currentUser.id}`);
-    currentBoard = boards.find(b => b.id === lastBoardId) || boards[0];
 }
 
 /**
@@ -922,6 +958,8 @@ function renderCurrentBoard() {
         }
     });
 
+    // Atualiza o estado dos botões com base nas permissões do quadro
+    updateHeaderButtonPermissions();
 }
 
 function createColumnElement(column) {
@@ -1151,10 +1189,10 @@ function showEditDialog() {
 
     columnSelect.onchange = () => {
         const columnId = columnSelect.value;
+        const boardId = boardSelect.value; // CORREÇÃO: Declarar boardId no início do escopo.
         cardGroup.style.display = 'none';
         editBtn.title = ''; // Limpa o title
 
-        const selectedBoardId = boardSelect.value;
         const canEditColumn = hasPermission(boards.find(b => b.id === boardId), 'editColumns');
         if (columnId && !canEditColumn) {
             editBtn.disabled = true;
@@ -1163,9 +1201,7 @@ function showEditDialog() {
         cardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectCardPlaceholder')}</option>`;
         if (!columnId) return;
 
-        // CORREÇÃO: Busca a coluna dentro do quadro selecionado no diálogo, não no quadro atual.
-        const boardId = boardSelect.value;
-        const selectedBoard = boards.find(b => b.id === boardId);
+        const selectedBoard = boards.find(b => b.id === boardId); // Usa o boardId já declarado
         if (!selectedBoard) return; // Segurança
 
         const selectedColumn = selectedBoard.columns.find(c => c.id === columnId);
@@ -1182,9 +1218,28 @@ function showEditDialog() {
         const cardId = cardSelect.value;
         const columnId = columnSelect.value;
         const boardId = boardSelect.value;
-        if (cardId) showCardDialog(cardId);
-        else if (columnId) showColumnDialog(columnId);
-        else if (boardId) showBoardDialog(boardId);
+        const board = boards.find(b => b.id === boardId);
+
+        if (cardId) {
+            // Para editar um cartão, consideramos a permissão de editar a coluna.
+            if (!hasPermission(board, 'editColumns')) {
+                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+                return;
+            }
+            showCardDialog(cardId);
+        } else if (columnId) {
+            if (!hasPermission(board, 'editColumns')) {
+                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+                return;
+            }
+            showColumnDialog(columnId);
+        } else if (boardId) {
+            if (!hasPermission(board, 'editBoards')) {
+                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+                return;
+            }
+            showBoardDialog(boardId);
+        }
         dialog.close();
     };
 
@@ -1192,10 +1247,27 @@ function showEditDialog() {
         const cardId = cardSelect.value;
         const columnId = columnSelect.value;
         const boardId = boardSelect.value;
-        if (cardId) handleDeleteCard(cardId);
-        else if (columnId) handleDeleteColumnFromMenu(columnId);
-        else if (boardId) {
-            currentBoard = boards.find(b => b.id === boardId); // Garante que o currentBoard é o correto
+        const board = boards.find(b => b.id === boardId);
+
+        if (cardId) {
+            // Para excluir um cartão, consideramos a permissão de editar a coluna.
+            if (!hasPermission(board, 'editColumns')) {
+                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+                return;
+            }
+            handleDeleteCard(cardId);
+        } else if (columnId) {
+            if (!hasPermission(board, 'editColumns')) {
+                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+                return;
+            }
+            handleDeleteColumnFromMenu(columnId);
+        } else if (boardId) {
+            if (!hasPermission(board, 'editBoards')) {
+                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+                return;
+            }
+            currentBoard = board; // Garante que o currentBoard é o correto
             handleDeleteBoard();
         }
         dialog.close();
@@ -1257,27 +1329,6 @@ function showBoardDialog(boardId = null) {
         return isAdmin || canCreate;
     });
 
-    visibilitySelect.onchange = () => {
-        const selectedVisibility = visibilitySelect.value;
-        if (selectedVisibility === 'group') {
-            groupContainer.style.display = 'block'; // Sempre mostra o container
-            if (creatableInGroups.length === 0) {
-                // Se não há grupos elegíveis, mostra a mensagem correta e desabilita.
-                groupSelect.innerHTML = `<option value="">${t('groups.reports.noEligibleGroups')}</option>`;
-                groupSelect.disabled = true;
-            } else {
-                 // Se há grupos, popula o select normalmente.
-                groupSelect.innerHTML = '';
-                creatableInGroups.forEach(g => {
-                    groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
-                });
-                groupSelect.disabled = false;
-            }
-        } else {
-            groupContainer.style.display = 'none';
-        }
-    };
-
     // Lógica do Ícone e campos de texto
     const iconInput = document.getElementById('board-icon-input');
     document.getElementById('btn-choose-board-icon').onclick = () => {
@@ -1303,31 +1354,63 @@ function showBoardDialog(boardId = null) {
     saveBtn.disabled = false;
     iconInput.value = '📋'; // Padrão
 
+    // Garante que o seletor de visibilidade esteja visível por padrão
+    visibilitySelect.parentElement.style.display = 'block';
+
     if (board) { // Editando um quadro existente
         visibilitySelect.value = board.visibility;
         visibilitySelect.disabled = true;
-        iconInput.value = board.icon || '📋';
         if (board.visibility === 'group' && board.groupId) {
-            groupContainer.style.display = 'block';
+            // Se o quadro pertence a um grupo, a visibilidade é travada e o grupo é exibido
             groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.dialog.board.unknownGroup')}</option>`;
             groupSelect.disabled = true;
         }
+        iconInput.value = board.icon || '📋';
     } else {
         // Criando um novo quadro
         if (currentBoardFilter === 'group') {
-            // Pré-seleciona 'group', mas NÃO desabilita ainda.
-            // O evento 'change' precisa ser disparado em um elemento habilitado.
+            // Para quadros de GRUPO, as opções de visibilidade são contextuais.
+            visibilitySelect.innerHTML = `
+                <option value="private">${t('kanban.dialog.board.visibilityPrivate')}</option>
+                <option value="group">${t('kanban.dialog.board.visibilityGroup')}</option>
+            `;
             visibilitySelect.value = 'group';
+            visibilitySelect.disabled = false; // Permite ao usuário escolher
+            
+            groupContainer.style.display = 'block';
+            
+            // Popula o seletor de grupos
+            if (creatableInGroups.length === 0) {
+                groupSelect.innerHTML = `<option value="">${t('groups.reports.noEligibleGroups')}</option>`;
+                groupSelect.disabled = true;
+                dialog.dataset.groupCreationAllowed = "false"; // Flag para validação
+            } else {
+                groupSelect.innerHTML = '';
+                creatableInGroups.forEach(g => {
+                    groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+                });
+                groupSelect.disabled = false;
+                dialog.dataset.groupCreationAllowed = "true"; // Flag para validação
+            }
         } else {
+            // Para quadros PESSOAIS, as opções de visibilidade são mais amplas.
+            visibilitySelect.innerHTML = `
+                <option value="private">${t('kanban.dialog.board.visibilityPrivate')}</option>
+                <option value="friends">${t('kanban.dialog.board.visibilityFriends')}</option>
+                <option value="public">${t('kanban.dialog.board.visibilityPublic')}</option>
+                <option value="group">${t('kanban.dialog.board.visibilityGroup')}</option>
+            `;
             visibilitySelect.value = 'private'; // Padrão para o filtro pessoal
-        }
-        // Força a atualização da UI de visibilidade/grupo
-        visibilitySelect.dispatchEvent(new Event('change'));
-        // AGORA, após o evento ter sido processado, desabilita a troca de visibilidade se necessário.
-        if (currentBoardFilter === 'group') {
-            visibilitySelect.disabled = true;
+            groupContainer.style.display = 'none'; // Garante que o seletor de grupo nunca apareça
+            dialog.dataset.groupCreationAllowed = "true";
         }
     }
+
+    // Inicializa os selects customizados APÓS popular todos os dados.
+    // Isso evita a dessincronização e o erro reportado.
+    setTimeout(() => {
+        initCustomSelects();
+    }, 0);
 
     const userTemplates = getUserBoardTemplates(currentUser.id);
     const systemTemplates = getSystemBoardTemplates();
@@ -1347,15 +1430,6 @@ function showBoardDialog(boardId = null) {
     // Esconde o select de template se estiver editando um quadro existente
     templateSelect.parentElement.style.display = boardId ? 'none' : 'block';
     
-    // Reseta o feedback de erro
-    dialog.querySelector('.feedback')?.classList.remove('show');
-    
-    // Inicializa os selects customizados APÓS popular os dados
-    // Usamos um setTimeout para garantir que o DOM seja atualizado antes de inicializar os selects.
-    setTimeout(() => {
-        initCustomSelects();
-    }, 0);
-
     dialog.showModal();
 }
 
@@ -1369,14 +1443,25 @@ function handleSaveBoard() {
         return;
     }
 
+    // --- CORREÇÃO: Validação de grupo aprimorada ---
+    const groupContainer = document.getElementById('board-group-container');
+    const isGroupContext = groupContainer.style.display === 'block';
+    const boardId = dialog.dataset.editingId;
+
+    // A validação só se aplica ao CRIAR um quadro no contexto de grupo.
+    if ((!boardId || boardId === 'null') && isGroupContext) {
+        if (dialog.dataset.groupCreationAllowed === "false") {
+            showDialogMessage(dialog, t('kanban.feedback.noGroupCreatePermission'), 'error');
+            return;
+        }
+    }
+
     showConfirmationDialog(
         t('kanban.confirm.saveBoard'),
         (confirmationDialog) => {
-            saveState(); // Salva o estado para o Desfazer
             const boardId = dialog.dataset.editingId;
             const description = document.getElementById('board-description-input').value.trim();
             const icon = document.getElementById('board-icon-input').value;
-            const visibility = document.getElementById('board-visibility').value;
             let savedBoard = null;
 
             if (boardId && boardId !== 'null') {
@@ -1385,12 +1470,13 @@ function handleSaveBoard() {
                 boardData.title = title;
                 boardData.description = description;
                 boardData.icon = icon;
-                // A visibilidade e o grupo não podem ser alterados na edição por esta UI.
                 savedBoard = saveBoard(boardData);
             } else { // Criando um novo quadro
                 const allTemplates = [...getUserBoardTemplates(currentUser.id), ...getSystemBoardTemplates()];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
                 if (selectedTemplate && !title) title = `${t(selectedTemplate.name)} ${t('kanban.board.copySuffix')}`;
+                
+                const visibility = document.getElementById('board-visibility').value;
                 const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] })) : [];
                 const newBoardData = { 
                     title, 
@@ -1401,15 +1487,9 @@ function handleSaveBoard() {
                     columnIds: newColumns.map(c => c.id) 
                 };
 
-                // --- NOVA LÓGICA PARA GRUPO ---
-                if (visibility === 'group') {
-                    const groupSelect = document.getElementById('board-group-select');
-                    const groupId = groupSelect.value; // Pega o valor do grupo selecionado
-                    if (!groupId || groupSelect.disabled) {
-                        showDialogMessage(confirmationDialog, t('kanban.feedback.noGroupCreatePermission'), 'error');
-                        return false; // Impede o fechamento do diálogo
-                    }
-                    newBoardData.groupId = groupId;
+                // Se for um quadro de grupo, atribui o groupId
+                if (isGroupContext) {
+                    newBoardData.groupId = document.getElementById('board-group-select').value;
                 }
                 savedBoard = saveBoard(newBoardData);
 
@@ -1425,19 +1505,18 @@ function handleSaveBoard() {
             }
 
             if (savedBoard) {
-              showDialogMessage(confirmationDialog, t('kanban.feedback.boardSaved'), 'success');
-
-              // --- CORREÇÃO: Se um quadro de grupo foi criado, muda o filtro ---
-              // Verifica se é um quadro novo (boardId é nulo) e se tem um groupId
-              if ((!boardId || boardId === 'null') && savedBoard.groupId) {
-                  currentBoardFilter = 'group';
-                  // Atualiza a classe 'active' nos botões de filtro
-                  document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
-                      btn.classList.toggle('active', btn.dataset.filter === 'group');
-                  });
-              }
-              showSuccessAndRefresh(dialog, savedBoard.id);
-              return true; // Fecha o diálogo de confirmação
+                saveState(); // Salva o estado APÓS a modificação bem-sucedida
+                showDialogMessage(confirmationDialog, t('kanban.feedback.boardSaved'), 'success');
+              
+                // Se um quadro de grupo foi criado, muda o filtro para 'group'
+                if ((!boardId || boardId === 'null') && savedBoard.groupId) {
+                    currentBoardFilter = 'group';
+                    document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.filter === 'group');
+                    });
+                }
+                showSuccessAndRefresh(dialog, savedBoard.id);
+                return true; // Fecha o diálogo de confirmação
             }
             return false; // Mantém o diálogo de confirmação aberto em caso de erro
         }
@@ -2137,11 +2216,16 @@ function handleContextMenu(e) {
  * Cria e exibe o menu de contexto para um cartão.
  */
 function createCardContextMenu(event, cardEl) {
+    // Ação de Edição com verificação de permissão
+    const editAction = () => {
+        if (!hasPermission(currentBoard, 'editColumns')) { showFloatingMessage(t('kanban.feedback.noPermission'), 'error'); return; }
+        showCardDialog(cardId);
+    };
     const cardId = cardEl.dataset.cardId;
     const { card } = findCardAndColumn(cardId);
     
     const menuItems = [
-        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => showCardDialog(cardId) }, // Editar cartão é sempre permitido para membros
+        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: editAction },
         { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
         { label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
         { isSeparator: true },
@@ -2227,6 +2311,7 @@ function switchBoard(e) {
     redoStack = [];
     renderCurrentBoard();
     saveState();
+    updateHeaderButtonPermissions(); // Atualiza permissões ao trocar de quadro
 }
 
 
@@ -2320,6 +2405,12 @@ function handleDeleteColumn(columnId) {
 }
 
 function handleDeleteCard(cardId) {
+    // Adiciona verificação de permissão no início da função
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     showConfirmationDialog(
         t('kanban.confirm.deleteCard'),
         (dialog) => {
@@ -3002,4 +3093,27 @@ function applyThemeFromSelect(themeValue) {
         default:
             break;
     }
+}
+
+/**
+ * Atualiza o estado (habilitado/desabilitado) dos botões de ação do cabeçalho
+ * com base nas permissões do usuário para o quadro atual.
+ */
+function updateHeaderButtonPermissions() {
+    const addColumnBtn = document.getElementById('add-column-btn');
+    const addCardBtn = document.getElementById('add-card-btn');
+    const editItemsBtn = document.getElementById('edit-items-btn');
+    const saveTemplateBtn = document.getElementById('save-as-template-btn');
+
+    if (!currentBoard) {
+        [addColumnBtn, addCardBtn, editItemsBtn, saveTemplateBtn].forEach(btn => btn.disabled = true);
+        return;
+    }
+
+    const canCreateColumns = hasPermission(currentBoard, 'createColumns');
+    addColumnBtn.disabled = !canCreateColumns;
+    addColumnBtn.title = canCreateColumns ? '' : t('kanban.feedback.noPermission');
+
+    // Habilita os outros botões. A permissão de criar/editar cartões é verificada no clique.
+    [addCardBtn, editItemsBtn, saveTemplateBtn].forEach(btn => btn.disabled = false);
 }

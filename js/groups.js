@@ -340,35 +340,57 @@ function handleSaveGroup() {
     }
 
     showConfirmationDialog(t('groups.confirm.create'), (dialog) => {
-        const newGroup = {
+        // 1. Cria o objeto do grupo sem os boardIds para obter um ID primeiro.
+        const newGroupData = {
             name,
             icon: document.getElementById('group-icon').value || '👥',
             description: document.getElementById('group-description').value.trim(),
             access: document.getElementById('group-access').value,
             adminId: currentUser.id,
             memberIds: [currentUser.id, ...Array.from(document.getElementById('group-members').selectedOptions).map(opt => opt.value)],
-            boardIds: [],
+            boardIds: [], // Começa vazio
             permissions: permissions,
             tagTemplate: document.getElementById('group-tag-template').value,
             createdAt: new Date().toISOString()
         };
 
-        // Lógica para criar quadros iniciais
+        // 2. Salva o grupo para gerar seu ID.
+        const savedGroup = saveGroup(newGroupData);
+        if (!savedGroup) {
+            showDialogMessage(dialog, t('groups.edit.saveError'), 'error');
+            return false;
+        }
+
+        // 3. Agora, cria os quadros iniciais, associando-os ao ID do grupo recém-criado.
+        const createdBoardIds = [];
         const boardItems = document.querySelectorAll('#group-boards-container .group-board-item');
         boardItems.forEach(item => {
+            const templateId = item.dataset.templateId;
+            const allTemplates = getSystemBoardTemplates();
+            const selectedTemplate = allTemplates.find(t => t.id === templateId);
+
+            // Cria as colunas se um template foi usado.
+            const newColumns = selectedTemplate 
+                ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] })) 
+                : [];
+
             const boardData = {
                 title: item.querySelector('strong').textContent,
                 description: item.dataset.description,
-                icon: '📋', // Ícone padrão para quadros criados com o grupo
+                icon: '📋',
                 ownerId: currentUser.id,
-                visibility: 'group',
-                columnIds: [] // A lógica de template precisa ser aplicada aqui se necessário
+                visibility: 'group', // Quadros de grupo têm visibilidade de grupo por padrão.
+                groupId: savedGroup.id, // <-- A CORREÇÃO PRINCIPAL ESTÁ AQUI
+                columnIds: newColumns.map(c => c.id)
             };
             const savedBoard = saveBoard(boardData);
-            newGroup.boardIds.push(savedBoard.id);
+            createdBoardIds.push(savedBoard.id);
         });
 
-        const savedGroup = saveGroup(newGroup);
+        // 4. Atualiza o grupo com os IDs dos quadros criados e salva novamente.
+        savedGroup.boardIds = createdBoardIds;
+        saveGroup(savedGroup);
+
         showDialogMessage(dialog, t('groups.feedback.createSuccess'), 'success');
         setTimeout(() => { dialog.close(); loadGroups(); switchTab('my-groups'); }, 1500);
         return true;
@@ -562,9 +584,11 @@ function showAddBoardToGroupDialog() {
     
     templateSelect.innerHTML = `<option value="">${t('kanban.dialog.board.templateEmpty')}</option>`;
     const systemTemplates = getSystemBoardTemplates();
-    systemTemplates.forEach(t => {
-        templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-    });
+    if (systemTemplates.length > 0) {
+        templateSelect.innerHTML += `<optgroup label="${t('kanban.dialog.board.systemTemplates')}">`;
+        systemTemplates.forEach(template => templateSelect.innerHTML += `<option value="${template.id}">${t(template.name)}</option>`);
+        templateSelect.innerHTML += `</optgroup>`;
+    }
 
     
     titleInput.value = '';
@@ -592,7 +616,7 @@ function showAddBoardToGroupDialog() {
         const selectedTemplate = systemTemplates.find(t => t.id === selectedTemplateId);
 
         
-        const finalBoardName = boardName || (selectedTemplate ? selectedTemplate.name : '');
+        const finalBoardName = boardName || (selectedTemplate ? t(selectedTemplate.name) : '');
 
         if (!finalBoardName) {
             showDialogMessage(dialog, t('groups.boards.nameRequired'), 'error');

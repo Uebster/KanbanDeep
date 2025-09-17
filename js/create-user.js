@@ -27,6 +27,7 @@ export async function initCreateUserPage() {
     setupEventListeners();
 }
 
+
 function setupDateInput() {
     const today = new Date();
     const maxDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
@@ -45,6 +46,9 @@ function setupEventListeners() {
 
     // Força da senha
     document.getElementById('password')?.addEventListener('input', updatePasswordStrength);
+
+    // Seletor de cor primária
+    setupColorPicker();
     
 // Função de cancelamento corrigida
     // Adiciona listeners para pré-visualização de idioma e tema
@@ -84,6 +88,33 @@ function setupEventListeners() {
     });
 }
 
+/**
+ * Configura o listener para a paleta de cores primárias, permitindo a pré-visualização.
+ */
+function setupColorPicker() {
+    const paletteContainer = document.getElementById('color-palette-container');
+    if (!paletteContainer) return;
+
+    paletteContainer.addEventListener('click', (e) => {
+        const swatch = e.target.closest('.color-swatch');
+        if (!swatch) return;
+
+        paletteContainer.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+        swatch.classList.add('active');
+
+        const action = swatch.dataset.action;
+        
+        if (action === 'remove-primary') {
+            document.body.classList.add('no-primary-effects');
+        } else {
+            const hex = swatch.dataset.hex;
+            const rgb = swatch.dataset.rgb;
+            document.body.classList.remove('no-primary-effects');
+            document.documentElement.style.setProperty('--primary', hex);
+            document.documentElement.style.setProperty('--primary-rgb', rgb);
+        }
+    });
+}
 function processUserCreation() {
     const name = document.getElementById('name').value.trim();
     const username = document.getElementById('username').value.trim();
@@ -114,6 +145,21 @@ function processUserCreation() {
         return { success: false, message: 'createUser.error.emailExists' };
     }
 
+    // Coleta a cor primária selecionada
+    const activeSwatch = document.querySelector('#color-palette-container .color-swatch.active');
+    let primaryColor = null;
+    if (activeSwatch) {
+        if (activeSwatch.dataset.action === 'remove-primary') {
+            primaryColor = 'none';
+        } else {
+            primaryColor = {
+                hex: activeSwatch.dataset.hex,
+                rgb: activeSwatch.dataset.rgb
+            };
+        }
+    }
+
+
     // Cria o novo perfil do usuário
     const userProfile = {
         name,
@@ -136,7 +182,9 @@ function processUserCreation() {
         lastLogin: null,
         boards: [],
         groups: [],
-        preferences: {}
+        preferences: {
+            primaryColor: primaryColor
+        }
     };
 
     if (registerUser(userProfile)) {
