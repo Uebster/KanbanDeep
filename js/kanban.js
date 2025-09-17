@@ -185,14 +185,6 @@ async function loadData() {
  */
 function setupEventListeners() {
 
-    // --- Menus ---
-    document.getElementById('user-avatar-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'profile-dropdown'));
-    document.getElementById('boards-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'boards-dropdown'));
-    document.getElementById('actions-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'actions-dropdown'));
-
-    // --- Ações dos menus ---
-    document.getElementById('switch-user-btn')?.addEventListener('click', () => window.location.href = 'list-users.html');
-    document.getElementById('user-profile-btn')?.addEventListener('click', () => window.location.href = 'profile.html');
     document.getElementById('add-board-btn')?.addEventListener('click', () => {
         if (currentBoardFilter === 'group' && !hasPermission(null, 'createBoards')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
@@ -237,11 +229,6 @@ function setupEventListeners() {
     document.getElementById('export-img')?.addEventListener('click', () => handleExportImage());
     document.getElementById('save-as-template-btn')?.addEventListener('click', saveBoardAsTemplate);
     document.getElementById('print-btn')?.addEventListener('click', handlePrintBoard);
-    document.getElementById('my-groups-btn')?.addEventListener('click', () => window.location.href = 'groups.html');
-    document.getElementById('notifications-btn')?.addEventListener('click', () => window.location.href = 'notifications.html');
-    document.getElementById('templates-btn')?.addEventListener('click', () => window.location.href = 'templates.html');
-    document.getElementById('preferences-btn')?.addEventListener('click', showPreferencesDialog);
-    document.getElementById('friends-btn')?.addEventListener('click', () => window.location.href = 'friends.html');
     // --- Diálogos (Modais) ---
     document.getElementById('board-save-btn')?.addEventListener('click', handleSaveBoard);
     document.getElementById('column-save-btn')?.addEventListener('click', handleSaveColumn);

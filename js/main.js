@@ -25,12 +25,10 @@ async function main() { // <-- Torna a função principal assíncrona
 
     // Roteador:
     // Se for a página Kanban, apenas a sua inicialização específica é chamada.
-    if (path.includes('kanban.html')) {
-        await initKanbanPage();
-        return;
-    } 
-    // Para TODAS as outras páginas, aplicamos o cabeçalho global ANTES de sua inicialização.
-    else {
+    if (path.includes('kanban.html')) { // Se for a página Kanban...
+        await initKanbanPage(); // ...inicializa o Kanban...
+        setupGlobalHeader(); // ...e TAMBÉM configura o cabeçalho global.
+    } else { // Para TODAS as outras páginas...
         if (path.includes('create-user.html')) {
             await initCreateUserPage();
         } else if (path.includes('public-profile.html')) {
@@ -94,6 +92,10 @@ function setupGlobalHeader() {
         });
     }
 
+    // CORREÇÃO: Adiciona listeners para os outros botões de dropdown do header
+    document.getElementById('boards-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'boards-dropdown'));
+    document.getElementById('actions-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'actions-dropdown'));
+
     // Listener global para fechar o dropdown de perfil
     document.addEventListener('click', (e) => {
         if (avatarBtn && !avatarBtn.contains(e.target)) {
@@ -103,6 +105,9 @@ function setupGlobalHeader() {
 
     // Adiciona listeners de navegação apenas aos botões que encontrar
     const profileBtn = document.getElementById('user-profile-btn');
+    if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+
+    const preferencesBtn = document.getElementById('preferences-btn');
     if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
 
     // O botão Kanban é específico do Kanban, mas pode aparecer em outras páginas.
@@ -124,14 +129,24 @@ function setupGlobalHeader() {
     if (notificationsBtn) notificationsBtn.addEventListener('click', () => window.location.href = 'notifications.html');
 
     const switchUserBtn = document.getElementById('switch-user-btn');
-    if (switchUserBtn) switchUserBtn.addEventListener('click', () => window.location.href = 'list-users.html');
+    if (switchUserBtn) {
+        switchUserBtn.addEventListener('click', () => {
+            showConfirmationDialog(
+                t('profile.nav.confirmLeave'), // "Deseja sair mesmo assim?"
+                (dialog) => {
+                    window.location.href = 'list-users.html';
+                    return true;
+                }, null, t('ui.yesLeave')
+            );
+        });
+    }
 
     const exitBtn = document.getElementById('exit-btn');
     if (exitBtn) exitBtn.addEventListener('click', () => {
         showConfirmationDialog(
             t('listUsers.confirm.exitApp'),
             (dialog) => {
-                showDialogMessage(dialog, t('listUsers.feedback.closing'), 'info');
+                showDialogMessage(dialog, t('listUsers.feedback.closing'), 'success');
                 setTimeout(() => window.close(), 1000);
                 return true;
             },
@@ -144,6 +159,22 @@ function setupGlobalHeader() {
     if (pageTitle) {
         // Tenta pegar o título da tag <title> do HTML
         pageTitle.textContent = document.title.split('-')[0].trim(); 
+    }
+}
+
+/**
+ * Lógica centralizada para abrir/fechar dropdowns.
+ * @param {Event} e - O evento de clique.
+ * @param {string} dropdownId - O ID do dropdown a ser controlado.
+ */
+function toggleDropdown(e, dropdownId) {
+    e.stopPropagation();
+    const dropdown = document.getElementById(dropdownId);
+    const isVisible = dropdown.classList.contains('show');
+    // Fecha todos os outros dropdowns antes de abrir o novo
+    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+    if (!isVisible) {
+        dropdown.classList.add('show');
     }
 }
 
