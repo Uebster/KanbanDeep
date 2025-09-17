@@ -105,7 +105,7 @@ function useBoardTemplate(templateId) {
     
     const newColumns = template.columns.map(colTemplate => {
         const newColumnData = {
-            title: colTemplate.name,
+            title: t(colTemplate.name),
             color: colTemplate.color,
             cardIds: []
         };
@@ -113,7 +113,7 @@ function useBoardTemplate(templateId) {
     });
 
     const newBoardData = {
-        title: `${template.name} ${t('kanban.board.copySuffix')}`,
+        title: `${t(template.name)} ${t('kanban.board.copySuffix')}`,
         icon: template.icon || '📋',
         ownerId: currentUser.id,
         visibility: 'private',

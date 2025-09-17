@@ -1160,6 +1160,8 @@ function showBoardDialog(boardId = null) {
     const visibilitySelect = document.getElementById('board-visibility');
     const groupContainer = document.getElementById('board-group-container');
     const groupSelect = document.getElementById('board-group-select');
+    const groupAlert = document.getElementById('board-group-alert');
+    const saveBtn = dialog.querySelector('#board-save-btn');
 
     // Popula o select de visibilidade dinamicamente
     visibilitySelect.innerHTML = `
@@ -1184,16 +1186,17 @@ function showBoardDialog(boardId = null) {
     visibilitySelect.onchange = () => {
         const selectedVisibility = visibilitySelect.value;
         if (selectedVisibility === 'group') {
-            // Esta verificação é uma segurança extra, mas a opção não deveria existir se não houver grupos.
             if (creatableInGroups.length === 0) {
-                showDialogMessage(dialog, t('kanban.feedback.noGroupCreatePermission'), 'warning');
-                visibilitySelect.value = board ? board.visibility : 'private'; // Reverte
-                groupContainer.style.display = 'none';
+                // NOVA LÓGICA: Mostra o select desabilitado com uma mensagem.
+                groupSelect.innerHTML = `<option value="">${t('kanban.feedback.noGroupCreatePermission')}</option>`;
+                groupSelect.disabled = true;
+                groupContainer.style.display = 'block';
             } else {
                 groupSelect.innerHTML = '';
                 creatableInGroups.forEach(g => {
                     groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
                 });
+                groupSelect.disabled = false;
                 groupContainer.style.display = 'block';
             }
         } else {
@@ -1201,38 +1204,56 @@ function showBoardDialog(boardId = null) {
         }
     };
 
-    // Lógica do Ícone
+    // Lógica do Ícone e campos de texto
     const iconInput = document.getElementById('board-icon-input');
-    iconInput.value = board ? board.icon || '📋' : '📋';
     document.getElementById('btn-choose-board-icon').onclick = () => {
         showIconPickerDialog((selectedIcon) => {
             iconInput.value = selectedIcon;
         });
     };
-
     const templateSelect = document.getElementById('board-template-select');
-
-    // Esconde/mostra o seletor de ícone baseado na seleção de template
     templateSelect.onchange = () => {
         const iconGroup = document.getElementById('board-icon-input').closest('.form-group');
-        // Usa 'none' para esconder, e 'flex' para mostrar, mantendo o layout do CSS
         iconGroup.style.display = templateSelect.value ? 'none' : 'flex'; 
     };
 
     document.getElementById('board-title-input').value = board ? board.title : '';
     document.getElementById('board-description-input').value = board ? board.description || '' : '';
-    visibilitySelect.value = board ? board.visibility : 'private';
 
-    // Se estiver editando um quadro de grupo, mostra o seletor
-    if (board && board.visibility === 'group' && board.groupId) {
-        groupContainer.style.display = 'block';
-        groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.dialog.board.unknownGroup')}</option>`;
-        groupSelect.disabled = true; // Não pode mudar o grupo de um quadro existente
+    // --- LÓGICA DE VISIBILIDADE E GRUPO (REESTRUTURADA) ---
+    // Reseta o estado dos seletores para evitar condições de corrida
+    groupSelect.disabled = false;
+    visibilitySelect.disabled = false;
+    groupContainer.style.display = 'none';
+    groupAlert.style.display = 'none';
+    groupSelect.style.display = 'block';
+    saveBtn.disabled = false;
+    iconInput.value = '📋'; // Padrão
+
+    if (board) { // Editando um quadro existente
+        visibilitySelect.value = board.visibility;
         visibilitySelect.disabled = true;
+        iconInput.value = board.icon || '📋';
+        if (board.visibility === 'group' && board.groupId) {
+            groupContainer.style.display = 'block';
+            groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.dialog.board.unknownGroup')}</option>`;
+            groupSelect.disabled = true;
+        }
     } else {
-        groupSelect.disabled = false;
-        visibilitySelect.disabled = false;
-        groupContainer.style.display = 'none'; // Esconde por padrão
+        // Criando um novo quadro
+        if (currentBoardFilter === 'group') {
+            // Pré-seleciona 'group', mas NÃO desabilita ainda.
+            // O evento 'change' precisa ser disparado em um elemento habilitado.
+            visibilitySelect.value = 'group';
+        } else {
+            visibilitySelect.value = 'private'; // Padrão para o filtro pessoal
+        }
+        // Força a atualização da UI de visibilidade/grupo
+        visibilitySelect.dispatchEvent(new Event('change'));
+        // AGORA, se o filtro for de grupo, desabilita a troca de visibilidade.
+        if (currentBoardFilter === 'group') {
+            visibilitySelect.disabled = true;
+        }
     }
 
     const userTemplates = getUserBoardTemplates(currentUser.id);
@@ -1293,7 +1314,7 @@ function handleSaveBoard() {
             } else { // Criando um novo quadro
                 const allTemplates = [...getUserBoardTemplates(currentUser.id), ...getSystemBoardTemplates()];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
-                if (selectedTemplate && !title) title = `${selectedTemplate.name} ${t('kanban.board.copySuffix')}`;
+                if (selectedTemplate && !title) title = `${t(selectedTemplate.name)} ${t('kanban.board.copySuffix')}`;
                 const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] })) : [];
                 const newBoardData = { 
                     title, 
@@ -1306,14 +1327,14 @@ function handleSaveBoard() {
 
                 // --- NOVA LÓGICA PARA GRUPO ---
                 if (visibility === 'group') {
-                    const groupId = document.getElementById('board-group-select').value;
-                    if (!groupId) {
-                        showDialogMessage(confirmationDialog, t('kanban.feedback.selectGroupForBoard'), 'error');
+                    const groupSelect = document.getElementById('board-group-select');
+                    const groupId = groupSelect.value; // Pega o valor do grupo selecionado
+                    if (!groupId || groupSelect.disabled) {
+                        showDialogMessage(confirmationDialog, t('kanban.feedback.noGroupCreatePermission'), 'error');
                         return false; // Impede o fechamento do diálogo
                     }
                     newBoardData.groupId = groupId;
                 }
-                
                 savedBoard = saveBoard(newBoardData);
 
                 // --- ATUALIZA O GRUPO COM O NOVO QUADRO ---

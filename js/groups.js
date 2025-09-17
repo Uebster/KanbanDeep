@@ -324,6 +324,14 @@ function switchTab(tabId, options = {}) {
 
 function handleSaveGroup() {
     const name = document.getElementById('group-name').value.trim();
+    const permissions = {
+        createBoards: document.getElementById('perm-create-boards').checked,
+        editBoards: document.getElementById('perm-edit-boards').checked,
+        createColumns: document.getElementById('perm-create-columns').checked,
+        editColumns: document.getElementById('perm-edit-columns').checked,
+        createCards: document.getElementById('perm-create-cards').checked
+    };
+
     if (!name) {
         showFloatingMessage(t('groups.feedback.nameRequired'), 'error');
         return;
@@ -338,6 +346,7 @@ function handleSaveGroup() {
             adminId: currentUser.id,
             memberIds: [currentUser.id, ...Array.from(document.getElementById('group-members').selectedOptions).map(opt => opt.value)],
             boardIds: [],
+            permissions: permissions,
             tagTemplate: document.getElementById('group-tag-template').value,
             createdAt: new Date().toISOString()
         };
@@ -1241,6 +1250,15 @@ function editGroup(group) {
     document.getElementById('edit-group-description').value = group.description || '';
     document.getElementById('edit-group-access').value = group.access || 'public';
 
+    // Preenche as permissões
+    const permissions = group.permissions || {}; // Objeto vazio como padrão para grupos antigos
+    document.getElementById('edit-perm-create-boards').checked = permissions.createBoards || false;
+    document.getElementById('edit-perm-edit-boards').checked = permissions.editBoards || false;
+    document.getElementById('edit-perm-create-columns').checked = permissions.createColumns || false;
+    document.getElementById('edit-perm-edit-columns').checked = permissions.editColumns || false;
+    document.getElementById('edit-perm-create-cards').checked = permissions.createCards || false;
+
+
     initCustomSelects();
     // --- LÓGICA PARA O SELECT DE TAG TEMPLATE ---
     const tagTemplateSelect = document.getElementById('edit-group-tag-template');
@@ -1362,6 +1380,15 @@ function saveGroupChanges(e) {
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.icon = document.getElementById('edit-group-icon').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
+            // Salva as permissões atualizadas
+            currentGroup.permissions = {
+                createBoards: document.getElementById('edit-perm-create-boards').checked,
+                editBoards: document.getElementById('edit-perm-edit-boards').checked,
+                createColumns: document.getElementById('edit-perm-create-columns').checked,
+                editColumns: document.getElementById('edit-perm-edit-columns').checked,
+                createCards: document.getElementById('edit-perm-create-cards').checked
+            };
+
             currentGroup.defaultTagTemplateId = document.getElementById('edit-group-tag-template').value;
             
             const reportFrequency = document.getElementById('edit-group-report-frequency').value;
