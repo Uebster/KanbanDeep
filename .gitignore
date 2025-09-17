@@ -1,4 +1,12 @@
 # Arquivos de dependências do Node (se usar no futuro)
 node_modules/
 
-tools/
+# Arquivos de configuração do editor de código
+.vscode/
+
+# Arquivos de sistema operacional
+.DS_Store
+
+# Pastas de build/distribuição (onde os instaladores ficarão)
+/dist/
+/release/
