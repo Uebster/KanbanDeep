@@ -1062,6 +1062,56 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
     dialog.showModal();
 }
 
+/**
+ * Exibe um diálogo para enviar uma mensagem privada a um usuário.
+ * @param {string} targetUserId - O ID do usuário que receberá a mensagem.
+ */
+export function showPrivateMessageDialog(targetUserId) {
+    const currentUser = getCurrentUser();
+    const allUsers = JSON.parse(localStorage.getItem('kanbandeep_users_list') || '[]').map(id => JSON.parse(localStorage.getItem(`kanbandeep_user_${id}`)));
+    const targetUser = allUsers.find(u => u.id === targetUserId);
+
+    if (!targetUser) {
+        showFloatingMessage(t('groups.message.memberNotFound'), 'error');
+        return;
+    }
+
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">${t('groups.message.privateTitle', { name: targetUser.name })}</h3>
+        <div class="form-group">
+            <textarea id="private-message-textarea" placeholder="${t('groups.message.privatePlaceholder')}" rows="5"></textarea>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel">${t('ui.cancel')}</button>
+            <button class="btn confirm">${t('ui.send')}</button>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+    makeDraggable(dialog);
+    dialog.showModal();
+
+    const textarea = dialog.querySelector('#private-message-textarea');
+    const sendBtn = dialog.querySelector('.btn.confirm');
+    const cancelBtn = dialog.querySelector('.btn.cancel');
+
+    const closeDialog = () => { dialog.close(); dialog.remove(); };
+    cancelBtn.addEventListener('click', closeDialog);
+
+    sendBtn.addEventListener('click', () => {
+        const message = textarea.value.trim();
+        if (!message) { showDialogMessage(dialog, t('groups.message.emptyError'), 'error'); return; }
+        // A função de notificação já existe e pode ser chamada daqui
+        window.addMessageNotification(currentUser.name, currentUser.id, targetUser.id, message.length > 50 ? message.substring(0, 50) + '...' : message);
+        showDialogMessage(dialog, t('groups.message.privateSuccess'), 'success');
+        sendBtn.disabled = true; cancelBtn.disabled = true;
+        setTimeout(closeDialog, 1500);
+    });
+}
+
 function createTemplateEditorDialog(type) {
     const isBoard = type === 'board';
     const dialog = document.createElement('dialog');

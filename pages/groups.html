@@ -275,12 +275,13 @@
                         <label for="edit-group-description" data-i18n="templateEditor.descriptionLabel"></label>
                         <textarea id="edit-group-description" rows="3"></textarea>
                     </div>
+                    <!-- CAMPO DE ACESSO REINSERIDO -->
                     <div class="form-group">
                         <label for="edit-group-access" data-i18n="groups.create.accessLabel"></label>
                         <div class="custom-select">
                             <select id="edit-group-access">
-                                <option value="public" data-i18n="profile.privacy.public.title"></option>
-                                <option value="private" data-i18n="profile.privacy.private.title"></option>
+                                <option value="public" data-i18n="groups.create.accessPublic"></option>
+                                <option value="private" data-i18n="groups.create.accessPrivate"></option>
                             </select>
                         </div>
                     </div>
@@ -292,11 +293,23 @@
                     </div>
                 </div>
             </div>
+            </div>
             <div class="form-column">
                 <div class="form-section">
                     <h3 data-i18n="groups.edit.participants"></h3>
                     <div id="group-members-list"></div>
                     <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;" data-i18n="groups.edit.addParticipantTitle"></button>
+                </div>
+                <!-- SEÇÃO DE PERMISSÕES MOVIDA PARA A COLUNA 2 -->
+                <div class="form-section">
+                    <h3 data-i18n="groups.permissions.title"></h3>
+                    <div id="edit-group-permissions">
+                        <label class="checkbox-container" data-i18n="groups.permissions.createBoards"><input type="checkbox" id="edit-perm-create-boards"><span class="checkmark"></span></label>
+                        <label class="checkbox-container" data-i18n="groups.permissions.editBoards"><input type="checkbox" id="edit-perm-edit-boards"><span class="checkmark"></span></label>
+                        <label class="checkbox-container" data-i18n="groups.permissions.createColumns"><input type="checkbox" id="edit-perm-create-columns"><span class="checkmark"></span></label>
+                        <label class="checkbox-container" data-i18n="groups.permissions.editColumns"><input type="checkbox" id="edit-perm-edit-columns"><span class="checkmark"></span></label>
+                        <label class="checkbox-container" data-i18n="groups.permissions.createCards"><input type="checkbox" id="edit-perm-create-cards"><span class="checkmark"></span></label>
+                    </div>
                 </div>
                 <div class="form-section">
                     <h3 data-i18n="groups.edit.autoReports"></h3>
@@ -351,6 +364,29 @@
         <div class="modal-actions">
             <button id="cancel-add-participant" class="btn cancel" data-i18n="ui.cancel"></button>
             <button id="confirm-add-participant" class="btn confirm" data-i18n="publicProfile.inviteDialog.sendButton"></button>
+        </div>
+    </dialog>
+
+    <!-- NOVO: Diálogo para Permissões Individuais de Membros -->
+    <dialog id="member-permissions-dialog" class="draggable">
+        <h3 class="drag-handle" id="member-permissions-title"></h3>
+        <div class="form-section">
+            <label class="checkbox-container" data-i18n="groups.permissions.useDefault">
+                <input type="checkbox" id="perm-use-default">
+                <span class="checkmark"></span>
+            </label>
+        </div>
+        <div id="individual-permissions-container" class="form-section hidden">
+            <label class="checkbox-container" data-i18n="groups.permissions.createBoards"><input type="checkbox" id="member-perm-create-boards"><span class="checkmark"></span></label>
+            <label class="checkbox-container" data-i18n="groups.permissions.editBoards"><input type="checkbox" id="member-perm-edit-boards"><span class="checkmark"></span></label>
+            <label class="checkbox-container" data-i18n="groups.permissions.createColumns"><input type="checkbox" id="member-perm-create-columns"><span class="checkmark"></span></label>
+            <label class="checkbox-container" data-i18n="groups.permissions.editColumns"><input type="checkbox" id="member-perm-edit-columns"><span class="checkmark"></span></label>
+            <label class="checkbox-container" data-i18n="groups.permissions.createCards"><input type="checkbox" id="member-perm-create-cards"><span class="checkmark"></span></label>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel" data-i18n="ui.cancel"></button>
+            <button class="btn confirm" data-i18n="ui.save"></button>
         </div>
     </dialog>
 

@@ -27,7 +27,8 @@ import {
   showDialogMessage,
   showIconPickerDialog,
   showTemplateEditorDialog,
-  initCustomSelects
+  initCustomSelects,
+  showPrivateMessageDialog
 } from './ui-controls.js';
 import { 
     addGroupInvitationNotification,
@@ -340,16 +341,20 @@ function handleSaveGroup() {
     }
 
     showConfirmationDialog(t('groups.confirm.create'), (dialog) => {
-        // 1. Cria o objeto do grupo sem os boardIds para obter um ID primeiro.
+        // Pega a lista de usuários a serem convidados
+        const invitedUserIds = Array.from(document.getElementById('group-members').selectedOptions).map(opt => opt.value);
+
+        // 1. Cria o objeto do grupo com APENAS o admin como membro inicial.
         const newGroupData = {
             name,
             icon: document.getElementById('group-icon').value || '👥',
             description: document.getElementById('group-description').value.trim(),
             access: document.getElementById('group-access').value,
             adminId: currentUser.id,
-            memberIds: [currentUser.id, ...Array.from(document.getElementById('group-members').selectedOptions).map(opt => opt.value)],
-            boardIds: [], // Começa vazio
-            permissions: permissions,
+            memberIds: [currentUser.id], // CORREÇÃO: Apenas o admin é membro no início.
+            boardIds: [],
+            defaultPermissions: permissions, // <-- MUDANÇA: Agora são as permissões padrão
+            memberPermissions: {}, // <-- NOVO: Estrutura para permissões individuais
             tagTemplate: document.getElementById('group-tag-template').value,
             createdAt: new Date().toISOString()
         };
@@ -360,6 +365,17 @@ function handleSaveGroup() {
             showDialogMessage(dialog, t('groups.edit.saveError'), 'error');
             return false;
         }
+
+        // NOVO: Envia as notificações de convite para os usuários selecionados.
+        invitedUserIds.forEach(userId => {
+            addGroupInvitationNotification(
+                savedGroup.name,
+                savedGroup.id,
+                currentUser.name,
+                currentUser.id,
+                userId
+            );
+        });
 
         // 3. Agora, cria os quadros iniciais, associando-os ao ID do grupo recém-criado.
         const createdBoardIds = [];
@@ -1275,9 +1291,8 @@ function editGroup(group) {
     };
     document.getElementById('edit-group-description').value = group.description || '';
     document.getElementById('edit-group-access').value = group.access || 'public';
-
     // Preenche as permissões
-    const permissions = group.permissions || {}; // Objeto vazio como padrão para grupos antigos
+    const permissions = group.defaultPermissions || {}; // <-- MUDANÇA: Lê das permissões padrão
     document.getElementById('edit-perm-create-boards').checked = permissions.createBoards || false;
     document.getElementById('edit-perm-edit-boards').checked = permissions.editBoards || false;
     document.getElementById('edit-perm-create-columns').checked = permissions.createColumns || false;
@@ -1406,8 +1421,7 @@ function saveGroupChanges(e) {
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.icon = document.getElementById('edit-group-icon').value;
             currentGroup.access = document.getElementById('edit-group-access').value;
-            // Salva as permissões atualizadas
-            currentGroup.permissions = {
+            currentGroup.defaultPermissions = { // <-- MUDANÇA: Salva como permissões padrão
                 createBoards: document.getElementById('edit-perm-create-boards').checked,
                 editBoards: document.getElementById('edit-perm-edit-boards').checked,
                 createColumns: document.getElementById('edit-perm-create-columns').checked,
@@ -2048,50 +2062,6 @@ export function checkAndSendReports() {
     });
 }
 
-function sendMessageToAllMembers() {
-    
-    if (!currentGroup) {
-        showFloatingMessage(t('groups.edit.noGroupSelected'), 'error');
-        return;
-    }
-
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">${t('groups.message.broadcastTitle', { groupName: currentGroup.name })}</h3>
-        <div class="form-group">
-            <label for="group-broadcast-message-textarea" data-i18n="publicProfile.actions.message"></label>
-            <textarea id="group-broadcast-message-textarea" placeholder="${t('groups.message.broadcastPlaceholder')}" rows="5" style="width: 100%;"></textarea>
-        </div>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn cancel" data-i18n="ui.cancel"></button>
-            <button class="btn confirm" data-i18n="groups.message.broadcastSendButton"></button>
-        </div>
-    `;
-
-    document.body.appendChild(dialog);
-    initDraggableElements();
-    dialog.showModal();
-
-    const textarea = dialog.querySelector('#group-broadcast-message-textarea');
-    const sendBtn = dialog.querySelector('.btn-neon.confirm');
-    const cancelBtn = dialog.querySelector('.btn-neon.cancel');
-
-    const closeDialog = () => { dialog.close(); dialog.remove(); };
-    cancelBtn.addEventListener('click', closeDialog);
-
-    sendBtn.addEventListener('click', () => {
-        const message = textarea.value.trim();
-        if (!message) { showDialogMessage(dialog, t('groups.message.emptyError'), 'error'); return; }
-        const membersToNotify = currentGroup.memberIds.filter(id => id !== currentUser.id);
-        membersToNotify.forEach(memberId => addMessageNotification(`${currentUser.name} (Grupo: ${currentGroup.name})`, currentUser.id, memberId, message.length > 50 ? message.substring(0, 50) + '...' : message));
-        showDialogMessage(dialog, t('groups.message.broadcastSuccess', { count: membersToNotify.length }), 'success');
-        sendBtn.disabled = true; cancelBtn.disabled = true;
-        setTimeout(closeDialog, 1500);
-    });
-}
-
 function sendMessageToMember(memberId) {
     const member = allUsers.find(u => u.id === memberId);
     if (!member) {
@@ -2104,7 +2074,7 @@ function sendMessageToMember(memberId) {
     dialog.innerHTML = `
         <h3 class="drag-handle">${t('groups.message.privateTitle', { name: member.name })}</h3>
         <div class="form-group">
-            <textarea id="group-private-message-textarea" data-i18n-placeholder="groups.message.privatePlaceholder" rows="5"></textarea>
+            <textarea id="group-private-message-textarea" placeholder="${t('groups.message.privatePlaceholder')}" rows="5"></textarea>
         </div>
         <div class="feedback"></div>
         <div class="modal-actions">
@@ -2118,8 +2088,8 @@ function sendMessageToMember(memberId) {
     dialog.showModal();
 
     const textarea = dialog.querySelector('#group-private-message-textarea');
-    const sendBtn = dialog.querySelector('.btn-neon.confirm');
-    const cancelBtn = dialog.querySelector('.btn-neon.cancel');
+    const sendBtn = dialog.querySelector('.btn.confirm');
+    const cancelBtn = dialog.querySelector('.btn.cancel');
 
     const closeDialog = () => { dialog.close(); dialog.remove(); };
     cancelBtn.addEventListener('click', closeDialog);
@@ -2184,8 +2154,9 @@ function loadGroupMembers(group) {
             <div>
                 ${isAdmin ?
                     `<span class="admin-badge">${t('profile.groups.roleAdmin')}</span>` :
-                    `<button class="btn btn-sm alternative1 message-member-btn" data-member-id="${memberId}" title="${t('publicProfile.actions.message')}">✉️</button>
-                     <button class="btn btn-sm danger remove-member-btn" data-member-id="${memberId}">${t('ui.remove')}</button>`
+                    `<button type="button" class="btn btn-sm edit perms-member-btn" data-member-id="${memberId}" title="${t('groups.permissions.title')}">⚙️</button>
+                     <button type="button" class="btn btn-sm alternative1 message-member-btn" data-member-id="${memberId}" title="${t('publicProfile.actions.message')}">✉️</button>
+                     <button type="button" class="btn btn-sm danger remove-member-btn" data-member-id="${memberId}" title="${t('ui.remove')}">🗑️</button>`
                 }
             </div>
         `;
@@ -2197,6 +2168,7 @@ function loadGroupMembers(group) {
     membersList.querySelectorAll('.remove-member-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const memberId = e.target.dataset.memberId;
+            isGroupSaved = false; // Marcar como não salvo ao remover um membro
             removeMemberFromGroup(group, memberId);
         });
     });
@@ -2205,7 +2177,14 @@ function loadGroupMembers(group) {
     membersList.querySelectorAll('.message-member-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const memberId = e.target.closest('button').dataset.memberId;
-            sendMessageToMember(memberId);
+            showPrivateMessageDialog(memberId); // <-- USA A NOVA FUNÇÃO UNIVERSAL
+        });
+    });
+
+    membersList.querySelectorAll('.perms-member-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const memberId = e.target.closest('button').dataset.memberId;
+            showMemberPermissionsDialog(group, memberId);
         });
     });
 }
@@ -2303,4 +2282,74 @@ function getOverdueTaskCount(groupId) {
         return total + board.columns.reduce((boardTotal, column) => 
             boardTotal + column.cards.filter(card => !card.isComplete && card.dueDate && new Date(card.dueDate) < today).length, 0);
     }, 0);
+}
+
+/**
+ * Abre o diálogo para configurar as permissões individuais de um membro.
+ * @param {object} group - O objeto do grupo.
+ * @param {string} memberId - O ID do membro.
+ */
+function showMemberPermissionsDialog(group, memberId) {
+    const member = allUsers.find(u => u.id === memberId);
+    if (!member) return;
+
+    const dialog = document.getElementById('member-permissions-dialog');
+    dialog.querySelector('#member-permissions-title').textContent = `${t('groups.permissions.titleFor')} ${member.name}`;
+
+    const useDefaultCheckbox = dialog.querySelector('#perm-use-default');
+    const individualPermsContainer = dialog.querySelector('#individual-permissions-container');
+    const individualCheckboxes = individualPermsContainer.querySelectorAll('input[type="checkbox"]');
+
+    // Verifica se há permissões individuais para este membro
+    const memberPerms = group.memberPermissions?.[memberId];
+    const useDefault = !memberPerms;
+
+    useDefaultCheckbox.checked = useDefault;
+    individualPermsContainer.classList.toggle('hidden', useDefault);
+
+    // Preenche as checkboxes individuais com base nas permissões salvas ou nas padrão do grupo
+    const permsToDisplay = memberPerms || group.defaultPermissions || {};
+    dialog.querySelector('#member-perm-create-boards').checked = permsToDisplay.createBoards || false;
+    dialog.querySelector('#member-perm-edit-boards').checked = permsToDisplay.editBoards || false;
+    dialog.querySelector('#member-perm-create-columns').checked = permsToDisplay.createColumns || false;
+    dialog.querySelector('#member-perm-edit-columns').checked = permsToDisplay.editColumns || false;
+    dialog.querySelector('#member-perm-create-cards').checked = permsToDisplay.createCards || false;
+
+    // Lógica para habilitar/desabilitar as permissões individuais
+    useDefaultCheckbox.onchange = () => {
+        individualPermsContainer.classList.toggle('hidden', useDefaultCheckbox.checked);
+    };
+
+    // Botão de cancelar
+    dialog.querySelector('.btn.cancel').onclick = () => dialog.close();
+
+    // Botão de salvar
+    dialog.querySelector('.btn.confirm').onclick = () => {
+        if (useDefaultCheckbox.checked) {
+            // Se "Usar padrão" está marcado, remove as permissões individuais deste membro
+            if (currentGroup.memberPermissions && currentGroup.memberPermissions[memberId]) {
+                delete currentGroup.memberPermissions[memberId];
+            }
+        } else {
+            // Se não, salva as permissões individuais
+            if (!currentGroup.memberPermissions) {
+                currentGroup.memberPermissions = {};
+            }
+            currentGroup.memberPermissions[memberId] = {
+                createBoards: dialog.querySelector('#member-perm-create-boards').checked,
+                editBoards: dialog.querySelector('#member-perm-edit-boards').checked,
+                createColumns: dialog.querySelector('#member-perm-create-columns').checked,
+                editColumns: dialog.querySelector('#member-perm-edit-columns').checked,
+                createCards: dialog.querySelector('#member-perm-create-cards').checked,
+            };
+        }
+
+        // Marca o diálogo principal de edição como "não salvo" para que o admin precise salvar o grupo
+        isGroupSaved = false;
+
+        showDialogMessage(dialog, t('groups.permissions.saveSuccess'), 'success');
+        setTimeout(() => dialog.close(), 1500);
+    };
+
+    dialog.showModal();
 }

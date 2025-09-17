@@ -200,33 +200,35 @@ function setupEventListeners() {
         }
         showBoardDialog();
     });
+    
     document.getElementById('add-column-btn')?.addEventListener('click', () => {
-    if (!currentBoard) {
-        showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
-        return;
-    }
-    if (!hasPermission(currentBoard, 'createColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-    showColumnDialog();
-});
+        if (!currentBoard) {
+            showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
+            return;
+        }
+        if (!hasPermission(currentBoard, 'createColumns')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
+        showColumnDialog();
+    });
+    
+    document.getElementById('add-card-btn')?.addEventListener('click', () => {
+        if (!currentBoard) {
+            showFloatingMessage(t('kanban.feedback.noBoardSelected'), 'error');
+            return;
+        }
+        if (currentBoard.columns.length === 0) {
+            showFloatingMessage(t('kanban.feedback.noColumnForCard'), 'error');
+            return;
+        }
+        if (!hasPermission(currentBoard, 'createCards')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
+        showCardDialog(null, currentBoard.columns[0].id);
+    });
 
-document.getElementById('add-card-btn')?.addEventListener('click', () => {
-    if (!currentBoard) {
-        showFloatingMessage(t('kanban.feedback.noBoardSelected'), 'error');
-        return;
-    }
-    if (currentBoard.columns.length === 0) {
-        showFloatingMessage(t('kanban.feedback.noColumnForCard'), 'error');
-        return;
-    }
-    if (!hasPermission(currentBoard, 'createCards')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-    showCardDialog(null, currentBoard.columns[0].id);
-});
     document.getElementById('board-select')?.addEventListener('change', switchBoard);
     document.getElementById('edit-items-btn')?.addEventListener('click', showEditDialog);
     document.getElementById('undo-btn')?.addEventListener('click', undoAction);
@@ -1154,9 +1156,19 @@ function showEditDialog() {
 
     // Popula o select de quadros
     boardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
-    boards.forEach(board => {
-        boardSelect.innerHTML += `<option value="${board.id}">${board.title}</option>`;
+    
+    // CORREÇÃO: Filtra os quadros que aparecem no seletor de edição.
+    // Um usuário só pode editar quadros que ele pode ver.
+    const editableBoards = boards.filter(board => {
+        if (!board.groupId) return true; // Quadros pessoais são sempre editáveis pelo dono.
+        const group = getGroup(board.groupId);
+        if (!group) return false;
+        if (group.adminId === currentUser.id) return true; // Admin pode editar tudo do grupo.
+        // Membro pode editar quadros de grupo com visibilidade 'group' ou os 'privados' que ele mesmo criou.
+        return board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
     });
+
+    editableBoards.forEach(board => boardSelect.innerHTML += `<option value="${board.id}">${board.title}</option>`);
 
     boardSelect.onchange = () => {
         const boardId = boardSelect.value;
@@ -1221,19 +1233,17 @@ function showEditDialog() {
         const board = boards.find(b => b.id === boardId);
 
         if (cardId) {
-            // Para editar um cartão, consideramos a permissão de editar a coluna.
-            if (!hasPermission(board, 'editColumns')) {
-                showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-                return;
-            }
+            // A edição de cartão é sempre permitida para membros, conforme nosso plano.
             showCardDialog(cardId);
         } else if (columnId) {
+            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
             if (!hasPermission(board, 'editColumns')) {
                 showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
                 return;
             }
             showColumnDialog(columnId);
         } else if (boardId) {
+            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
             if (!hasPermission(board, 'editBoards')) {
                 showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
                 return;
@@ -1250,19 +1260,21 @@ function showEditDialog() {
         const board = boards.find(b => b.id === boardId);
 
         if (cardId) {
-            // Para excluir um cartão, consideramos a permissão de editar a coluna.
+            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO (Excluir cartão usa a permissão de editar coluna)
             if (!hasPermission(board, 'editColumns')) {
                 showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
                 return;
             }
             handleDeleteCard(cardId);
         } else if (columnId) {
+            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
             if (!hasPermission(board, 'editColumns')) {
                 showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
                 return;
             }
             handleDeleteColumnFromMenu(columnId);
         } else if (boardId) {
+            // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
             if (!hasPermission(board, 'editBoards')) {
                 showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
                 return;
@@ -1313,14 +1325,6 @@ function showBoardDialog(boardId = null) {
     const groupAlert = document.getElementById('board-group-alert');
     const saveBtn = dialog.querySelector('#board-save-btn');
 
-    // Popula o select de visibilidade dinamicamente
-    visibilitySelect.innerHTML = `
-        <option value="private">${t('kanban.dialog.board.visibilityPrivate')}</option>
-        <option value="friends">${t('kanban.dialog.board.visibilityFriends')}</option>
-        <option value="public">${t('kanban.dialog.board.visibilityPublic')}</option>
-        <option value="group">${t('kanban.dialog.board.visibilityGroup')}</option>
-    `;
-
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
     const allGroups = getAllGroups();
     const creatableInGroups = allGroups.filter(g => {
@@ -1362,7 +1366,7 @@ function showBoardDialog(boardId = null) {
         visibilitySelect.disabled = true;
         if (board.visibility === 'group' && board.groupId) {
             // Se o quadro pertence a um grupo, a visibilidade é travada e o grupo é exibido
-            groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.dialog.board.unknownGroup')}</option>`;
+            groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.board.unknownGroup')}</option>`;
             groupSelect.disabled = true;
         }
         iconInput.value = board.icon || '📋';
@@ -1642,8 +1646,7 @@ function showSuccessAndRefresh(dialog, boardToFocusId) {
     const personalBoards = (userProfile.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
     const allGroups = getAllGroups();
     const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
-    const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
-    const groupBoards = groupBoardIds.map(id => getFullBoardData(id)).filter(Boolean);
+    const groupBoards = memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
     const allBoardMap = new Map();
     personalBoards.forEach(b => allBoardMap.set(b.id, b));
     groupBoards.forEach(b => allBoardMap.set(b.id, b));
@@ -2007,6 +2010,16 @@ function handlePrintBoard() {
 // ===== LÓGICA DE DRAG-AND-DROP =====
 
 function handleDragStart(e) {
+    // ETAPA 3: VERIFICAÇÃO DE PERMISSÃO PARA ARRASTAR
+    // Se for um quadro de grupo, verifica se o usuário tem permissão para editar colunas.
+    // Esta permissão controla a reorganização do quadro.
+    if (currentBoard && currentBoard.groupId) {
+        if (!hasPermission(currentBoard, 'editColumns')) {
+            e.preventDefault(); // Impede o início do arraste.
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
+    }
     hideTooltip(); // Esconde qualquer tooltip ao começar a arrastar
     isDragging = true;
 
@@ -2181,19 +2194,41 @@ function checkAllCardDueDates() {
  * @returns {boolean} - Retorna true se o usuário tiver a permissão.
  */
 function hasPermission(board, permission) {
-    // Se não for um quadro de grupo, o usuário sempre tem permissão.
-    if (!board || !board.groupId) {
-        return true;
+    // Caso especial: Verificar se o usuário pode criar quadros em QUALQUER grupo.
+    // Isso é chamado quando board é null (ex: botão "Adicionar Quadro" no filtro de grupos).
+    if (permission === 'createBoards' && !board) {
+        const allGroups = getAllGroups();
+        const creatableInGroups = allGroups.filter(g => {
+            if (g.adminId === currentUser.id) return true; // Admin sempre pode.
+            if (!g.memberIds?.includes(currentUser.id)) return false; // Precisa ser membro.
+
+            // 1. Verifica permissão individual
+            if (g.memberPermissions?.[currentUser.id]?.createBoards !== undefined) {
+                return g.memberPermissions[currentUser.id].createBoards;
+            }
+            // 2. Usa a permissão padrão do grupo
+            return g.defaultPermissions?.createBoards;
+        });
+        return creatableInGroups.length > 0;
     }
+
+    // Se não for um quadro de grupo, o usuário sempre tem permissão.
+    if (!board || !board.groupId) return true;
 
     const group = getGroup(board.groupId);
     if (!group) return false; // Quadro de grupo órfão, nega por segurança.
 
     // Admin sempre tem permissão.
     if (group.adminId === currentUser.id) return true;
+    if (!group.memberIds?.includes(currentUser.id)) return false; // Se não for membro, não tem permissão.
 
-    // Verifica a permissão específica para membros.
-    return group.permissions && group.permissions[permission];
+    // 1. Verifica se há uma permissão individual definida para este usuário.
+    if (group.memberPermissions?.[currentUser.id]?.[permission] !== undefined) {
+        return group.memberPermissions[currentUser.id][permission];
+    }
+
+    // 2. Se não houver, usa a permissão padrão do grupo.
+    return group.defaultPermissions?.[permission];
 }
 
 // --- LÓGICA DO MENU DE CONTEXTO (BOTÃO DIREITO) ---
@@ -2216,23 +2251,18 @@ function handleContextMenu(e) {
  * Cria e exibe o menu de contexto para um cartão.
  */
 function createCardContextMenu(event, cardEl) {
-    // Ação de Edição com verificação de permissão
-    const editAction = () => {
-        if (!hasPermission(currentBoard, 'editColumns')) { showFloatingMessage(t('kanban.feedback.noPermission'), 'error'); return; }
-        showCardDialog(cardId);
-    };
     const cardId = cardEl.dataset.cardId;
     const { card } = findCardAndColumn(cardId);
     
     const menuItems = [
-        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: editAction },
+        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => handleEditCardFromMenu(cardId) },
         { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
         { label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
         { isSeparator: true },
-        { label: t('kanban.contextMenu.card.copy'), icon: '📋', action: () => handleCopyCard(cardId) },
-        { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId), disabled: !hasPermission(currentBoard, 'createCards') }, // Desabilita recortar se não pode criar
+        { label: t('kanban.contextMenu.card.copy'), icon: '📋', action: () => handleCopyCard(cardId) }, // Copiar é sempre permitido
+        { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId) },
         { isSeparator: true },
-        { label: t('kanban.contextMenu.card.delete'), icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true },
+        { label: t('kanban.contextMenu.card.delete'), icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true }
     ];
 
     showContextMenu(event, menuItems);
@@ -2245,12 +2275,12 @@ function createColumnContextMenu(event, columnEl) {
     const columnId = columnEl.dataset.columnId;
 
     const menuItems = [
-        { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => showColumnDialog(columnId), disabled: !hasPermission(currentBoard, 'editColumns') },
+        { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => handleEditColumnFromMenu(columnId) },
         { label: t('kanban.contextMenu.column.details'), icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
-        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId), disabled: !hasPermission(currentBoard, 'createColumns') },
-        { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId), disabled: !hasPermission(currentBoard, 'createColumns') },
+        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId) },
+        { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId) },
         { isSeparator: true },
-        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true },
+        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true }
     ];
 
     showContextMenu(event, menuItems);
@@ -2316,9 +2346,12 @@ function switchBoard(e) {
 
 
 function handleDeleteColumnFromMenu(columnId){
-    showConfirmationDialog(
-        t('kanban.confirm.deleteColumn'),
-        (confirmationDialog) => {
+    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+    showConfirmationDialog(t('kanban.confirm.deleteColumn'), (confirmationDialog) => {
             const boardData = getBoard(currentBoard.id);
             boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
             saveBoard(boardData);
@@ -2330,8 +2363,7 @@ function handleDeleteColumnFromMenu(columnId){
             return true;
         },
         null,
-        t('ui.yesDelete'),
-        t('ui.no')
+        t('ui.yesDelete'), t('ui.no')
     );
 }
 
@@ -2405,12 +2437,6 @@ function handleDeleteColumn(columnId) {
 }
 
 function handleDeleteCard(cardId) {
-    // Adiciona verificação de permissão no início da função
-    if (!hasPermission(currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-
     showConfirmationDialog(
         t('kanban.confirm.deleteCard'),
         (dialog) => {
@@ -2425,8 +2451,7 @@ function handleDeleteCard(cardId) {
             return true;
         },
         null,
-        t('ui.yesDelete'),
-        t('ui.no')
+        t('ui.yesDelete'), t('ui.no')
     );
 }
 
@@ -2536,6 +2561,12 @@ function handleCopyCard(cardId) {
  * @param {string} cardId - O ID do cartão a ser recortado.
  */
 function handleCutCard(cardId) {
+    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const { card, column } = findCardAndColumn(cardId);
     if (card) {
         clipboard = {
@@ -2563,8 +2594,8 @@ function handlePasteCard(targetColumnId) {
     const targetColumn = findColumn(targetColumnId);
     if (!targetColumn) return;
 
-    // VERIFICAÇÃO DE PERMISSÃO AO COLAR
-    if (!hasPermission(currentBoard, 'createCards')) {
+    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO AO COLAR
+    if (clipboard.mode === 'copy' && !hasPermission(currentBoard, 'createCards')) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         clipboard = null; // Limpa o clipboard para evitar tentativas repetidas
         return;
@@ -2645,6 +2676,12 @@ function handlePaste() {
     }
 }
 
+function handleEditCardFromMenu(cardId) {
+    // A edição de cartão é sempre permitida para membros, então não precisa de verificação aqui,
+    // mas a função existe para manter a consistência do fluxo.
+    showCardDialog(cardId);
+}
+
 function handleCopyColumn(columnId) {
     const columnToCopy = findColumn(columnId);
     if (columnToCopy) {
@@ -2671,6 +2708,12 @@ function handleCopyColumn(columnId) {
 }
 
 function handleCutColumn(columnId) {
+    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const columnToCut = findColumn(columnId);
     if (columnToCut) {
         clipboard = {
@@ -2746,6 +2789,15 @@ async function saveBoardAsTemplate() {
     });
 }
 
+function handleEditColumnFromMenu(columnId) {
+    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+    showColumnDialog(columnId);
+}
+
 function handlePasteColumn() {
     if (!clipboard || clipboard.type !== 'column') {
         showFloatingMessage(t('kanban.feedback.noColumnToPaste'), 'warning');
@@ -2753,6 +2805,13 @@ function handlePasteColumn() {
     }
 
     if (clipboard.mode === 'cut') {
+        // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
+        // Para mover (recortar/colar), o usuário precisa de permissão de edição no quadro de origem E no de destino.
+        if (!hasPermission(getBoard(clipboard.sourceBoardId), 'editColumns') || !hasPermission(currentBoard, 'editColumns')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
+
         // Lógica para MOVER a coluna
         const { sourceColumnId, sourceBoardId } = clipboard;
 
@@ -2778,6 +2837,12 @@ function handlePasteColumn() {
         showFloatingMessage(t('kanban.feedback.columnMoved'), 'success');
 
     } else { // 'copy'
+        // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
+        if (!hasPermission(currentBoard, 'createColumns')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
+
         // Lógica para COPIAR a coluna
         const columnData = clipboard.data;
         const newCardIds = columnData.cards.map(cardData => saveCard(cardData).id);
@@ -2882,11 +2947,6 @@ function showPreferencesDialog(isTour = false) {
     initCustomSelects();
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
-
-    // Os listeners são anexados uma única vez em setupEventListeners
-    // if (!isTour) {
-    //     setupPreferencesControlsListeners(dialog);
-    // }
 
     dialog.showModal();
 }
@@ -3110,10 +3170,14 @@ function updateHeaderButtonPermissions() {
         return;
     }
 
-    const canCreateColumns = hasPermission(currentBoard, 'createColumns');
-    addColumnBtn.disabled = !canCreateColumns;
-    addColumnBtn.title = canCreateColumns ? '' : t('kanban.feedback.noPermission');
+    // CORREÇÃO: A verificação de permissão é feita no 'click', não no 'title'.
+    // O botão não será mais desabilitado, mas o clique será interceptado.
+    addColumnBtn.disabled = false; // Mantém o botão sempre habilitado visualmente.
+    addColumnBtn.title = t('kanban.button.addColumn'); // Tooltip padrão.
+
+    addCardBtn.disabled = false; // Mantém o botão sempre habilitado visualmente.
+    addCardBtn.title = t('kanban.button.addCard'); // Tooltip padrão.
 
     // Habilita os outros botões. A permissão de criar/editar cartões é verificada no clique.
-    [addCardBtn, editItemsBtn, saveTemplateBtn].forEach(btn => btn.disabled = false);
+    [editItemsBtn, saveTemplateBtn].forEach(btn => btn.disabled = false);
 }
