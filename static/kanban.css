@@ -28,6 +28,11 @@ body {
 .horizontal-menu .dropdown button {
     width: auto; margin: 0 5px; transform: scale(1.1);
 }
+
+/* Esconde o select nativo, pois o ui-controls.js cria uma versão customizada */
+.custom-select select {
+    display: none;
+}
 .horizontal-menu .custom-select {
     min-width: 250px;
 }

@@ -452,8 +452,6 @@ export function applyUserTheme() {
     // 3. Aplica a cor primária
     applyPrimaryColor(user.preferences?.primaryColor);
 
-    // 4. Aplica o comportamento do header inteligente
-    initSmartHeader();
 }
 
 /**
@@ -925,6 +923,7 @@ export function initCustomSelects() {
  *   - `icon` (string, opcional): O emoji ou ícone.
  *   - `action` (function): A função a ser executada no clique.
  *   - `isDestructive` (boolean, opcional): Se o botão deve ter estilo de "perigo".
+ *   - `disabled` (boolean, opcional): Se o botão deve estar desabilitado.
  *   - `isSeparator` (boolean, opcional): Se o item é um separador <hr>.
  */
 export function showContextMenu(event, items) {
@@ -942,6 +941,10 @@ export function showContextMenu(event, items) {
             button.innerHTML = `${item.icon || ''} ${item.label}`;
             if (item.isDestructive) {
                 button.classList.add('destructive');
+            }
+            if (item.disabled) {
+                button.disabled = true;
+                button.title = t('kanban.feedback.noPermission');
             }
             button.onclick = () => {
                 item.action();

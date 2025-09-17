@@ -304,13 +304,15 @@ function switchTab(tabId, options = {}) {
         initCustomSelects();
     } else if (tabId === 'statistics') {
         const groupSelect = document.getElementById('stats-group-select');
-        populateGroupSelectorForStats(groupSelect);
-        // Usa o ID das opções, ou o valor do select como fallback
-        const groupIdToLoad = options.groupId || groupSelect.value;
-        if (groupIdToLoad) {
-            // Garante que o select mostre o grupo correto
-            groupSelect.value = groupIdToLoad;
-            loadAndRenderStatistics(groupIdToLoad);
+        if (groupSelect) {
+            populateGroupSelectorForStats(groupSelect);
+            // Usa o ID das opções, ou o valor do select como fallback
+            const groupIdToLoad = options.groupId || groupSelect.value;
+            if (groupIdToLoad) {
+                // Garante que o select mostre o grupo correto
+                groupSelect.value = groupIdToLoad;
+                loadAndRenderStatistics(groupIdToLoad);
+            }
             initCustomSelects();
         }
     } else if (tabId === 'meetings') {

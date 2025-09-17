@@ -157,10 +157,20 @@ function setupEventListeners() {
     // --- Ações dos menus ---
     document.getElementById('switch-user-btn')?.addEventListener('click', () => window.location.href = 'list-users.html');
     document.getElementById('user-profile-btn')?.addEventListener('click', () => window.location.href = 'profile.html');
-    document.getElementById('add-board-btn')?.addEventListener('click', () => showBoardDialog());
-document.getElementById('add-column-btn')?.addEventListener('click', () => {
+    document.getElementById('add-board-btn')?.addEventListener('click', () => {
+        if (currentBoardFilter === 'group' && !hasPermission(null, 'createBoards')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
+        showBoardDialog();
+    });
+    document.getElementById('add-column-btn')?.addEventListener('click', () => {
     if (!currentBoard) {
         showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
+        return;
+    }
+    if (!hasPermission(currentBoard, 'createColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
     showColumnDialog();
@@ -173,6 +183,10 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     }
     if (currentBoard.columns.length === 0) {
         showFloatingMessage(t('kanban.feedback.noColumnForCard'), 'error');
+        return;
+    }
+    if (!hasPermission(currentBoard, 'createCards')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
     showCardDialog(null, currentBoard.columns[0].id);
@@ -222,13 +236,17 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
     // --- LISTENERS PARA O DIÁLOGO DE PREFERÊNCIAS (ANEXADOS UMA ÚNICA VEZ) ---
     const preferencesDialog = document.getElementById('preferences-dialog');
     if (preferencesDialog) {
-        // Listener para fechar com ESC ou clique no backdrop, disparado por ui-controls.js
+        // Listener para fechar com ESC ou clique no backdrop
         preferencesDialog.addEventListener('cancel', (e) => {
             if (!kanbanIsSaved) {
-                e.preventDefault(); // Impede o fechamento se houver alterações não salvas
-                handlePreferencesCancel();
+                e.preventDefault(); // Impede o fechamento padrão se houver alterações
+                handlePreferencesCancel(); // Chama nossa lógica customizada de cancelamento
             }
         });
+
+        // Listeners dos botões Salvar e Cancelar
+        preferencesDialog.querySelector('#pref-save-btn').addEventListener('click', () => handleSavePreferences(preferencesDialog));
+        preferencesDialog.querySelector('#pref-cancel-btn').addEventListener('click', () => handlePreferencesCancel());
 
         // Listener para a paleta de cores
         preferencesDialog.querySelector('#color-palette-container').addEventListener('click', (e) => {
@@ -244,6 +262,42 @@ document.getElementById('add-card-btn')?.addEventListener('click', () => {
                 document.body.classList.remove('no-primary-effects');
                 document.documentElement.style.setProperty('--primary', swatch.dataset.hex);
                 document.documentElement.style.setProperty('--primary-rgb', swatch.dataset.rgb);
+            }
+        });
+
+        // Listeners para todos os campos que ativam a pré-visualização
+        const fieldsToTrack = [
+            { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
+            { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
+            { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) },
+            { id: 'pref-language', action: async (e) => {
+                await loadLanguage(e.target.value);
+                applyTranslations();
+                const selectedTemplateId = preferencesDialog.querySelector('#pref-default-tag-template').value;
+                populateTagTemplatesSelect(selectedTemplateId);
+                initCustomSelects();
+            } },
+            { id: 'pref-default-tag-template', action: null },
+            { id: 'pref-card-show-tags', action: applyCardPreview },
+            { id: 'pref-card-show-date', action: applyCardPreview },
+            { id: 'pref-card-show-status', action: applyCardPreview },
+            { id: 'pref-card-show-details', action: applyCardPreview },
+            { id: 'pref-enable-card-tooltip', action: applyCardPreview },
+            { id: 'pref-card-show-assignment', action: applyCardPreview },
+            { id: 'pref-board-show-title', action: applyTitlePreview },
+            { id: 'pref-board-show-icon', action: applyTitlePreview },
+            { id: 'pref-smart-header', action: null }
+        ];
+
+        fieldsToTrack.forEach(field => {
+            const element = preferencesDialog.querySelector(`#${field.id}`);
+            if (element) {
+                element.addEventListener('change', (e) => {
+                    kanbanIsSaved = false;
+                    if (field.action) {
+                        field.action(e);
+                    }
+                });
             }
         });
     }
@@ -892,6 +946,9 @@ function createColumnElement(column) {
     // Adiciona listeners de tooltip aos cartões dentro da coluna
     columnEl.querySelectorAll('.card').forEach(cardEl => {
         cardEl.addEventListener('mouseenter', (e) => {
+            // Se o tour estiver ativo, não mostra o tooltip para não interferir
+            if (isTourActive) return;
+
             // Só mostra o tooltip se a preferência estiver ativa e não estiver arrastando
             if (!isDragging && currentUser.preferences.enableCardTooltip === true) {
                 tooltipTimeout = setTimeout(() => showTooltip(cardEl.dataset.cardId, e), 1500);
@@ -904,6 +961,10 @@ function createColumnElement(column) {
     });
 
     columnEl.querySelector('.add-card-btn').addEventListener('click', () => {
+        if (!hasPermission(currentBoard, 'createCards')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
         showCardDialog(null, column.id);
     });
 
@@ -1063,11 +1124,19 @@ function showEditDialog() {
         const boardId = boardSelect.value;
         columnGroup.style.display = 'none';
         cardGroup.style.display = 'none';
+        editBtn.title = ''; // Limpa o title
+        deleteBtn.title = '';
         columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
         if (!boardId) {
             editBtn.disabled = true;
             deleteBtn.disabled = true;
             return;
+        }
+
+        const canEditBoard = hasPermission(boards.find(b => b.id === boardId), 'editBoards');
+        if (!canEditBoard) {
+            editBtn.disabled = true;
+            editBtn.title = t('kanban.feedback.noPermission');
         }
 
         const selectedBoard = boards.find(b => b.id === boardId);
@@ -1083,6 +1152,14 @@ function showEditDialog() {
     columnSelect.onchange = () => {
         const columnId = columnSelect.value;
         cardGroup.style.display = 'none';
+        editBtn.title = ''; // Limpa o title
+
+        const selectedBoardId = boardSelect.value;
+        const canEditColumn = hasPermission(boards.find(b => b.id === boardId), 'editColumns');
+        if (columnId && !canEditColumn) {
+            editBtn.disabled = true;
+            editBtn.title = t('kanban.feedback.noPermission');
+        }
         cardSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectCardPlaceholder')}</option>`;
         if (!columnId) return;
 
@@ -1150,6 +1227,7 @@ function closeAllDropdowns() {
 
 function showBoardDialog(boardId = null) {
     const dialog = document.getElementById('board-dialog');
+
     const board = boardId ? boards.find(b => b.id === boardId) : null;
     
     dialog.dataset.editingId = boardId;
@@ -1168,6 +1246,7 @@ function showBoardDialog(boardId = null) {
         <option value="private">${t('kanban.dialog.board.visibilityPrivate')}</option>
         <option value="friends">${t('kanban.dialog.board.visibilityFriends')}</option>
         <option value="public">${t('kanban.dialog.board.visibilityPublic')}</option>
+        <option value="group">${t('kanban.dialog.board.visibilityGroup')}</option>
     `;
 
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
@@ -1178,26 +1257,21 @@ function showBoardDialog(boardId = null) {
         return isAdmin || canCreate;
     });
 
-    // Adiciona a opção de Grupo apenas se o usuário puder criar em algum
-    if (creatableInGroups.length > 0) {
-        visibilitySelect.innerHTML += `<option value="group">${t('kanban.dialog.board.visibilityGroup')}</option>`;
-    }
-
     visibilitySelect.onchange = () => {
         const selectedVisibility = visibilitySelect.value;
         if (selectedVisibility === 'group') {
+            groupContainer.style.display = 'block'; // Sempre mostra o container
             if (creatableInGroups.length === 0) {
-                // NOVA LÓGICA: Mostra o select desabilitado com uma mensagem.
-                groupSelect.innerHTML = `<option value="">${t('kanban.feedback.noGroupCreatePermission')}</option>`;
+                // Se não há grupos elegíveis, mostra a mensagem correta e desabilita.
+                groupSelect.innerHTML = `<option value="">${t('groups.reports.noEligibleGroups')}</option>`;
                 groupSelect.disabled = true;
-                groupContainer.style.display = 'block';
             } else {
+                 // Se há grupos, popula o select normalmente.
                 groupSelect.innerHTML = '';
                 creatableInGroups.forEach(g => {
                     groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
                 });
                 groupSelect.disabled = false;
-                groupContainer.style.display = 'block';
             }
         } else {
             groupContainer.style.display = 'none';
@@ -1226,7 +1300,6 @@ function showBoardDialog(boardId = null) {
     visibilitySelect.disabled = false;
     groupContainer.style.display = 'none';
     groupAlert.style.display = 'none';
-    groupSelect.style.display = 'block';
     saveBtn.disabled = false;
     iconInput.value = '📋'; // Padrão
 
@@ -1250,7 +1323,7 @@ function showBoardDialog(boardId = null) {
         }
         // Força a atualização da UI de visibilidade/grupo
         visibilitySelect.dispatchEvent(new Event('change'));
-        // AGORA, se o filtro for de grupo, desabilita a troca de visibilidade.
+        // AGORA, após o evento ter sido processado, desabilita a troca de visibilidade se necessário.
         if (currentBoardFilter === 'group') {
             visibilitySelect.disabled = true;
         }
@@ -1278,7 +1351,10 @@ function showBoardDialog(boardId = null) {
     dialog.querySelector('.feedback')?.classList.remove('show');
     
     // Inicializa os selects customizados APÓS popular os dados
-    initCustomSelects();
+    // Usamos um setTimeout para garantir que o DOM seja atualizado antes de inicializar os selects.
+    setTimeout(() => {
+        initCustomSelects();
+    }, 0);
 
     dialog.showModal();
 }
@@ -2019,6 +2095,28 @@ function checkAllCardDueDates() {
     });
 }
 
+/**
+ * Verifica se o usuário atual tem uma permissão específica para um quadro.
+ * @param {object | null} board - O objeto do quadro. Se for nulo, verifica permissões globais (como criar quadro de grupo).
+ * @param {string} permission - A chave da permissão (ex: 'createColumns', 'editBoards').
+ * @returns {boolean} - Retorna true se o usuário tiver a permissão.
+ */
+function hasPermission(board, permission) {
+    // Se não for um quadro de grupo, o usuário sempre tem permissão.
+    if (!board || !board.groupId) {
+        return true;
+    }
+
+    const group = getGroup(board.groupId);
+    if (!group) return false; // Quadro de grupo órfão, nega por segurança.
+
+    // Admin sempre tem permissão.
+    if (group.adminId === currentUser.id) return true;
+
+    // Verifica a permissão específica para membros.
+    return group.permissions && group.permissions[permission];
+}
+
 // --- LÓGICA DO MENU DE CONTEXTO (BOTÃO DIREITO) ---
 
 /**
@@ -2043,12 +2141,12 @@ function createCardContextMenu(event, cardEl) {
     const { card } = findCardAndColumn(cardId);
     
     const menuItems = [
-        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => showCardDialog(cardId) },
+        { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => showCardDialog(cardId) }, // Editar cartão é sempre permitido para membros
         { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
         { label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
         { isSeparator: true },
         { label: t('kanban.contextMenu.card.copy'), icon: '📋', action: () => handleCopyCard(cardId) },
-        { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId) },
+        { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId), disabled: !hasPermission(currentBoard, 'createCards') }, // Desabilita recortar se não pode criar
         { isSeparator: true },
         { label: t('kanban.contextMenu.card.delete'), icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true },
     ];
@@ -2063,10 +2161,10 @@ function createColumnContextMenu(event, columnEl) {
     const columnId = columnEl.dataset.columnId;
 
     const menuItems = [
-        { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => showColumnDialog(columnId) },
+        { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => showColumnDialog(columnId), disabled: !hasPermission(currentBoard, 'editColumns') },
         { label: t('kanban.contextMenu.column.details'), icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
-        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId) },
-        { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId) },
+        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId), disabled: !hasPermission(currentBoard, 'createColumns') },
+        { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId), disabled: !hasPermission(currentBoard, 'createColumns') },
         { isSeparator: true },
         { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true },
     ];
@@ -2373,6 +2471,13 @@ function handlePasteCard(targetColumnId) {
 
     const targetColumn = findColumn(targetColumnId);
     if (!targetColumn) return;
+
+    // VERIFICAÇÃO DE PERMISSÃO AO COLAR
+    if (!hasPermission(currentBoard, 'createCards')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        clipboard = null; // Limpa o clipboard para evitar tentativas repetidas
+        return;
+    }
 
     if (clipboard.mode === 'cut') {
         const sourceColumn = getColumn(clipboard.sourceColumnId);
@@ -2687,60 +2792,42 @@ function showPreferencesDialog(isTour = false) {
 
     kanbanIsSaved = true; // Reseta o estado de salvamento ao abrir
 
-    // Anexa os listeners de salvamento/cancelamento apenas se não for o tour
-    if (!isTour) {
-        setupPreferencesControlsListeners(dialog);
-    }
+    // Os listeners são anexados uma única vez em setupEventListeners
+    // if (!isTour) {
+    //     setupPreferencesControlsListeners(dialog);
+    // }
 
     dialog.showModal();
 }
 
-function setupPreferencesControlsListeners(dialog) {
-    const fieldsToTrack = [
-        { id: 'pref-theme', action: (e) => applyThemeFromSelect(e.target.value) },
-        { id: 'pref-font-family', action: (e) => applyFontFamily(e.target.value) },
-        { id: 'pref-font-size', action: (e) => applyFontSize(e.target.value, true) }, // Corrigido: era 'action'
-        { id: 'pref-language', action: async (e) => {
-            await loadLanguage(e.target.value);
-            applyTranslations(); // Aplica em elementos com data-i18n
-            // Recria o select de templates de tags para traduzir as opções
-            const selectedTemplateId = dialog.querySelector('#pref-default-tag-template').value;
-            populateTagTemplatesSelect(selectedTemplateId);
-            initCustomSelects(); // Re-inicializa para traduzir as opções dos selects
-        } },
-        { id: 'pref-default-tag-template', action: null },
-        { id: 'pref-card-show-tags', action: applyCardPreview },
-        { id: 'pref-card-show-date', action: applyCardPreview },
-        { id: 'pref-card-show-status', action: applyCardPreview },
-        { id: 'pref-card-show-details', action: applyCardPreview },
-        { id: 'pref-enable-card-tooltip', action: applyCardPreview }, // Adiciona ao rastreamento de alterações
-        { id: 'pref-card-show-assignment', action: applyCardPreview },
-        { id: 'pref-board-show-title', action: applyTitlePreview },
-        { id: 'pref-board-show-icon', action: applyTitlePreview },
-        { id: 'pref-smart-header', action: applyUserTheme } // Aplica o tema para ativar/desativar
-    ];
 
-    fieldsToTrack.forEach(field => {
-        const element = dialog.querySelector(`#${field.id}`);
-        if (element) {
-            element.addEventListener('change', (e) => {
-                kanbanIsSaved = false;
-                if (field.action) field.action(e);
-            });
-        }
-    });
-
-    dialog.querySelector('#pref-save-btn').onclick = () => handleSavePreferences(dialog);
-    dialog.querySelector('#pref-cancel-btn').onclick = handlePreferencesCancel;
-}
 
 function restoreKanbanOriginalSettings() {
-    // Restaura o estado visual usando a função global e os dados originais
-    const user = getCurrentUser();
-    user.theme = originalPreferences.theme;
-    user.preferences = { ...user.preferences, ...originalPreferences };
-    applyUserTheme();
-    renderCurrentBoard(); // Redesenha o quadro com as prefs visuais originais
+    // 1. Restaura o objeto currentUser em memória para o estado original
+    currentUser.theme = originalPreferences.theme;
+    currentUser.preferences = { ...currentUser.preferences, ...originalPreferences };
+
+    // 2. Aplica as configurações visuais diretamente para reverter as pré-visualizações
+    applyThemeFromSelect(originalPreferences.theme);
+    applyFontFamily(originalPreferences.fontFamily);
+    applyFontSize(originalPreferences.fontSize, true);
+
+    // Restaura a cor primária
+    const colorData = originalPreferences.primaryColor;
+    if (colorData && colorData !== 'none' && colorData.hex && colorData.rgb) {
+        document.body.classList.remove('no-primary-effects');
+        document.documentElement.style.setProperty('--primary', colorData.hex);
+        document.documentElement.style.setProperty('--primary-rgb', colorData.rgb);
+    } else {
+        document.body.classList.add('no-primary-effects');
+    }
+
+    // Restaura o header inteligente
+    const isSmartHeaderEnabled = originalPreferences.smartHeader === true;
+    document.body.classList.toggle('smart-header-enabled', isSmartHeaderEnabled);
+
+    // 3. Redesenha o quadro para aplicar as preferências de exibição de cartão/quadro
+    renderCurrentBoard();
 }
 
 function handleSavePreferences(preferencesDialog) {
@@ -2844,42 +2931,15 @@ function populateTagTemplatesSelect(selectedId = null) {
 }
 
 function applyFontFamily(fontFamily) {
-    // Aplica a fonte a todos os elementos
-    const allElements = document.querySelectorAll('*');
-    for (let i = 0; i < allElements.length; i++) {
-        allElements[i].style.fontFamily = fontFamily;
-    }
-    
-    // Remove estilos anteriores de placeholder se existirem
-    const existingStyle = document.getElementById('universal-font-style');
-    if (existingStyle) {
-        existingStyle.remove();
-    }
-    
-    // Aplica a fonte também aos placeholders
-    const style = document.createElement('style');
-    style.id = 'universal-font-style';
-    style.textContent = `
-        ::placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        :-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        ::-ms-input-placeholder {
-            font-family: ${fontFamily} !important;
-        }
-        
-        /* Força a fonte em elementos específicos que podem resistir */
-        input, textarea, select, button {
-            font-family: ${fontFamily} !important;
-        }
-    `;
-    document.head.appendChild(style);
+    // CORREÇÃO: Usa a variável CSS global, que é a abordagem correta e mais performática,
+    // alinhando-se com a implementação em profile.js e ui-controls.js.
+    document.documentElement.style.setProperty('--app-font-family', fontFamily);
 }
 
 function applyFontSize(size, isPreview = false) {
-    const sizeMap = { small: '0.85rem', medium: '1rem', large: '1.15rem', 'x-large': '1.3rem' };
+    // CORREÇÃO: Usa os mesmos valores em 'rem' do profile.js para consistência.
+    // A pré-visualização agora funciona corretamente.
+    const sizeMap = { small: '0.75rem', medium: '1rem', large: '1.3rem', 'x-large': '1.6rem' };
     const fontSizeValue = sizeMap[size] || '1rem';
     document.documentElement.style.fontSize = fontSizeValue;
 }
@@ -2888,7 +2948,7 @@ function applyTitlePreview() {
     const titleElement = document.getElementById('kanban-title');
     if (!titleElement || !currentBoard) return;
 
-    // O diálogo é clonado, então precisamos pegar o que está atualmente no DOM.
+    // O diálogo não é clonado. Este comentário estava incorreto.
     const dialog = document.querySelector('#preferences-dialog');
     
     const showTitle = dialog.querySelector('#pref-board-show-title').checked;
