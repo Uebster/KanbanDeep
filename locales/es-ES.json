@@ -145,7 +145,7 @@
     "groups.permissions.saveSuccess": "Permisos individuales guardados. Haz clic en 'Guardar Cambios' en el diálogo principal para confirmar.",
     "groups.permissions.title": "Permisos para Miembros",
     "groups.permissions.titleFor": "Permisos para:",
-    "groups.permissions.useDefault": "Usar permisos predeterminados del grupo",    
+    "groups.permissions.useDefault": "Usar permisos predeterminados del grupo",
     "groups.meetings.fieldsRequired": "Grupo, título, fecha y hora son obligatorios.",
     "groups.meetings.groupLabel": "Grupo:",
     "groups.meetings.locationLabel": "Lugar:",

@@ -145,7 +145,7 @@
     "groups.permissions.saveSuccess": "Individuelle Berechtigungen gespeichert. Klicken Sie im Hauptdialog auf 'Änderungen speichern', um zu bestätigen.",
     "groups.permissions.title": "Mitgliederberechtigungen",
     "groups.permissions.titleFor": "Berechtigungen für:",
-    "groups.permissions.useDefault": "Standard-Gruppenberechtigungen verwenden",    
+    "groups.permissions.useDefault": "Standard-Gruppenberechtigungen verwenden",
     "groups.meetings.fieldsRequired": "Gruppe, Titel, Datum und Uhrzeit sind erforderlich.",
     "groups.meetings.groupLabel": "Gruppe:",
     "groups.meetings.locationLabel": "Ort:",
