@@ -2483,6 +2483,20 @@ function createColumnContextMenu(event, columnEl) {
     showContextMenu(event, menuItems);
 }
 
+function handleDeleteColumnFromMenu(columnId){
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+    // A mensagem de confirmação ainda faz sentido, pois para o usuário é uma "exclusão"
+    showConfirmationDialog(t('kanban.confirm.deleteColumn'), (confirmationDialog) => {
+            // Em vez de deletar, arquiva com o motivo 'deleted'
+            archiveColumn(columnId, 'deleted');
+            // A função archiveColumn já mostra a mensagem flutuante e atualiza a tela.
+            confirmationDialog.close();
+            return false; // Retorna false para que o showConfirmationDialog não tente fechar de novo ou mostrar outra mensagem.
+        }, null, t('ui.yesDelete'), t('ui.no'));
+}
 /**
  * Copia uma coluna e seus cartões para a área de transferência interna.
  * @param {string} columnId O ID da coluna a ser copiada.
@@ -2534,22 +2548,32 @@ function handleCutColumn(columnId) {
 /**
  * Arquiva uma coluna, movendo-a da visão principal para a lista de arquivadas.
  * @param {string} columnId O ID da coluna a ser arquivada.
+ * @param {string} reason O motivo do arquivamento ('archived' ou 'deleted').
  */
-function archiveColumn(columnId) {
+function archiveColumn(columnId, reason = 'archived') {
     if (!hasPermission(currentBoard, 'editColumns')) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
-
+    saveState(); // Salva o estado antes de arquivar
     const column = findColumn(columnId);
     if (!column) return;
 
+    // Adiciona metadados de arquivamento
     column.isArchived = true;
+    column.archiveReason = reason;
+    column.archivedAt = new Date().toISOString();
+    column.archivedBy = currentUser.id;
     saveColumn(column);
 
+    // Remove a coluna da lista ativa do quadro
     currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+    
+    // Adiciona a coluna à lista de arquivadas do quadro
     if (!currentBoard.archivedColumnIds) currentBoard.archivedColumnIds = [];
-    currentBoard.archivedColumnIds.push(columnId);
+    if (!currentBoard.archivedColumnIds.includes(columnId)) {
+        currentBoard.archivedColumnIds.push(columnId);
+    }
     saveBoard(currentBoard);
 
     showSuccessAndRefresh(null, currentBoard.id);
@@ -2610,29 +2634,6 @@ function switchBoard(e) {
     renderCurrentBoard();
     saveState();
     updateHeaderButtonPermissions(); // Atualiza permissões ao trocar de quadro
-}
-
-
-function handleDeleteColumnFromMenu(columnId){
-    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-    if (!hasPermission(currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-    showConfirmationDialog(t('kanban.confirm.deleteColumn'), (confirmationDialog) => {
-            const boardData = getBoard(currentBoard.id);
-            boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
-            saveBoard(boardData);
-            deleteColumn(columnId); // Deleta a coluna e seus cartões
-            currentBoard = getFullBoardData(currentBoard.id);
-            renderCurrentBoard();
-            saveState(); // Salva o estado APÓS a modificação
-            showDialogMessage(confirmationDialog, t('kanban.feedback.columnDeleted'), 'success');
-            return true;
-        },
-        null,
-        t('ui.yesDelete'), t('ui.no')
-    );
 }
 
 function toggleCardComplete(cardId) {

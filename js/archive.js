@@ -13,7 +13,7 @@ import {
     deleteColumn, // Hard delete
     getAllUsers
 } from './storage.js';
-import { showConfirmationDialog, showFloatingMessage } from './ui-controls.js';
+import { showConfirmationDialog, showFloatingMessage, showDialogMessage } from './ui-controls.js';
 import { t, initTranslations } from './translations.js';
 
 let currentUser = null;
@@ -194,58 +194,83 @@ function handleMoveToTrash(itemId, type) {
 function handleRestoreCard(cardId) {
     showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
         const card = getCard(cardId);
-        const originalColumn = getColumn(card.columnId);
-        if (card && originalColumn) {
+        if (!card) {
+            showDialogMessage(dialog, 'Error: Card not found.', 'error');
+            return false;
+        }
+
+        // Se estiver na lixeira, a restauração o move de volta para "Arquivados".
+        if (card.archiveReason === 'deleted') {
+            delete card.archiveReason;
+        } else {
+            // Se estiver em "Arquivados", a restauração o move de volta para o quadro.
             card.isArchived = false;
             delete card.archivedAt;
             delete card.archivedBy;
             delete card.archiveReason;
-            saveCard(card);
-            showFloatingMessage(t('archive.feedback.restored'), 'success');
-            loadAllArchivedItems();
-            renderAllLists();
         }
-        dialog.close();
+        saveCard(card);
+
+        showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
+        loadAllArchivedItems();
+        renderAllLists();
+        return true;
     });
 }
 
 function handleRestoreColumn(columnId) {
     showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
+        const itemFromList = allArchivedItems.columns.find(c => c.id === columnId);
+        if (!itemFromList) {
+            showDialogMessage(dialog, 'Error: Column not found in archived list.', 'error');
+            return false;
+        }
+
         const column = getColumn(columnId);
-        const board = getBoard(column.boardId);
-        if (column && board) {
+        const board = getBoard(itemFromList.boardId);
+        if (!column || !board) {
+            showDialogMessage(dialog, 'Error: Column or board not found.', 'error');
+            return false;
+        }
+
+        if (column.archiveReason === 'deleted') {
+            delete column.archiveReason;
+        } else {
             column.isArchived = false;
-            saveColumn(column);
             board.columnIds.push(columnId);
             board.archivedColumnIds = (board.archivedColumnIds || []).filter(id => id !== columnId);
             saveBoard(board);
-            showFloatingMessage(t('archive.feedback.restored'), 'success');
-            loadAllArchivedItems();
-            renderAllLists();
         }
-        dialog.close();
+
+        saveColumn(column);
+        showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
+        loadAllArchivedItems();
+        renderAllLists();
+        return true;
     });
 }
 
 function handleDeleteCard(cardId) {
     showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
         if (deleteCard(cardId)) {
-            showFloatingMessage(t('archive.feedback.deleted'), 'success');
+            showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             loadAllArchivedItems();
             renderAllLists();
+            return true;
         }
-        dialog.close();
+        return false; // Mantém o diálogo aberto em caso de erro
     }, null, t('ui.yesDelete'));
 }
 
 function handleDeleteColumn(columnId) {
     showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
         if (deleteColumn(columnId)) {
-            showFloatingMessage(t('archive.feedback.deleted'), 'success');
+            showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             loadAllArchivedItems();
             renderAllLists();
+            return true;
         }
-        dialog.close();
+        return false; // Mantém o diálogo aberto em caso de erro
     }, null, t('ui.yesDelete'));
 }
 
