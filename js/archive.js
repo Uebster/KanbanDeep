@@ -283,4 +283,32 @@ function setupEventListeners() {
             document.getElementById(e.currentTarget.dataset.tab).classList.add('active');
         });
     });
+
+    document.getElementById('empty-trash-btn')?.addEventListener('click', handleEmptyTrash);
+}
+
+function handleEmptyTrash() {
+    const trashCards = allArchivedItems.cards.filter(c => c.archiveReason === 'deleted');
+    const trashColumns = allArchivedItems.columns.filter(c => c.archiveReason === 'deleted');
+    const totalItems = trashCards.length + trashColumns.length;
+
+    if (totalItems === 0) {
+        showFloatingMessage(t('archive.feedback.trashEmpty'), 'info');
+        return;
+    }
+
+    showConfirmationDialog(
+        t('archive.confirm.emptyTrash', { count: totalItems }),
+        (dialog) => {
+            trashCards.forEach(card => deleteCard(card.id));
+            trashColumns.forEach(col => deleteColumn(col.id));
+
+            showDialogMessage(dialog, t('archive.feedback.trashEmptied'), 'success');
+            loadAllArchivedItems();
+            renderAllLists();
+            return true;
+        },
+        null,
+        t('ui.yesDelete')
+    );
 }
