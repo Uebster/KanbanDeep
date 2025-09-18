@@ -166,6 +166,21 @@ export function setCurrentUserId(userId) { return universalSave('currentUserId',
 export function getCard(cardId) { return getItem(cardId, 'card'); }
 export function saveCard(cardData) { return saveItem(cardData, 'card'); }
 export function deleteCard(cardId) { return deleteItem(cardId, 'card'); }
+/**
+ * Arquiva um cartão, marcando-o como arquivado em vez de deletá-lo.
+ * @param {string} cardId - O ID do cartão a ser arquivado.
+ * @param {string} userId - O ID do usuário que está arquivando.
+ * @param {string} reason - O motivo do arquivamento ('archived' ou 'deleted').
+ */
+export function archiveCard(cardId, userId, reason = 'archived') {
+    const card = getCard(cardId);
+    if (!card) return null;
+    card.isArchived = true;
+    card.archivedAt = new Date().toISOString();
+    card.archivedBy = userId;
+    card.archiveReason = reason; // 'archived' ou 'deleted' (para lixeira)
+    return saveCard(card);
+}
 
 // --- Colunas ---
 export function getColumn(columnId) { return getItem(columnId, 'column'); }
@@ -222,16 +237,23 @@ export function deleteBoard(boardId) {
 /**
  * Carrega todos os dados de um quadro de forma "hidratada".
  * Ele pega o quadro, depois busca cada coluna e cada cartão e os aninha.
+ * @param {string} boardId O ID do quadro a ser carregado.
+ * @param {boolean} [includeArchived=false] Se verdadeiro, inclui colunas e cartões arquivados.
  */
-export function getFullBoardData(boardId) {
+export function getFullBoardData(boardId, includeArchived = false) {
     const board = getBoard(boardId);
     if (!board) return null;
 
-    const hydratedColumns = (board.columnIds || []).map(columnId => {
+    // Decide quais colunas carregar com base no parâmetro
+    const columnIdsToLoad = includeArchived 
+        ? [...(board.columnIds || []), ...(board.archivedColumnIds || [])]
+        : (board.columnIds || []);
+
+    const hydratedColumns = columnIdsToLoad.map(columnId => {
         const column = getColumn(columnId);
         if (!column) return null;
 
-        const hydratedCards = (column.cardIds || []).map(cardId => getCard(cardId)).filter(Boolean);
+        const hydratedCards = (column.cardIds || []).map(cardId => getCard(cardId)).filter(card => card && (includeArchived || !card.isArchived));
         return { ...column, cards: hydratedCards };
     }).filter(Boolean);
 

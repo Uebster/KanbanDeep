@@ -3,7 +3,7 @@
 import { getCurrentUser, updateUser, getAllUsers as authGetAllUsers } from './auth.js';
 import { 
     getUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
-    getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard,
+    getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
@@ -2452,12 +2452,30 @@ function createCardContextMenu(event, cardEl) {
  */
 function createColumnContextMenu(event, columnEl) {
     const columnId = columnEl.dataset.columnId;
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
 
     const menuItems = [
         { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => handleEditColumnFromMenu(columnId) },
         { label: t('kanban.contextMenu.column.details'), icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
-        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId) },
+        { isSeparator: true },
         { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId) },
+        { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId) },
+        { isSeparator: true },
+        { 
+            label: t('kanban.button.pasteCard'), 
+            icon: '📋', 
+            action: () => handlePasteCard(columnId),
+            disabled: !clipboard || clipboard.type !== 'card'
+        },
+        { isSeparator: true },
+        { 
+            label: t('kanban.contextMenu.column.archive'), // Adicionar esta chave no pt-BR.json
+            icon: '🗄️', 
+            action: () => archiveColumn(columnId)
+        },
         { isSeparator: true },
         { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true }
     ];
@@ -2465,6 +2483,77 @@ function createColumnContextMenu(event, columnEl) {
     showContextMenu(event, menuItems);
 }
 
+/**
+ * Copia uma coluna e seus cartões para a área de transferência interna.
+ * @param {string} columnId O ID da coluna a ser copiada.
+ */
+function handleCopyColumn(columnId) {
+    const columnToCopy = findColumn(columnId);
+    if (columnToCopy) {
+        // Deep copy dos cartões é necessário para criar novas instâncias
+        const cardsToCopy = columnToCopy.cards.map(card => ({
+            ...card,
+            id: null, // Reseta o ID para criar um novo
+            creatorId: currentUser.id,
+            createdAt: new Date().toISOString()
+        }));
+
+        clipboard = {
+            type: 'column',
+            mode: 'copy',
+            data: {
+                ...columnToCopy,
+                id: null, // Reseta o ID da coluna
+                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`,
+                cards: cardsToCopy // Armazena os dados completos dos cartões a serem criados
+            }
+        };
+        showFloatingMessage(t('kanban.feedback.columnCopied'), 'info');
+    }
+}
+
+/**
+ * Recorta uma coluna, marcando-a para ser movida.
+ * @param {string} columnId O ID da coluna a ser recortada.
+ */
+function handleCutColumn(columnId) {
+    // A permissão já foi verificada na função que chama esta (createColumnContextMenu)
+    const columnToCut = findColumn(columnId);
+    if (columnToCut) {
+        clipboard = {
+            type: 'column',
+            mode: 'cut',
+            sourceColumnId: columnId,
+            sourceBoardId: currentBoard.id,
+            data: columnToCut
+        };
+        showFloatingMessage(t('kanban.feedback.columnCut'), 'info');
+    }
+}
+
+/**
+ * Arquiva uma coluna, movendo-a da visão principal para a lista de arquivadas.
+ * @param {string} columnId O ID da coluna a ser arquivada.
+ */
+function archiveColumn(columnId) {
+    if (!hasPermission(currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
+    const column = findColumn(columnId);
+    if (!column) return;
+
+    column.isArchived = true;
+    saveColumn(column);
+
+    currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+    if (!currentBoard.archivedColumnIds) currentBoard.archivedColumnIds = [];
+    currentBoard.archivedColumnIds.push(columnId);
+    saveBoard(currentBoard);
+
+    showSuccessAndRefresh(null, currentBoard.id);
+}
 
 // --- LÓGICA DO DIÁLOGO DE DETALHES ---
 
@@ -2859,51 +2948,6 @@ function handleEditCardFromMenu(cardId) {
     // A edição de cartão é sempre permitida para membros, então não precisa de verificação aqui,
     // mas a função existe para manter a consistência do fluxo.
     showCardDialog(cardId);
-}
-
-function handleCopyColumn(columnId) {
-    const columnToCopy = findColumn(columnId);
-    if (columnToCopy) {
-        const cardsToCopy = columnToCopy.cards.map(card => ({
-            ...card,
-            id: null, // Reseta o ID para criar um novo
-            creatorId: currentUser.id,
-            createdAt: new Date().toISOString()
-        }));
-
-        clipboard = {
-            type: 'column',
-            mode: 'copy',
-            data: {
-                ...columnToCopy,
-                id: null, // Reseta o ID da coluna
-                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`,
-                cards: cardsToCopy // Armazena os dados completos dos cartões a serem criados
-            }
-        };
-        showFloatingMessage(t('kanban.feedback.columnCopied'), 'info');
-        // Não precisa de updatePasteButtons, pois a colagem de coluna é via Ctrl+V
-    }
-}
-
-function handleCutColumn(columnId) {
-    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-    if (!hasPermission(currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-
-    const columnToCut = findColumn(columnId);
-    if (columnToCut) {
-        clipboard = {
-            type: 'column',
-            mode: 'cut',
-            sourceColumnId: columnId,
-            sourceBoardId: currentBoard.id,
-            data: columnToCut
-        };
-        showFloatingMessage(t('kanban.feedback.columnCut'), 'info');
-    }
 }
 
 // Adicione esta função se ela não existir, ou substitua a antiga

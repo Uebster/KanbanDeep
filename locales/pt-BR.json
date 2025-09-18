@@ -289,6 +289,7 @@
     "kanban.confirm.saveCard": "Deseja salvar as alterações neste cartão?",
     "kanban.confirm.saveColumn": "Deseja salvar as alterações nesta coluna?",
     "kanban.contextMenu.card.copy": "Copiar Cartão",
+    "kanban.contextMenu.column.archive": "Arquivar Coluna",
     "kanban.contextMenu.card.cut": "Recortar Cartão",
     "kanban.contextMenu.card.delete": "Excluir",
     "kanban.contextMenu.card.details": "Detalhes",
