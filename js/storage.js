@@ -234,6 +234,21 @@ export function deleteBoard(boardId) {
     return deleteItem(boardId, 'board');
 }
 
+export function archiveBoard(boardId, userId, reason = 'archived') {
+    const board = getBoard(boardId);
+    if (!board) return null;
+
+    board.isArchived = true;
+    board.archiveReason = reason;
+    board.archivedAt = new Date().toISOString();
+    board.archivedBy = userId;
+    saveBoard(board);
+
+    // A lógica de mover o ID do quadro do perfil do usuário será tratada no kanban.js
+    // para ter acesso ao currentUser.
+    return board;
+}
+
 /**
  * Carrega todos os dados de um quadro de forma "hidratada".
  * Ele pega o quadro, depois busca cada coluna e cada cartão e os aninha.

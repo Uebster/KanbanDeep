@@ -1,8 +1,8 @@
 // js/kanban.js - VERSÃO REFATORADA E FINAL
 
 import { getCurrentUser, updateUser, getAllUsers as authGetAllUsers } from './auth.js';
-import { 
-    getUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
+import { archiveBoard,
+    getUserProfile, saveUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
     getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
@@ -1207,11 +1207,20 @@ function populateManagerBoards() {
         itemEl.innerHTML = `
             <div class="manager-item-title">${titleHtml}</div>
             <div class="manager-item-actions">
+                <button class="btn btn-sm alternative1 archive-board-btn" data-id="${board.id}" title="${t('kanban.contextMenu.column.archive')}">🗄️</button>
                 <button class="btn btn-sm edit" data-id="${board.id}">✏️</button>
                 <button class="btn btn-sm danger" data-id="${board.id}">🗑️</button>
             </div>
         `;
 
+        itemEl.querySelector('.archive-board-btn').onclick = () => {
+            if (hasPermission(board, 'editBoards')) { // Reutiliza a permissão de edição para arquivar
+                document.getElementById('manager-dialog').close();
+                handleArchiveBoard(board.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
         itemEl.querySelector('.btn.edit').onclick = () => {
             if (hasPermission(board, 'editBoards')) {
                 document.getElementById('manager-dialog').close();
@@ -2636,6 +2645,38 @@ function switchBoard(e) {
     updateHeaderButtonPermissions(); // Atualiza permissões ao trocar de quadro
 }
 
+function handleArchiveBoard(boardId) {
+    const boardToArchive = boards.find(b => b.id === boardId);
+    if (!boardToArchive) return;
+
+    showConfirmationDialog(
+        t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }), // Adicionar tradução
+        (dialog) => {
+            const archived = archiveBoard(boardId, currentUser.id, 'archived');
+            if (!archived) return false;
+
+            // Atualiza o perfil do usuário para mover o quadro para a lista de arquivados
+            const userProfile = getUserProfile(currentUser.id);
+            userProfile.boardIds = (userProfile.boardIds || []).filter(id => id !== boardId);
+            if (!userProfile.archivedBoardIds) userProfile.archivedBoardIds = [];
+            if (!userProfile.archivedBoardIds.includes(boardId)) {
+                userProfile.archivedBoardIds.push(boardId);
+            }
+            saveUserProfile(userProfile);
+            
+            // Recarrega os dados para atualizar a lista de quadros
+            loadData().then(() => {
+                // Seleciona o próximo quadro disponível que não esteja arquivado
+                currentBoard = boards.find(b => !b.isArchived) || null; // Seleciona o próximo quadro disponível
+                localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+                renderBoardSelector();
+                renderCurrentBoard();
+                initCustomSelects();
+            });
+            showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success'); // Adicionar tradução
+            return true;
+        });
+}
 function toggleCardComplete(cardId) {
     const { card } = findCardAndColumn(cardId);
     if (card) {

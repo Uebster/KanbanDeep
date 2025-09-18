@@ -1,6 +1,6 @@
 import { getCurrentUser } from './auth.js';
 import { 
-    getUserProfile, 
+    getUserProfile, saveUserProfile,
     getAllGroups, 
     getFullBoardData, 
     getCard, 
@@ -8,7 +8,7 @@ import {
     getColumn, 
     saveColumn, 
     getBoard, 
-    saveBoard,
+    saveBoard, deleteBoard,
     deleteCard, // Hard delete
     deleteColumn, // Hard delete
     getAllUsers
@@ -18,7 +18,7 @@ import { t, initTranslations } from './translations.js';
 
 let currentUser = null;
 let allUsers = [];
-let allArchivedItems = { cards: [], columns: [] };
+let allArchivedItems = { cards: [], columns: [], boards: [] };
 
 export async function initArchivePage() {
     currentUser = getCurrentUser();
@@ -42,7 +42,7 @@ function loadAllArchivedItems() {
     const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
     const allVisibleBoardIds = new Set([...(userProfile.boardIds || []), ...groupBoardIds]);
 
-    allArchivedItems = { cards: [], columns: [] };
+    allArchivedItems = { cards: [], columns: [], boards: [] };
 
     allVisibleBoardIds.forEach(boardId => {
         const board = getFullBoardData(boardId, true); // true to include archived items
@@ -71,30 +71,45 @@ function loadAllArchivedItems() {
         
         allArchivedItems.columns.push(...archivedColumns);
     });
+
+    // Carrega quadros arquivados do perfil do usuário
+    const archivedBoardIds = userProfile.archivedBoardIds || [];
+    const archivedBoards = archivedBoardIds.map(id => getBoard(id)).filter(Boolean);
+    allArchivedItems.boards.push(...archivedBoards);
 }
 
 function renderAllLists() {
     // Archived Tab
+    const archivedBoardsList = document.getElementById('archived-boards-list');
     const archivedCardsList = document.getElementById('archived-cards-list');
     const archivedColumnsList = document.getElementById('archived-columns-list');
     
     // Trash Tab
     const trashCardsList = document.getElementById('trash-cards-list');
     const trashColumnsList = document.getElementById('trash-columns-list'); // Novo container
+    const trashBoardsList = document.getElementById('trash-boards-list');
 
+    archivedBoardsList.innerHTML = '';
     archivedCardsList.innerHTML = '';
     archivedColumnsList.innerHTML = '';
     trashCardsList.innerHTML = '';
     trashColumnsList.innerHTML = '';
+    trashBoardsList.innerHTML = '';
 
+    const archivedBoards = allArchivedItems.boards.filter(b => b.archiveReason !== 'deleted');
     const archivedCards = allArchivedItems.cards.filter(c => c.archiveReason !== 'deleted');
     const archivedColumns = allArchivedItems.columns.filter(c => c.archiveReason !== 'deleted');
+
+    const trashBoards = allArchivedItems.boards.filter(b => b.archiveReason === 'deleted');
     const trashCards = allArchivedItems.cards.filter(c => c.archiveReason === 'deleted');
     const trashColumns = allArchivedItems.columns.filter(c => c.archiveReason === 'deleted'); // Nova lista
 
     // Renderiza cada seção com agrupamento
+    archivedBoards.forEach(board => archivedBoardsList.appendChild(createItemElement(board, 'board')));
     groupAndRenderItems(archivedCards, archivedCardsList, 'card');
     groupAndRenderItems(archivedColumns, archivedColumnsList, 'column');
+    
+    trashBoards.forEach(board => trashBoardsList.appendChild(createItemElement(board, 'board')));
     groupAndRenderItems(trashCards, trashCardsList, 'card');
     groupAndRenderItems(trashColumns, trashColumnsList, 'column');
 }
@@ -138,7 +153,9 @@ function createItemElement(item, type) {
             user: archivedBy 
         });
     } else if (type === 'column') {
-        metaText = `In board '${item.boardName}' | Archived on: ${archivedAt} by ${archivedBy}`;
+        metaText = t('archive.meta.column', { boardName: item.boardName, date: archivedAt, user: archivedBy });
+    } else if (type === 'board') {
+        metaText = t('archive.meta.board', { date: archivedAt, user: archivedBy });
     }
 
     const isTrash = item.archiveReason === 'deleted';
@@ -162,29 +179,35 @@ function createItemElement(item, type) {
     itemEl.querySelector('.restore-btn').addEventListener('click', () => {
         if (type === 'card') handleRestoreCard(item.id);
         if (type === 'column') handleRestoreColumn(item.id);
+        if (type === 'board') handleRestoreBoard(item.id);
     });
 
     if (isTrash) {
         itemEl.querySelector('.delete-btn').addEventListener('click', () => {
             if (type === 'card') handleDeleteCard(item.id);
             if (type === 'column') handleDeleteColumn(item.id);
+            if (type === 'board') handleDeleteBoard(item.id);
         });
     } else {
         itemEl.querySelector('.move-to-trash-btn').addEventListener('click', () => {
             handleMoveToTrash(item.id, type);
         });
     }
-
     return itemEl;
 }
 
 function handleMoveToTrash(itemId, type) {
-    const item = type === 'card' ? getCard(itemId) : getColumn(itemId);
+    let item;
+    if (type === 'card') item = getCard(itemId);
+    else if (type === 'column') item = getColumn(itemId);
+    else if (type === 'board') item = getBoard(itemId);
+
     if (!item) return;
 
     item.archiveReason = 'deleted';
     if (type === 'card') saveCard(item);
     if (type === 'column') saveColumn(item);
+    else if (type === 'board') saveBoard(item);
 
     showFloatingMessage(t('archive.feedback.movedToTrash'), 'info'); // Adicionar tradução
     loadAllArchivedItems();
@@ -194,20 +217,14 @@ function handleMoveToTrash(itemId, type) {
 function handleRestoreCard(cardId) {
     showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
         const card = getCard(cardId);
-        if (!card) {
-            showDialogMessage(dialog, 'Error: Card not found.', 'error');
-            return false;
-        }
+        if (!card) return false;
 
         // Se estiver na lixeira, a restauração o move de volta para "Arquivados".
         if (card.archiveReason === 'deleted') {
             delete card.archiveReason;
         } else {
             // Se estiver em "Arquivados", a restauração o move de volta para o quadro.
-            card.isArchived = false;
-            delete card.archivedAt;
-            delete card.archivedBy;
-            delete card.archiveReason;
+            card.isArchived = false; // A lógica de re-inserir no quadro acontece no Kanban
         }
         saveCard(card);
 
@@ -220,29 +237,47 @@ function handleRestoreCard(cardId) {
 
 function handleRestoreColumn(columnId) {
     showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
-        const itemFromList = allArchivedItems.columns.find(c => c.id === columnId);
-        if (!itemFromList) {
-            showDialogMessage(dialog, 'Error: Column not found in archived list.', 'error');
-            return false;
-        }
-
         const column = getColumn(columnId);
-        const board = getBoard(itemFromList.boardId);
-        if (!column || !board) {
-            showDialogMessage(dialog, 'Error: Column or board not found.', 'error');
-            return false;
-        }
+        if (!column) return false;
 
         if (column.archiveReason === 'deleted') {
             delete column.archiveReason;
         } else {
             column.isArchived = false;
+            // A coluna é marcada como não arquivada.
+            // A lógica de re-inserir no quadro acontece no Kanban.js ao carregar o quadro.
+            // Para simplificar, vamos apenas re-adicionar ao array de colunas ativas do quadro.
+            const board = getBoard(column.boardId);
+            if (!board) return false;
             board.columnIds.push(columnId);
             board.archivedColumnIds = (board.archivedColumnIds || []).filter(id => id !== columnId);
             saveBoard(board);
         }
 
         saveColumn(column);
+        showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
+        loadAllArchivedItems();
+        renderAllLists();
+        return true;
+    });
+}
+
+function handleRestoreBoard(boardId) {
+    showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
+        const board = getBoard(boardId);
+        const userProfile = getUserProfile(currentUser.id);
+        if (!board || !userProfile) return false;
+
+        if (board.archiveReason === 'deleted') {
+            delete board.archiveReason;
+        } else {
+            board.isArchived = false;
+            userProfile.boardIds.push(boardId);
+            userProfile.archivedBoardIds = (userProfile.archivedBoardIds || []).filter(id => id !== boardId);
+            saveUserProfile(userProfile);
+        }
+
+        saveBoard(board);
         showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
         loadAllArchivedItems();
         renderAllLists();
@@ -274,6 +309,17 @@ function handleDeleteColumn(columnId) {
     }, null, t('ui.yesDelete'));
 }
 
+function handleDeleteBoard(boardId) {
+    showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
+        if (deleteBoard(boardId)) { // Usa a função de exclusão permanente do storage
+            showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
+            loadAllArchivedItems();
+            renderAllLists();
+        }
+        return true;
+    }, null, t('ui.yesDelete'));
+}
+
 function setupEventListeners() {
     document.querySelectorAll('.showcase-navbar .nav-item').forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -290,18 +336,19 @@ function setupEventListeners() {
 function handleEmptyTrash() {
     const trashCards = allArchivedItems.cards.filter(c => c.archiveReason === 'deleted');
     const trashColumns = allArchivedItems.columns.filter(c => c.archiveReason === 'deleted');
-    const totalItems = trashCards.length + trashColumns.length;
+    const trashBoards = allArchivedItems.boards.filter(b => b.archiveReason === 'deleted');
+    const totalItems = trashCards.length + trashColumns.length + trashBoards.length;
 
     if (totalItems === 0) {
         showFloatingMessage(t('archive.feedback.trashEmpty'), 'info');
         return;
     }
-
     showConfirmationDialog(
         t('archive.confirm.emptyTrash', { count: totalItems }),
         (dialog) => {
             trashCards.forEach(card => deleteCard(card.id));
             trashColumns.forEach(col => deleteColumn(col.id));
+            trashBoards.forEach(board => deleteBoard(board.id));
 
             showDialogMessage(dialog, t('archive.feedback.trashEmptied'), 'success');
             loadAllArchivedItems();
