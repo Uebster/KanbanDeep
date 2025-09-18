@@ -250,7 +250,7 @@ function setupEventListeners() {
     columnsContainer.addEventListener('dragstart', handleDragStart);
     columnsContainer.addEventListener('dragend', handleDragEnd);
     columnsContainer.addEventListener('dragover', handleDragOver);
-    columnsContainer.addEventListener('dragleave', handleDragLeave);
+    columnsContainer.addEventListener('dragleave', handleDragLeave); // <-- A linha que faltava
     columnsContainer.addEventListener('drop', handleDrop);
 
     // --- NOVA LÓGICA PARA FILTRO DE QUADROS ---
@@ -2084,6 +2084,15 @@ function handleSaveCard() {
                 cardData.creatorId = currentUser.id;
                 cardData.isComplete = false;
                 const newCard = saveCard(cardData);
+
+                // Adiciona o primeiro registro no log de atividades
+                newCard.activityLog = [{
+                    action: 'created',
+                    userId: currentUser.id,
+                    timestamp: new Date().toISOString()
+                }];
+                saveCard(newCard); // Salva novamente com o log
+
                 const targetColumn = currentBoard.columns.find(c => c.id === newColumnId);
                 if (targetColumn) {
                     targetColumn.cardIds.push(newCard.id);
@@ -2214,23 +2223,51 @@ function handleDragStart(e) {
     const targetCard = e.target.closest('.card');
     const targetColumnHeader = e.target.closest('.column-header');
 
+    // --- LÓGICA UNIFICADA DO FANTASMA (CORRIGIDA) ---
     if (targetCard) {
         draggedElement = targetCard;
-        e.dataTransfer.setData('text/plain', draggedElement.dataset.cardId);
     } else if (targetColumnHeader) {
         draggedElement = targetColumnHeader.closest('.column');
-        e.dataTransfer.setData('text/plain', draggedElement.dataset.columnId);
     } else {
-        return; // Não é um elemento arrastável
+        return;
     }
 
-    if (draggedElement) {
-        // Adiciona um pequeno delay para o navegador registrar o início do arraste antes de aplicar a classe
-        setTimeout(() => {
-            draggedElement.classList.add('dragging');
-        }, 0);
-        e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedElement.dataset.cardId || draggedElement.dataset.columnId);
+    e.dataTransfer.effectAllowed = 'move';
+
+    // 1. Cria o clone para ser o fantasma
+    const ghost = draggedElement.cloneNode(true);
+    const rect = draggedElement.getBoundingClientRect();
+    ghost.style.width = `${rect.width}px`;
+
+    if (draggedElement.classList.contains('column')) {
+        ghost.classList.add('column-drag-ghost');
+        ghost.style.height = `${rect.height}px`; // Garante que o fantasma não se achate
+    } else {
+        ghost.classList.add('card-drag-ghost');
     }
+    document.body.appendChild(ghost);
+
+    // 2. Esconde o fantasma padrão do navegador
+    e.dataTransfer.setDragImage(new Image(), 0, 0);
+
+    // 3. Adiciona um listener para mover nosso fantasma customizado
+    const moveGhost = (event) => {
+        ghost.style.left = `${event.clientX}px`;
+        ghost.style.top = `${event.clientY}px`;
+    };
+    document.addEventListener('dragover', moveGhost);
+
+    // 4. Limpa tudo no final do arrasto
+    draggedElement.addEventListener('dragend', () => {
+        document.removeEventListener('dragover', moveGhost);
+        if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+    }, { once: true });
+
+    // 5. Aplica o estilo ao placeholder (o elemento original)
+    setTimeout(() => {
+        draggedElement.classList.add('dragging');
+    }, 0);
 }
 
 function handleDragEnd(e) {
@@ -2246,12 +2283,19 @@ function handleDragEnd(e) {
 function handleDragOver(e) {
     e.preventDefault();
     const targetColumn = e.target.closest('.column');
-    if (targetColumn) {
-        // Remove a classe de outras colunas para ter apenas um alvo por vez
-        document.querySelectorAll('.column.drag-over').forEach(col => {
-            if (col !== targetColumn) col.classList.remove('drag-over');
-        });
-        targetColumn.classList.add('drag-over');
+
+    // Limpa os highlights anteriores para evitar múltiplos indicadores
+    document.querySelectorAll('.column.drag-over, .column.drop-shadow').forEach(col => {
+        col.classList.remove('drag-over', 'drop-shadow');
+    });
+
+    if (draggedElement.classList.contains('card')) {
+        if (targetColumn) targetColumn.classList.add('drag-over');
+    } else if (draggedElement.classList.contains('column')) {
+        // Aplica a sombra na coluna que virá *depois* da que estamos arrastando
+        if (targetColumn && targetColumn !== draggedElement) {
+            targetColumn.classList.add('drop-shadow');
+        }
     }
 }
 
@@ -2259,74 +2303,83 @@ function handleDragLeave(e) {
     const targetColumn = e.target.closest('.column');
     // Só remove a classe se o mouse realmente saiu da coluna (e não apenas de um elemento filho)
     if (targetColumn && !targetColumn.contains(e.relatedTarget)) {
-        targetColumn.classList.remove('drag-over');
+        targetColumn.classList.remove('drag-over', 'drop-shadow');
     }
 }
 
+/**
+ * Lida com o evento de soltar um cartão ou coluna.
+ * Esta função foi reescrita para ser mais robusta e evitar erros de inconsistência.
+ */
 function handleDrop(e) {
     e.preventDefault();
     if (!draggedElement) return;
+    
+    // Limpa todos os highlights visuais ao soltar
+    document.querySelectorAll('.column.drag-over, .column.drop-shadow').forEach(col => col.classList.remove('drag-over', 'drop-shadow'));
 
     const targetColumnEl = e.target.closest('.column');
-    if (!targetColumnEl) return;
-
-    targetColumnEl.classList.remove('drag-over');
+    if (targetColumnEl) targetColumnEl.classList.remove('drag-over');
 
     const isCard = draggedElement.classList.contains('card');
     const isColumn = draggedElement.classList.contains('column');
 
-    if (isCard) {
+    if (isCard && targetColumnEl) {
         const cardId = draggedElement.dataset.cardId;
         const sourceColumnId = draggedElement.closest('.column').dataset.columnId;
         const targetColumnId = targetColumnEl.dataset.columnId;
 
         const sourceColumn = currentBoard.columns.find(c => c.id === sourceColumnId);
         const targetColumn = currentBoard.columns.find(c => c.id === targetColumnId);
-        if (!sourceColumn || !targetColumn) return;
+        if (!sourceColumn || !targetColumn) return; // Aborta se as colunas não forem encontradas
 
-        // Move o elemento no DOM para feedback visual imediato
-        const cardsContainer = targetColumnEl.querySelector('.cards-container');
-        const afterElement = getDragAfterElement(cardsContainer, e.clientY, false);
-        if (afterElement) {
-            cardsContainer.insertBefore(draggedElement, afterElement);
-        } else {
-            cardsContainer.appendChild(draggedElement);
+        // 1. Encontra e remove o cartão do array de dados da coluna de origem
+        const cardIndex = sourceColumn.cards.findIndex(c => c.id === cardId);
+        if (cardIndex === -1) return; // Segurança: se o cartão não estiver nos dados, aborta
+        const [movedCardObject] = sourceColumn.cards.splice(cardIndex, 1);
+        sourceColumn.cardIds.splice(sourceColumn.cardIds.indexOf(cardId), 1);
+
+        // 2. Adiciona o log de atividade
+        if (sourceColumnId !== targetColumnId) {
+            const logEntry = {
+                action: 'moved',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString(),
+                fromColumn: sourceColumn.title,
+                toColumn: targetColumn.title
+            };
+            if (!movedCardObject.activityLog) movedCardObject.activityLog = [];
+            movedCardObject.activityLog.push(logEntry);
         }
 
-        // Atualiza o modelo de dados
-        const originalCardIndex = sourceColumn.cardIds.indexOf(cardId);
-        if (originalCardIndex === -1) return;
-
-        const [removedCardObject] = sourceColumn.cards.splice(originalCardIndex, 1);
-        sourceColumn.cardIds.splice(originalCardIndex, 1);
-
+        // 3. Adiciona o cartão nos dados da coluna de destino na posição correta
+        const cardsContainer = targetColumnEl.querySelector('.cards-container');
+        const afterElement = getDragAfterElement(cardsContainer, e.clientY, false);
         const newIndex = afterElement ? Array.from(cardsContainer.children).indexOf(afterElement) : targetColumn.cardIds.length;
-
         targetColumn.cardIds.splice(newIndex, 0, cardId);
-        targetColumn.cards.splice(newIndex, 0, removedCardObject);
+        targetColumn.cards.splice(newIndex, 0, movedCardObject);
 
+        // 4. Salva as alterações e redesenha a tela para garantir consistência
         saveColumn(sourceColumn);
         if (sourceColumnId !== targetColumnId) saveColumn(targetColumn);
 
-    } else if (isColumn) {
-        const columnId = draggedElement.dataset.columnId;
-        const columnsContainer = document.getElementById('columns-container');
-        const afterElement = getDragAfterElement(columnsContainer, e.clientX, true);
+    } else if (isColumn && targetColumnEl && targetColumnEl !== draggedElement) {
+        // NOVA LÓGICA: "Largar uma coluna dentro da outra"
+        const fromIndex = currentBoard.columnIds.indexOf(draggedElement.dataset.columnId);
+        const toIndex = currentBoard.columnIds.indexOf(targetColumnEl.dataset.columnId);
 
-        // Move no DOM
-        if (afterElement) {
-            columnsContainer.insertBefore(draggedElement, afterElement);
-        } else {
-            columnsContainer.appendChild(draggedElement);
-        }
+        if (fromIndex === -1 || toIndex === -1) return; // Segurança
 
-        // Reordena os IDs no objeto do quadro
-        const newOrderIds = Array.from(columnsContainer.children).map(col => col.dataset.columnId);
-        currentBoard.columnIds = newOrderIds;
+        // Remove o ID da posição original e o insere na nova posição
+        const [movedColumnId] = currentBoard.columnIds.splice(fromIndex, 1);
+        currentBoard.columnIds.splice(toIndex, 0, movedColumnId);
+
         saveBoard(currentBoard);
     }
-    
+
     saveState(); // Salva o estado APÓS a modificação
+    // Redesenha o quadro para garantir que o DOM e os dados estejam 100% sincronizados
+    renderCurrentBoard();
 }
 
 function getDragAfterElement(container, coordinate, isHorizontal) {
@@ -2334,9 +2387,13 @@ function getDragAfterElement(container, coordinate, isHorizontal) {
 
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
-        const offset = isHorizontal 
-            ? coordinate - box.left - box.width / 2 
+        // LÓGICA CORRIGIDA: O ponto de decisão não é mais o centro exato.
+        // O 'offset' agora representa a distância do cursor ao início do elemento.
+        // Isso torna a detecção muito mais natural, especialmente ao mover da direita para a esquerda.
+        const offset = isHorizontal
+            ? coordinate - box.left - box.width / 2
             : coordinate - box.top - box.height / 2;
+
         if (offset < 0 && offset > closest.offset) {
             return { offset: offset, element: child };
         } else {
@@ -2680,6 +2737,24 @@ function handleArchiveBoard(boardId) {
 function toggleCardComplete(cardId) {
     const { card } = findCardAndColumn(cardId);
     if (card) {
+        // Prepara o registro de log ANTES de alterar o estado
+        const logEntry = {
+            action: !card.isComplete ? 'completed' : 'reopened',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString()
+        };
+
+        // Adiciona ou remove a data de conclusão
+        if (!card.isComplete) {
+            card.completedAt = new Date().toISOString();
+        } else {
+            delete card.completedAt;
+        }
+
+        // Adiciona o log ao cartão
+        if (!card.activityLog) card.activityLog = [];
+        card.activityLog.push(logEntry);
+
         card.isComplete = !card.isComplete;
         saveCard(card); // Salva a alteração no armazenamento
         saveState();

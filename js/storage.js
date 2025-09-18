@@ -108,7 +108,11 @@ function generateUniqueId(prefix) {
 // Funções genéricas para salvar/carregar/deletar qualquer tipo de item (usuário, quadro, etc.)
 function getItem(id, prefix) { return universalLoad(`${prefix}_${id}`); }
 function saveItem(itemData, prefix) {
-    if (!itemData.id) itemData.id = generateUniqueId(prefix.slice(0, -1));
+    if (!itemData.id) {
+        itemData.id = generateUniqueId(prefix.slice(0, -1));
+        // Garante que novos itens tenham um log de atividades
+        if (prefix === 'card') itemData.activityLog = [];
+    }
     universalSave(`${prefix}_${itemData.id}`, itemData);
     return itemData;
 }

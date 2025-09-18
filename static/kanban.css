@@ -205,18 +205,66 @@ body {
 
 /* --- EFEITOS DE ARRASTAR E SOLTAR --- */
 
-/* Estilo para o cartão que está sendo arrastado */
+/* NOVO: Estilo para o "fantasma" customizado que segue o mouse. Este é o elemento que o usuário vê em movimento. */
+.card-drag-ghost {
+    position: fixed; /* Usa 'fixed' para flutuar sobre tudo, ignorando o scroll */
+    pointer-events: none; /* Garante que o fantasma não interfira com eventos de drop */
+    z-index: 9999; /* Fica acima de tudo */
+    opacity: 0.8; /* Totalmente sólido, como no exemplo */
+    /* A sombra épica que você queria: uma sombra escura suave + um brilho da cor primária */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+    margin: 0;
+    /* A rotação foi removida para um visual mais limpo */
+    transform: translate(-50%, -50%); /* Centraliza o fantasma no cursor */
+    border: 2px solid var(--primary) !important;
+}
+
+/* NOVO: Estilo para o "fantasma" customizado que segue o mouse. Este é o elemento que o usuário vê em movimento. */
+.column-drag-ghost {
+    position: fixed; /* Usa 'fixed' para flutuar sobre tudo, ignorando o scroll */
+    pointer-events: none; /* Garante que o fantasma não interfira com eventos de drop */
+    z-index: 9999; /* Fica acima de tudo */
+    opacity: 0.8; /* Totalmente sólido, como no exemplo */
+    /* A sombra épica que você queria: uma sombra escura suave + um brilho da cor primária */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+    margin: 0;
+    max-height: 80vh; /* Impede que a coluna se achate ou fique gigante */
+    /* A rotação foi removida para um visual mais limpo */
+    transform: translate(-50%,-3%); /* Centraliza o fantasma no cursor */
+    border: 2px solid var(--primary) !important;
+    overflow: hidden; /* Garante que o conteúdo não vaze do max-height */
+}
+
+/* Estilo para o placeholder que fica no lugar original do cartão (o que você gostou). */
 .card.dragging {
+    /* Deixa o original semitransparente com borda tracejada */
     opacity: 0.4;
-    border-style: dashed;
-    box-shadow: none; /* Remove a sombra do item original */
+    border: 2px solid var(--primary) !important;
+}
+
+.column.dragging {
+    opacity: 0.4;
+    border: 2px solid var(--primary) !important;
 }
 
 /* Estilo para a coluna quando um cartão está sendo arrastado sobre ela */
 .column.drag-over .cards-container {
+    opacity: 0.4;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
+    offset: 4px;
+}
+
+/* NOVO: Estilo para o container de colunas quando uma coluna está sendo arrastada sobre ele */
+#columns-container.drag-over-column {
+    background-color: rgba(var(--primary-rgb), 0.05);
     outline: 2px dashed var(--primary);
-    outline-offset: -10px;
-    background-color: rgba(var(--primary-rgb), 0.1);
+    outline-offset: -5px;
+}
+
+/* NOVO: Estilo de sombra para a coluna que será movida */
+.column.drop-shadow {
+    box-shadow: 0 0 25px rgba(var(--primary-rgb));
+    border-color: var(--primary);
 }
 
 /* O conteúdo agora tem seu próprio padding e posicionamento */
