@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n-title="archive.pageTitle">Arquivo e Lixeira - KanbanDeep</title>
+    <link rel="stylesheet" href="../static/universal.css">
+    <link rel="stylesheet" href="../static/archive.css"> <!-- Vamos criar este CSS depois -->
+</head>
+<body>
+    <div id="message-container"></div>
+
+    <header id="main-header">
+        <div class="menu-container">
+            <button id="user-avatar-btn" class="avatar-btn">
+                <img id="user-avatar" src="" alt="Avatar do Usuário">
+            </button>
+            <div id="profile-dropdown" class="dropdown">
+                <button id="switch-user-btn" data-i18n="kanban.profileMenu.switchProfile">🔁 Trocar Perfil</button>
+                <button id="user-profile-btn" data-i18n="kanban.profileMenu.myProfile">👤 Meu Perfil</button>
+                <button id="kanban-btn" data-i18n="kanban.header.myBoards">📋 Meus Quadros</button>
+                <button id="friends-btn" data-i18n="kanban.profileMenu.friends">🧑‍🤝‍🧑 Amigos</button>
+                <button id="my-groups-btn" data-i18n="kanban.profileMenu.myGroups">👥 Meus Grupos</button>
+                <button id="templates-btn" data-i18n="kanban.profileMenu.manageTemplates">🎨 Gerenciar Templates</button>
+                <button id="archive-btn" data-i18n="archive.pageTitle">🗄️ Arquivo</button>
+                <button id="notifications-btn" data-i18n="kanban.profileMenu.notifications">🔔 Notificações</button>
+                <hr>
+                <button id="exit-btn" data-i18n="kanban.profileMenu.exit">🚪 Sair</button>
+            </div>
+        </div>
+        <h1 id="page-title" data-i18n="archive.pageTitle"></h1>
+        <div class="menu-container">
+            <button id="actions-dropdown-btn" class="btn" data-i18n="kanban.header.actions">⚡ Ações</button>
+            <div id="actions-dropdown" class="dropdown">
+                <button id="empty-trash-btn" data-i18n="archive.buttons.emptyTrash">🗑️ Esvaziar Lixeira</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="card">
+        <nav class="showcase-navbar">
+            <button class="nav-item active" data-tab="archived-content" data-i18n="archive.tabs.archived"></button>
+            <button class="nav-item" data-tab="trash-content" data-i18n="archive.tabs.trash"></button>
+        </nav>
+
+        <div id="archived-content" class="tab-content active">
+            <div class="archive-section">
+                <h3 data-i18n="archive.sections.cards"></h3>
+                <div id="archived-cards-list" class="archive-list"></div>
+            </div>
+            <div class="archive-section">
+                <h3 data-i18n="archive.sections.columns"></h3>
+                <div id="archived-columns-list" class="archive-list"></div>
+            </div>
+        </div>
+
+        <div id="trash-content" class="tab-content">
+            <div class="archive-section">
+                <h3 data-i18n="archive.sections.cards"></h3>
+                <div id="trash-cards-list" class="archive-list"></div>
+            </div>
+            <div class="archive-section">
+                <h3 data-i18n="archive.sections.columns"></h3>
+                <div id="trash-columns-list" class="archive-list"></div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="../js/main.js"></script>
+</body>
+</html>

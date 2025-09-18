@@ -9,6 +9,7 @@ import { initProfilePage } from './profile.js';
 import { initGroupsPage, checkAndSendReports } from './groups.js';
 import { initNotificationsPage } from './notifications.js';
 import { initFriendsPage } from './friends.js'; // Já estava aqui
+import { initArchivePage } from './archive.js';
 import { initTemplatesPage } from './templates.js';
 import { initPublicProfilePage } from './public-profile.js';
 import { updateUserAvatar } from './ui-controls.js';
@@ -39,6 +40,8 @@ async function main() { // <-- Torna a função principal assíncrona
             await initGroupsPage();
         } else if (path.includes('friends.html')) {
             await initFriendsPage();
+        } else if (path.includes('archive.html')) {
+            await initArchivePage();
         } else if (path.includes('notifications.html')) {
             await initNotificationsPage();
         } else if (path.includes('templates.html')) {
@@ -124,6 +127,9 @@ function setupGlobalHeader() {
 
     const friendsBtn = document.getElementById('friends-btn');
     if (friendsBtn) friendsBtn.addEventListener('click', () => window.location.href = 'friends.html');
+
+    const archiveBtn = document.getElementById('archive-btn');
+    if (archiveBtn) archiveBtn.addEventListener('click', () => window.location.href = 'archive.html');
 
     const notificationsBtn = document.getElementById('notifications-btn');
     if (notificationsBtn) notificationsBtn.addEventListener('click', () => window.location.href = 'notifications.html');
