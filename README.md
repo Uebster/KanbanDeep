@@ -1,7 +1,5 @@
 # KanbanDeep
 
-![KanbanDeep Logo](https://via.placeholder.com/800x250.png?text=KanbanDeep+Project)
-
 **KanbanDeep** é um sistema de gerenciamento de projetos e tarefas inspirado no Kanban, construído como uma aplicação desktop moderna e offline-first. Ele foi projetado para ser altamente personalizável, colaborativo e eficiente, ajudando você a organizar desde projetos pessoais até fluxos de trabalho complexos em equipe.
 
 ---
