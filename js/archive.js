@@ -224,6 +224,15 @@ function handleRestoreCard(cardId) {
 
         // Se estiver na lixeira, a restauração o move de volta para "Arquivados".
         if (card.archiveReason === 'deleted') {
+            // Adiciona o log de restauração da lixeira
+            const logEntry = {
+                action: 'restored',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString(),
+                from: 'trash'
+            };
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push(logEntry);
             delete card.archiveReason;
             saveCard(card);
         } else {
@@ -243,6 +252,16 @@ function handleRestoreCard(cardId) {
                 column.cardIds.push(cardId);
                 saveColumn(column);
             }
+            
+            // Adiciona o log de restauração do arquivo
+            const logEntry = {
+                action: 'restored',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString(),
+                from: 'archive'
+            };
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push(logEntry);
             
             card.isArchived = false;
             delete card.archivedAt;
@@ -309,6 +328,20 @@ function handleRestoreBoard(boardId) {
 
 function handleDeleteCard(cardId) {
     showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
+        // Antes de deletar, adicionamos um último log.
+        const card = getCard(cardId);
+        if (card) {
+            const logEntry = {
+                action: 'deleted',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push(logEntry);
+            // Salvamos o cartão uma última vez com o log de exclusão.
+            saveCard(card);
+        }
+
         if (deleteCard(cardId)) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             loadAllArchivedItems();

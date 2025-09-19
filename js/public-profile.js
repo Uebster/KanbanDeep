@@ -512,8 +512,23 @@ function toggleFollow() {
 }
 
 function sendMessage() {
-    // CORREÇÃO: Usa a função universal de diálogo de mensagem para consistência e correção de bugs.
-    showPrivateMessageDialog(viewedUser.id);
+    // A lógica de envio agora é tratada aqui, no local que chama o diálogo.
+    showPrivateMessageDialog(viewedUser, (message, dialog) => {
+        // 1. Chama a função de notificação, que já está importada neste arquivo.
+        addMessageNotification(
+            currentUser.name,
+            currentUser.id,
+            viewedUser.id,
+            message.length > 50 ? message.substring(0, 50) + '...' : message
+        );
+
+        // 2. Mostra a mensagem de sucesso dentro do diálogo.
+        showDialogMessage(dialog, t('publicProfile.messageDialog.success'), 'success');
+
+        // 3. Desabilita os botões e fecha o diálogo após um intervalo.
+        dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
+        setTimeout(() => { dialog.close(); dialog.remove(); }, 1500);
+    });
 }
 
 function unfriendUser() {

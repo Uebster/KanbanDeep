@@ -402,6 +402,51 @@ body {
 
 .tooltip-details strong { color: var(--text); }
 
+/* --- ESTILOS PARA O DIÁLOGO DE DETALHES COM ABAS --- */
+.details-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 15px;
+}
+
+.details-tab-btn {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    color: var(--text-muted);
+    font-size: 1rem;
+    position: relative;
+    bottom: -2px; /* Alinha com a borda inferior */
+    border-bottom: 2px solid transparent;
+}
+
+.details-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.details-tab-pane {
+    display: none;
+}
+
+.details-tab-pane.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.activity-log-list { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; }
+.activity-log-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+.activity-log-item:last-child { border-bottom: none; }
+.log-message { margin-bottom: 5px; }
+.log-message strong { color: var(--primary); }
+.log-date { font-size: 0.8rem; color: var(--text-muted); }
+.activity-log-empty { text-align: center; padding: 20px; color: var(--text-muted); font-style: italic; }
+
+
 /* --- NOVO: ESTILOS DO TOUR GUIADO --- */
 .tour-highlight {
     position: relative;

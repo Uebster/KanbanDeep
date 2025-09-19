@@ -2654,26 +2654,34 @@ function archiveColumn(columnId, reason = 'archived') {
 function showDetailsDialog(cardId = null, columnId = null) {
     const dialog = document.getElementById('details-dialog');
     const titleEl = document.getElementById('details-title');
-    const contentEl = document.getElementById('details-content');
-    contentEl.innerHTML = ''; // Limpa o conteúdo anterior
+    const contentContainer = document.getElementById('details-content');
+    contentContainer.innerHTML = ''; // Limpa o conteúdo anterior
 
     if (cardId) {
         const { card } = findCardAndColumn(cardId);
         titleEl.textContent = t('kanban.dialog.details.cardTitle', { title: card.title });
         
-        const creator = allUsers.find(u => u.id === card.creatorId);
-        const assignee = allUsers.find(u => u.id === card.assignedTo);
-        
-        let detailsHtml = '<ul>';
-        if (creator) detailsHtml += `<li><strong>${t('kanban.dialog.details.creator')}</strong> ${creator.name}</li>`;
-        if (assignee) detailsHtml += `<li><strong>${t('kanban.dialog.details.assignee')}</strong> ${assignee.name}</li>`;
-        detailsHtml += `<li><strong>${t('kanban.dialog.details.status')}</strong> ${card.isComplete ? t('kanban.dialog.details.statusCompleted') : t('kanban.dialog.details.statusActive')}</li>`;
-        if (card.dueDate) detailsHtml += `<li><strong>${t('kanban.dialog.details.dueDate')}</strong> ${new Date(card.dueDate).toLocaleString()}</li>`;
-        if (card.tags && card.tags.length > 0) detailsHtml += `<li><strong>${t('kanban.dialog.details.tags')}</strong> ${card.tags.join(', ')}</li>`;
-        if (card.description) detailsHtml += `<li><strong>${t('kanban.dialog.details.description')}</strong><p>${card.description.replace(/\n/g, '<br>')}</p></li>`;
-        detailsHtml += '</ul>';
-        
-        contentEl.innerHTML = detailsHtml;
+        // Cria a estrutura de abas
+        contentContainer.innerHTML = `
+            <div class="details-tabs">
+                <button class="details-tab-btn active" data-tab="details-pane">${t('activityLog.details.tabDetails')}</button>
+                <button class="details-tab-btn" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
+            </div>
+            <div id="details-pane" class="details-tab-pane active"></div>
+            <div id="activity-pane" class="details-tab-pane"></div>
+        `;
+
+        renderCardDetails(card, contentContainer.querySelector('#details-pane'));
+        renderActivityLog(card, contentContainer.querySelector('#activity-pane'));
+
+        // Adiciona listeners para as abas
+        contentContainer.querySelectorAll('.details-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                contentContainer.querySelectorAll('.details-tab-btn, .details-tab-pane').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+                contentContainer.querySelector(`#${btn.dataset.tab}`).classList.add('active');
+            });
+        });
 
     } else if (columnId) {
         const column = findColumn(columnId);
@@ -2684,10 +2692,72 @@ function showDetailsDialog(cardId = null, columnId = null) {
         // No futuro, poderíamos adicionar criador, etc. à coluna
         detailsHtml += '</ul>';
         
-        contentEl.innerHTML = detailsHtml;
+        contentContainer.innerHTML = detailsHtml;
     }
 
     dialog.showModal();
+}
+
+/**
+ * Renderiza a aba de detalhes de um cartão.
+ * @param {object} card - O objeto do cartão.
+ * @param {HTMLElement} container - O elemento onde os detalhes serão renderizados.
+ */
+function renderCardDetails(card, container) {
+    const creator = allUsers.find(u => u.id === card.creatorId);
+    const assignee = allUsers.find(u => u.id === card.assignedTo);
+    
+    let detailsHtml = '<ul>';
+    if (creator) detailsHtml += `<li><strong>${t('kanban.dialog.details.creator')}</strong> ${creator.name}</li>`;
+    if (assignee) detailsHtml += `<li><strong>${t('kanban.dialog.details.assignee')}</strong> ${assignee.name}</li>`;
+    detailsHtml += `<li><strong>${t('kanban.dialog.details.status')}</strong> ${card.isComplete ? t('kanban.dialog.details.statusCompleted') : t('kanban.dialog.details.statusActive')}</li>`;
+    if (card.dueDate) detailsHtml += `<li><strong>${t('kanban.dialog.details.dueDate')}</strong> ${new Date(card.dueDate).toLocaleString()}</li>`;
+    if (card.tags && card.tags.length > 0) detailsHtml += `<li><strong>${t('kanban.dialog.details.tags')}</strong> ${card.tags.join(', ')}</li>`;
+    if (card.description) detailsHtml += `<li><strong>${t('kanban.dialog.details.description')}</strong><p>${card.description.replace(/\n/g, '<br>')}</p></li>`;
+    detailsHtml += '</ul>';
+    
+    container.innerHTML = detailsHtml;
+}
+
+/**
+ * Renderiza a aba de log de atividades de um cartão.
+ * @param {object} card - O objeto do cartão.
+ * @param {HTMLElement} container - O elemento onde o log será renderizado.
+ */
+function renderActivityLog(card, container) {
+    const log = card.activityLog || [];
+    if (log.length === 0) {
+        container.innerHTML = `<p class="activity-log-empty">${t('activityLog.empty')}</p>`;
+        return;
+    }
+
+    // Ordena do mais recente para o mais antigo
+    const sortedLog = log.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    let logHtml = '<ul class="activity-log-list">';
+    sortedLog.forEach(entry => {
+        const user = allUsers.find(u => u.id === entry.userId)?.name || 'Sistema';
+        const date = new Date(entry.timestamp).toLocaleString();
+        const fromLocation = entry.from === 'trash' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+        
+        const replacements = {
+            user: `<strong>${user}</strong>`,
+            from: entry.fromColumn || fromLocation,
+            to: entry.toColumn
+        };
+        
+        const message = t(`activityLog.action.${entry.action}`, replacements)
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Converte markdown **bold** para <strong>
+
+        logHtml += `
+            <li class="activity-log-item">
+                <div class="log-message">${message}</div>
+                <div class="log-date">${date}</div>
+            </li>
+        `;
+    });
+    logHtml += '</ul>';
+    container.innerHTML = logHtml;
 }
 
 // ===== LÓGICA DE AÇÕES E UTILIDADES =====
@@ -2828,8 +2898,18 @@ function handleDeleteCard(cardId) {
         (dialog) => {
             const { card, column } = findCardAndColumn(cardId);
             if (!card || !column) return false;
+            
+            // Adiciona a ação 'trashed' ao log de atividades
+            const logEntry = {
+                action: 'trashed',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push(logEntry);
+            saveCard(card); // Salva o log antes de arquivar
 
-            // CORREÇÃO: Em vez de deletar, arquiva com o motivo 'deleted' (move para a lixeira).
+            // Arquiva com o motivo 'deleted' (move para a lixeira).
             archiveCard(cardId, currentUser.id, 'deleted', column.id);
 
             // Remove da visualização atual em memória
@@ -2855,6 +2935,16 @@ function handleArchiveCard(cardId) {
     if (!card) return;
 
     showConfirmationDialog(t('archive.confirm.archiveCard', { cardTitle: card.title }), (dialog) => {
+        // Adiciona a ação 'archived' ao log de atividades
+        const logEntry = {
+            action: 'archived',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString()
+        };
+        if (!card.activityLog) card.activityLog = [];
+        card.activityLog.push(logEntry);
+        saveCard(card); // Salva o log antes de arquivar
+
         archiveCard(cardId, currentUser.id, 'archived', column.id);
         saveState();
         showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
