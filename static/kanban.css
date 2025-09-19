@@ -224,16 +224,23 @@ body {
     position: fixed; /* Usa 'fixed' para flutuar sobre tudo, ignorando o scroll */
     pointer-events: none; /* Garante que o fantasma não interfira com eventos de drop */
     z-index: 9999; /* Fica acima de tudo */
-    opacity: 0.8; /* Totalmente sólido, como no exemplo */
+    opacity: 0.8; /* Aplica 80% de opacidade a toda a coluna fantasma */
     /* A sombra épica que você queria: uma sombra escura suave + um brilho da cor primária */
     box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
     margin: 0;
     max-height: 80vh; /* Impede que a coluna se achate ou fique gigante */
-    /* A rotação foi removida para um visual mais limpo */
     transform: translate(-50%,-3%); /* Centraliza o fantasma no cursor */
     border: 2px solid var(--primary) !important;
     overflow: hidden; /* Garante que o conteúdo não vaze do max-height */
 }
+
+/* Garante que o header e o footer do fantasma tenham um fundo sólido antes da opacidade ser aplicada */
+.column-drag-ghost .column-header,
+.column-drag-ghost .add-card-btn {
+    background-color: var(--bg-card); /* Usa uma cor de fundo sólida e consistente */
+    color: var(--text); /* Garante que o texto seja visível */
+}
+
 
 /* Estilo para o placeholder que fica no lugar original do cartão (o que você gostou). */
 .card.dragging {
@@ -252,13 +259,6 @@ body {
     opacity: 0.4;
     box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
     offset: 4px;
-}
-
-/* NOVO: Estilo para o container de colunas quando uma coluna está sendo arrastada sobre ele */
-#columns-container.drag-over-column {
-    background-color: rgba(var(--primary-rgb), 0.05);
-    outline: 2px dashed var(--primary);
-    outline-offset: -5px;
 }
 
 /* NOVO: Estilo de sombra para a coluna que será movida */
