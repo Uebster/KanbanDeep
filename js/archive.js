@@ -278,27 +278,51 @@ function handleRestoreCard(cardId) {
 
 function handleRestoreColumn(columnId) {
     showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
-        const column = getColumn(columnId);
-        if (!column) return false;
+        const column = getColumn(columnId); // A função getColumn já existe no storage.js
+        if (!column) {
+            // MELHORIA: Mostra um erro claro e não congela o diálogo.
+            showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnNotFound'), 'error');
+            // Retornar undefined/null reabilita os botões no ui-controls.
+            return; 
+        }
+
+        const logAction = column.archiveReason === 'deleted' ? 'restored' : 'restored';
+        const fromLocation = column.archiveReason === 'deleted' ? 'trash' : 'archive';
 
         if (column.archiveReason === 'deleted') {
             delete column.archiveReason;
         } else {
-            column.isArchived = false;
-            // A coluna é marcada como não arquivada.
-            // A lógica de re-inserir no quadro acontece no Kanban.js ao carregar o quadro.
-            // Para simplificar, vamos apenas re-adicionar ao array de colunas ativas do quadro.
-            const board = getBoard(column.boardId);
-            if (!board) return false;
-            board.columnIds.push(columnId);
+            const board = getBoard(column.boardId); // A função getBoard já existe no storage.js
+            if (!board) {
+                // MELHORIA: Lida com o caso de quadro não encontrado.
+                showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnNotFound'), 'error');
+                return; // Reabilita os botões.
+            }
+
+            if (!board.columnIds.includes(columnId)) {
+                board.columnIds.push(columnId);
+            }
             board.archivedColumnIds = (board.archivedColumnIds || []).filter(id => id !== columnId);
             saveBoard(board);
         }
 
+        // Adiciona a entrada de log
+        const logEntry = {
+            action: logAction,
+            userId: currentUser.id,
+            timestamp: new Date().toISOString(),
+            from: fromLocation
+        };
+        if (!column.activityLog) column.activityLog = [];
+        column.activityLog.push(logEntry);
+
+        // A propriedade isArchived só deve ser alterada após o log e antes de salvar.
+        column.isArchived = false;
+
         saveColumn(column);
         showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
         loadAllArchivedItems();
-        renderAllLists();
+        renderAllLists(); // A função renderAllLists já existe
         return true;
     });
 }
@@ -354,6 +378,19 @@ function handleDeleteCard(cardId) {
 
 function handleDeleteColumn(columnId) {
     showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
+        // Adiciona o log de exclusão antes de deletar
+        const column = getColumn(columnId);
+        if (column) {
+            const logEntry = {
+                action: 'deleted',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+            if (!column.activityLog) column.activityLog = [];
+            column.activityLog.push(logEntry);
+            saveColumn(column);
+        }
+
         if (deleteColumn(columnId)) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             loadAllArchivedItems();

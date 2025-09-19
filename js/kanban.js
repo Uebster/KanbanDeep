@@ -1796,12 +1796,34 @@ function handleSaveColumn() {
             if (columnId && columnId !== 'null') {
                 const existingColumn = getColumn(columnId);
                 if (existingColumn) {
+                    // Adiciona um log de edição se algo mudou
+                    const hasChanged = existingColumn.title !== columnData.title ||
+                                     (existingColumn.description || '') !== (columnData.description || '') ||
+                                     (existingColumn.color || null) !== columnData.color ||
+                                     (existingColumn.textColor || null) !== columnData.textColor;
+
+                    if (hasChanged) {
+                        const logEntry = {
+                            action: 'edited',
+                            userId: currentUser.id,
+                            timestamp: new Date().toISOString()
+                        };
+                        if (!existingColumn.activityLog) existingColumn.activityLog = [];
+                        existingColumn.activityLog.push(logEntry);
+                    }
                     Object.assign(existingColumn, columnData);
                     saveColumn(existingColumn);
                 }
             } else { // Criando uma nova coluna
                 const newColumn = saveColumn({ ...columnData, cardIds: [] });
                 // Busca o quadro do storage para garantir que estamos atualizando a versão mais recente
+                // Adiciona o log de criação
+                newColumn.activityLog = [{
+                    action: 'created',
+                    userId: currentUser.id,
+                    timestamp: new Date().toISOString()
+                }];
+                saveColumn(newColumn);
                 const boardData = getBoard(currentBoard.id);
                 if (boardData) {
                     boardData.columnIds.push(newColumn.id);
@@ -2365,13 +2387,27 @@ function handleDrop(e) {
 
     } else if (isColumn && targetColumnEl && targetColumnEl !== draggedElement) {
         // NOVA LÓGICA: "Largar uma coluna dentro da outra"
-        const fromIndex = currentBoard.columnIds.indexOf(draggedElement.dataset.columnId);
+        const movedColumnId = draggedElement.dataset.columnId;
+        const fromIndex = currentBoard.columnIds.indexOf(movedColumnId);
         const toIndex = currentBoard.columnIds.indexOf(targetColumnEl.dataset.columnId);
 
         if (fromIndex === -1 || toIndex === -1) return; // Segurança
 
+        // Adiciona o log de movimentação na própria coluna
+        const movedColumn = findColumn(movedColumnId);
+        if (movedColumn) {
+            const logEntry = {
+                action: 'moved',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+            if (!movedColumn.activityLog) movedColumn.activityLog = [];
+            movedColumn.activityLog.push(logEntry);
+            saveColumn(movedColumn);
+        }
+
         // Remove o ID da posição original e o insere na nova posição
-        const [movedColumnId] = currentBoard.columnIds.splice(fromIndex, 1);
+        currentBoard.columnIds.splice(fromIndex, 1);
         currentBoard.columnIds.splice(toIndex, 0, movedColumnId);
 
         saveBoard(currentBoard);
@@ -2626,6 +2662,19 @@ function archiveColumn(columnId, reason = 'archived') {
     const column = findColumn(columnId);
     if (!column) return;
 
+    // CORREÇÃO: Garante que a referência ao quadro seja salva junto com a coluna.
+    column.boardId = currentBoard.id;
+    // Adiciona a entrada de log apropriada
+    const logEntry = {
+        action: reason === 'deleted' ? 'trashed' : 'archived',
+        userId: currentUser.id,
+        timestamp: new Date().toISOString()
+    };
+    if (!column.activityLog) {
+        column.activityLog = [];
+    }
+    column.activityLog.push(logEntry);
+
     // Adiciona metadados de arquivamento
     column.isArchived = true;
     column.archiveReason = reason;
@@ -2686,16 +2735,43 @@ function showDetailsDialog(cardId = null, columnId = null) {
     } else if (columnId) {
         const column = findColumn(columnId);
         titleEl.textContent = t('kanban.dialog.details.columnTitle', { title: column.title });
-        
-        let detailsHtml = '<ul>';
-        if (column.description) detailsHtml += `<li><strong>${t('kanban.dialog.details.description')}</strong><p>${column.description.replace(/\n/g, '<br>')}</p></li>`;
-        // No futuro, poderíamos adicionar criador, etc. à coluna
-        detailsHtml += '</ul>';
-        
-        contentContainer.innerHTML = detailsHtml;
+
+        // Cria a estrutura de abas para colunas também
+        contentContainer.innerHTML = `
+            <div class="details-tabs">
+                <button class="details-tab-btn active" data-tab="details-pane">${t('activityLog.details.tabDetails')}</button>
+                <button class="details-tab-btn" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
+            </div>
+            <div id="details-pane" class="details-tab-pane active"></div>
+            <div id="activity-pane" class="details-tab-pane"></div>
+        `;
+
+        renderColumnDetails(column, contentContainer.querySelector('#details-pane'));
+        renderColumnActivityLog(column, contentContainer.querySelector('#activity-pane'));
+
+        // Adiciona listeners para as abas
+        contentContainer.querySelectorAll('.details-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                contentContainer.querySelectorAll('.details-tab-btn, .details-tab-pane').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+                contentContainer.querySelector(`#${btn.dataset.tab}`).classList.add('active');
+            });
+        });
     }
 
     dialog.showModal();
+}
+
+/**
+ * Renderiza a aba de detalhes de uma coluna.
+ * @param {object} column - O objeto da coluna.
+ * @param {HTMLElement} container - O elemento onde os detalhes serão renderizados.
+ */
+function renderColumnDetails(column, container) {
+    let detailsHtml = '<ul>';
+    if (column.description) detailsHtml += `<li><strong>${t('kanban.dialog.details.description')}</strong><p>${column.description.replace(/\n/g, '<br>')}</p></li>`;
+    detailsHtml += '</ul>';
+    container.innerHTML = detailsHtml;
 }
 
 /**
@@ -2755,6 +2831,41 @@ function renderActivityLog(card, container) {
                 <div class="log-date">${date}</div>
             </li>
         `;
+    });
+    logHtml += '</ul>';
+    container.innerHTML = logHtml;
+}
+
+/**
+ * Renderiza a aba de log de atividades de uma coluna.
+ * @param {object} column - O objeto da coluna.
+ * @param {HTMLElement} container - O elemento onde o log será renderizado.
+ */
+function renderColumnActivityLog(column, container) {
+    const log = column.activityLog || [];
+    if (log.length === 0) {
+        container.innerHTML = `<p class="activity-log-empty">${t('activityLog.emptyColumn')}</p>`;
+        return;
+    }
+
+    const sortedLog = log.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    let logHtml = '<ul class="activity-log-list">';
+    sortedLog.forEach(entry => {
+        const user = allUsers.find(u => u.id === entry.userId)?.name || 'Sistema';
+        const date = new Date(entry.timestamp).toLocaleString();
+        const fromLocation = entry.from === 'trash' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+        
+        const replacements = {
+            user: `<strong>${user}</strong>`,
+            column: `<strong>${column.title}</strong>`,
+            from: fromLocation
+        };
+        
+        const message = t(`activityLog.action.column.${entry.action}`, replacements)
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        logHtml += `<li class="activity-log-item"><div class="log-message">${message}</div><div class="log-date">${date}</div></li>`;
     });
     logHtml += '</ul>';
     container.innerHTML = logHtml;
