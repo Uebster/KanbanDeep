@@ -228,7 +228,7 @@ body {
     /* A sombra épica que você queria: uma sombra escura suave + um brilho da cor primária */
     box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
     margin: 0;
-    max-height: 80vh; /* Impede que a coluna se achate ou fique gigante */
+    max-height: 100vh; /* Impede que a coluna se achate ou fique gigante */
     transform: translate(-50%,-3%); /* Centraliza o fantasma no cursor */
     border: 2px solid var(--primary) !important;
     overflow: hidden; /* Garante que o conteúdo não vaze do max-height */
@@ -446,6 +446,13 @@ body {
 .log-date { font-size: 0.8rem; color: var(--text-muted); }
 .activity-log-empty { text-align: center; padding: 20px; color: var(--text-muted); font-style: italic; }
 
+/* Estilos para os resultados da busca global */
+.search-result-item {
+    cursor: pointer;
+}
+.search-result-item .item-meta {
+    font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;
+}
 
 /* --- NOVO: ESTILOS DO TOUR GUIADO --- */
 .tour-highlight {

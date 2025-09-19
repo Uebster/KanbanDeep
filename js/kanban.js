@@ -7,7 +7,10 @@ import { archiveBoard,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, 
+    initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, 
+    applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, 
+    showCustomColorPickerDialog, makeDraggable } from './ui-controls.js';
 import { t, initTranslations, applyTranslations, loadLanguage } from './translations.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
@@ -228,6 +231,7 @@ function setupEventListeners() {
     document.getElementById('start-tour-btn')?.addEventListener('click', startTour);
     document.getElementById('export-img')?.addEventListener('click', () => handleExportImage());
     document.getElementById('save-as-template-btn')?.addEventListener('click', saveBoardAsTemplate);
+    document.getElementById('search-cards-btn')?.addEventListener('click', showSearchDialog);
     document.getElementById('print-btn')?.addEventListener('click', handlePrintBoard);
     // --- Diálogos (Modais) ---
     document.getElementById('board-save-btn')?.addEventListener('click', handleSaveBoard);
@@ -345,13 +349,14 @@ const tourSteps = [
     { element: '#add-column-btn', title: 'tour.step9.title', text: 'tour.step9.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
     { element: '#add-card-btn', title: 'tour.step10.title', text: 'tour.step10.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
     { element: '#actions-dropdown-btn', title: 'tour.step11.title', text: 'tour.step11.text', position: 'bottom', context: null },
+    { element: '#search-cards-btn', title: 'tour.step_search.title', text: 'tour.step_search.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
     { element: '#save-as-template-btn', title: 'tour.step_save_template.title', text: 'tour.step_save_template.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
     { element: '#print-btn', title: 'tour.step13.title', text: 'tour.step13.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
     { element: '#export-img', title: 'tour.step12.title', text: 'tour.step12.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
     { element: '#kanban-title', title: 'tour.step14.title', text: 'tour.step14.text', position: 'bottom', preAction: createTourBoard, undoAction: undoTourBoard, context: null, isCreation: true },
     { element: '#kanban-title', title: 'tour.step15.title', text: 'tour.step15.text', position: 'bottom', context: null, noHighlight: true },
     { element: '#kanban-title', title: 'tour.step16.title', text: 'tour.step16.text', position: 'bottom', preAction: createTourColumn, undoAction: undoTourColumn, context: null, noHighlight: true, isCreation: true },
-    { element: '.card', title: 'tour.step17.title', text: 'tour.step17.text', position: 'bottom', preAction: createTourCard, undoAction: undoTourCard, context: null, isCreation: true }
+    { element: '.card', title: 'tour.step17.title', text: 'tour.step17.text', position: 'bottom', preAction: createTourCard, undoAction: undoTourCard, context: null, isCreation: true },
 ];
 
 function startTour() {
@@ -604,35 +609,91 @@ function undoTourCard() {
 
 function showSearchDialog() {
     const dialog = document.getElementById('search-dialog');
-    if (!currentBoard) {
-        showFloatingMessage(t('kanban.feedback.selectBoardForSearch'), 'error');
-        return;
-    }
+    // Lógica das abas
+    const tabs = dialog.querySelectorAll('.details-tab-btn');
+    const panes = dialog.querySelectorAll('.details-tab-pane');
+    const applyBtn = document.getElementById('search-apply-btn');
+    const resetBtn = document.getElementById('search-reset-btn');
 
-    const creatorSelect = document.getElementById('search-creator');
-    const assigneeSelect = document.getElementById('search-assignee');
-    const tagSelect = document.getElementById('search-tags');
+    // Função para atualizar o botão principal
+    const updateButtonAction = (tabId) => {
+        if (tabId === 'search-filter-pane') {
+            applyBtn.textContent = t('kanban.dialog.search.applyButton');
+            applyBtn.onclick = applySearchFilters;
+        } else {
+            applyBtn.textContent = t('kanban.dialog.search.searchButton');
+            applyBtn.onclick = executeGlobalSearch;
+        }
+        resetBtn.style.display = 'inline-flex'; // Botão de limpar sempre visível
+    };
 
-    // --- Popula os filtros com base na visibilidade do quadro (NOVA LÓGICA) ---
-    const boardTags = new Set();
-    currentBoard.columns.forEach(col => {
-        col.cards.forEach(card => {
-            if (card.tags) card.tags.forEach(tag => boardTags.add(tag));
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            panes.forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            const targetPane = document.getElementById(tab.dataset.tab);
+            targetPane.classList.add('active');
+            updateButtonAction(tab.dataset.tab);
         });
     });
+
+    // Popula os filtros para AMBAS as abas
+    populateFilterOptions(dialog.querySelector('#search-filter-pane'), true); // Filtros do quadro atual
+    populateFilterOptions(dialog.querySelector('#search-global-pane'), false); // Filtros globais
+
+    // Anexa os listeners
+    resetBtn.onclick = resetSearchFilters;
+    dialog.querySelector('#search-cancel-btn').onclick = () => dialog.close();
+    
+    // Reseta para a primeira aba ao abrir
+    tabs[0].click();
+    dialog.showModal();
+}
+
+/**
+ * Popula os dropdowns de filtro.
+ * @param {HTMLElement} container - O painel (aba) que contém os selects.
+ * @param {boolean} boardSpecific - Se true, popula tags apenas do quadro atual. Se false, popula com todos os usuários e tags.
+ */
+function populateFilterOptions(container, boardSpecific) {
+    const creatorSelect = container.querySelector('select[id*="-creator"]');
+    const assigneeSelect = container.querySelector('select[id*="-assignee"]');
+    const tagSelect = container.querySelector('select[id*="-tags"]');
+
+    const boardTags = new Set();
+    if (boardSpecific && currentBoard) {
+        currentBoard.columns.forEach(col => {
+            col.cards.forEach(card => {
+                if (card.tags) card.tags.forEach(tag => boardTags.add(tag));
+            });
+        });
+    } else if (!boardSpecific) {
+        // Para busca global, pega tags de todos os quadros
+        boards.forEach(board => {
+            const fullBoard = getFullBoardData(board.id);
+            if (fullBoard) {
+                fullBoard.columns.forEach(col => {
+                    col.cards.forEach(card => {
+                        if (card.tags) card.tags.forEach(tag => boardTags.add(tag));
+                    });
+                });
+            }
+        });
+    }
 
     let relevantUsers = new Map();
     relevantUsers.set(currentUser.id, currentUser); // Sempre inclui o usuário atual
 
-    if (currentBoard.visibility === 'public') {
+    if (boardSpecific && currentBoard.visibility === 'public') {
         const userProfile = getUserProfile(currentUser.id);
         if (userProfile && userProfile.friends) {
             userProfile.friends.forEach(friendId => {
                 const friend = allUsers.find(u => u.id === friendId);
                 if (friend) relevantUsers.set(friend.id, friend);
             });
-        }
-    } else if (currentBoard.visibility === 'group' && currentBoard.groupId) {
+        } 
+    } else if (boardSpecific && currentBoard.visibility === 'group' && currentBoard.groupId) {
         const group = getGroup(currentBoard.groupId);
         if (group && group.memberIds) {
             group.memberIds.forEach(memberId => {
@@ -640,6 +701,9 @@ function showSearchDialog() {
                 if (member) relevantUsers.set(member.id, member);
             });
         }
+    } else if (!boardSpecific) {
+        // Para busca global, todos os usuários são relevantes
+        allUsers.forEach(user => relevantUsers.set(user.id, user));
     }
 
     // Popula Criador
@@ -659,24 +723,23 @@ function showSearchDialog() {
     [...boardTags].sort().forEach(tag => {
         tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
     });
-
-    // Anexa os listeners
-    document.getElementById('search-apply-btn').onclick = applySearchFilters;
-    document.getElementById('search-reset-btn').onclick = resetSearchFilters;
-    document.getElementById('search-cancel-btn').onclick = () => dialog.close();
-    
-    dialog.showModal();
 }
 
 function applySearchFilters() {
+    const dialog = document.getElementById('search-dialog');
     const filters = {
         text: document.getElementById('search-text').value.toLowerCase(),
-        creator: document.getElementById('search-creator').value,
-        status: document.getElementById('search-status').value,
-        assignee: document.getElementById('search-assignee').value,
-        dueDate: document.getElementById('search-due-date').value,
-        tag: document.getElementById('search-tags').value,
+        creator: document.getElementById('filter-creator').value,
+        status: document.getElementById('filter-status').value,
+        assignee: document.getElementById('filter-assignee').value,
+        dueDate: document.getElementById('filter-due-date').value,
+        tag: document.getElementById('filter-tags').value,
     };
+
+    if (!currentBoard) {
+        showFloatingMessage(t('kanban.feedback.selectBoardForSearch'), 'error');
+        return;
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -745,26 +808,141 @@ function applySearchFilters() {
         });
     });
 
-    showFloatingMessage(t('kanban.feedback.cardsFound', { count: visibleCount }), 'info');
-    document.getElementById('search-dialog').close();
+    if (visibleCount === 0) {
+        showDialogMessage(dialog, t('kanban.dialog.search.noCardsFound'), 'warning');
+    } else {
+        showDialogMessage(dialog, t('kanban.feedback.cardsFound', { count: visibleCount }), 'info');
+        setTimeout(() => {
+            dialog.close();
+        }, 1500);
+    }
+}
+
+/**
+ * Executa uma busca global em todos os quadros visíveis e renderiza os resultados.
+ */
+function executeGlobalSearch() {
+    const searchDialog = document.getElementById('search-dialog');
+    const filters = {
+        text: document.getElementById('global-search-text').value.toLowerCase(),
+        creator: document.getElementById('global-search-creator').value,
+        status: document.getElementById('global-search-status').value,
+        assignee: document.getElementById('global-search-assignee').value,
+        dueDate: document.getElementById('global-search-due-date').value,
+        tag: document.getElementById('global-search-tags').value,
+    };
+
+    const searchResults = [];
+
+    // Itera sobre todos os quadros visíveis para o usuário
+    boards.forEach(board => {
+        const fullBoard = getFullBoardData(board.id); // Garante que temos todos os dados
+        if (!fullBoard) return;
+
+        fullBoard.columns.forEach(column => {
+            column.cards.forEach(card => {
+                // Reutiliza a mesma lógica de verificação de visibilidade do filtro
+                let isMatch = true;
+                if (filters.text && !(card.title.toLowerCase().includes(filters.text) || (card.description && card.description.toLowerCase().includes(filters.text)))) isMatch = false;
+                if (isMatch && filters.creator && card.creatorId !== filters.creator) isMatch = false;
+                if (isMatch && filters.status) {
+                    if (filters.status === 'completed' && !card.isComplete) isMatch = false;
+                    if (filters.status === 'active' && card.isComplete) isMatch = false;
+                }
+                if (isMatch && filters.assignee && card.assignedTo !== filters.assignee) isMatch = false;
+                if (isMatch && filters.tag && (!card.tags || !card.tags.includes(filters.tag))) isMatch = false;
+                // A lógica de data é a mesma
+                if (isMatch && filters.dueDate) {
+                    if (!card.dueDate) { isMatch = false; }
+                    else {
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const dueDate = new Date(card.dueDate); dueDate.setHours(0, 0, 0, 0);
+                        const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+                        if (filters.dueDate === 'overdue' && dueDate >= today) isMatch = false;
+                        if (filters.dueDate === 'today' && dueDate.getTime() !== today.getTime()) isMatch = false;
+                        if (filters.dueDate === 'week' && (dueDate < weekStart || dueDate > new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000))) isMatch = false;
+                    }
+                }
+
+                if (isMatch) {
+                    searchResults.push({ card, board: fullBoard, column });
+                }
+            });
+        });
+    });
+
+    searchDialog.close(); // Fecha o diálogo de busca
+    showGlobalSearchResultsDialog(searchResults); // Abre o novo diálogo com os resultados
+}
+
+/**
+ * Cria e exibe um novo diálogo com os resultados da busca global.
+ * @param {Array} results - Um array de objetos {card, board, column}.
+ */
+function showGlobalSearchResultsDialog(results) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">${t('kanban.dialog.search.resultsTitle')}</h3>
+        <div id="global-search-results-list" class="manager-item-list" style="max-height: 60vh;"></div>
+        <div class="modal-actions">
+            <button class="btn cancel">${t('ui.close')}</button>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    makeDraggable(dialog);
+
+    const resultsContainer = dialog.querySelector('#global-search-results-list');
+    if (results.length === 0) {
+        resultsContainer.innerHTML = `<p class="activity-log-empty">${t('kanban.feedback.cardsFound', { count: 0 })}</p>`;
+    } else {
+        results.forEach(({ card, board, column }) => {
+            const resultEl = document.createElement('div');
+            resultEl.className = 'manager-item search-result-item';
+            resultEl.innerHTML = `
+                <div class="manager-item-title">
+                    <span>${card.title}</span>
+                    <div class="item-meta">${t('kanban.dialog.search.searchResult', { board: board.title, column: column.title })}</div>
+                </div>
+            `;
+            resultEl.onclick = () => {
+                localStorage.setItem(`currentBoardId_${currentUser.id}`, board.id);
+                window.location.href = 'kanban.html';
+            };
+            resultsContainer.appendChild(resultEl);
+        });
+    }
+
+    dialog.querySelector('.btn.cancel').onclick = () => { dialog.close(); dialog.remove(); };
+    dialog.showModal();
 }
 
 function resetSearchFilters() {
     const dialog = document.getElementById('search-dialog');
+    
+    // Aba de Filtro
     dialog.querySelector('#search-text').value = '';
-    dialog.querySelector('#search-creator').selectedIndex = 0;
-    dialog.querySelector('#search-status').selectedIndex = 0;
-    dialog.querySelector('#search-assignee').selectedIndex = 0;
-    dialog.querySelector('#search-due-date').selectedIndex = 0;
-    dialog.querySelector('#search-tags').selectedIndex = 0;
+    dialog.querySelector('#filter-creator').selectedIndex = 0;
+    dialog.querySelector('#filter-status').selectedIndex = 0;
+    dialog.querySelector('#filter-assignee').selectedIndex = 0;
+    dialog.querySelector('#filter-due-date').selectedIndex = 0;
+    dialog.querySelector('#filter-tags').selectedIndex = 0;
+
+    // Aba de Busca Global
+    dialog.querySelector('#global-search-text').value = '';
+    dialog.querySelector('#global-search-creator').selectedIndex = 0;
+    dialog.querySelector('#global-search-status').selectedIndex = 0;
+    dialog.querySelector('#global-search-assignee').selectedIndex = 0;
+    dialog.querySelector('#global-search-due-date').selectedIndex = 0;
+    dialog.querySelector('#global-search-tags').selectedIndex = 0;
 
     // Mostra todos os cartões novamente
     document.querySelectorAll('.card').forEach(cardEl => {
         cardEl.style.display = 'block';
     });
 
-    showFloatingMessage(t('kanban.feedback.filtersCleared'), 'info');
-    dialog.close();
+    showDialogMessage(dialog, t('kanban.feedback.filtersCleared'), 'info');
+    // Não fecha o diálogo para que o usuário possa aplicar novos filtros.
 }
 
 function handleFilterChange(filterType) {

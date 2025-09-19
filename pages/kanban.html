@@ -62,6 +62,7 @@
             <button id="start-tour-btn" data-i18n="kanban.actions.startTour">❓ Tour Guiado</button>
             <button id="save-as-template-btn" data-i18n="kanban.actions.saveAsTemplate"></button>
             <button id="print-btn" data-i18n="kanban.actions.print"></button>
+            <button id="search-cards-btn" data-i18n="kanban.actions.searchCards">🔍 Procurar Cartões</button>
             <button id="export-img" data-i18n="kanban.actions.exportImage"></button>
         </div>
     </div>
@@ -296,54 +297,88 @@
 
 <dialog id="search-dialog" class="draggable">
     <h3 class="drag-handle" data-i18n="kanban.dialog.search.title"></h3>
-    
-    <div class="form-group">
-        <label for="search-text" data-i18n="kanban.dialog.search.textLabel"></label>
-        <input type="text" id="search-text" data-i18n-placeholder="kanban.dialog.search.textPlaceholder">
+
+    <!-- NOVO: Abas para Filtrar vs. Procurar -->
+    <div class="details-tabs">
+        <button class="details-tab-btn active" data-tab="search-filter-pane" data-i18n="kanban.dialog.search.tabFilter"></button>
+        <button class="details-tab-btn" data-tab="search-global-pane" data-i18n="kanban.dialog.search.tabSearch"></button>
     </div>
 
-    <!-- CAMPO ADICIONADO -->
-    <div class="form-group">
-        <label for="search-creator" data-i18n="kanban.dialog.search.creatorLabel"></label>
-        <select id="search-creator">
-            <!-- Opções preenchidas pelo JS -->
-        </select>
+    <!-- Conteúdo da Aba de Filtro -->
+    <div id="search-filter-pane" class="details-tab-pane active">
+        <div class="form-group">
+            <label for="search-text" data-i18n="kanban.dialog.search.textLabel"></label>
+            <input type="text" id="search-text" data-i18n-placeholder="kanban.dialog.search.textPlaceholder">
+        </div>
+        <div class="form-group">
+            <label for="search-creator" data-i18n="kanban.dialog.search.creatorLabel"></label>
+            <select id="filter-creator"></select>
+        </div>
+        <div class="form-group">
+            <label for="search-status" data-i18n="kanban.dialog.search.statusLabel"></label>
+            <select id="filter-status">
+                <option value="" data-i18n="kanban.dialog.search.statusAll"></option>
+                <option value="active" data-i18n="kanban.dialog.search.statusPending"></option>
+                <option value="completed" data-i18n="kanban.dialog.search.statusCompleted"></option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="search-assignee" data-i18n="kanban.dialog.search.assigneeLabel"></label>
+            <select id="filter-assignee"></select>
+        </div>
+        <div class="form-group">
+            <label for="search-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
+            <select id="filter-due-date">
+                <option value="" data-i18n="kanban.dialog.search.dueDateAll"></option>
+                <option value="today" data-i18n="kanban.dialog.search.dueDateToday"></option>
+                <option value="week" data-i18n="kanban.dialog.search.dueDateWeek"></option>
+                <option value="overdue" data-i18n="kanban.dialog.search.dueDateOverdue"></option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="search-tags" data-i18n="kanban.dialog.search.tagsLabel"></label>
+            <select id="filter-tags"></select>
+        </div>
     </div>
 
-    <!-- CAMPO ADICIONADO -->
-    <div class="form-group">
-        <label for="search-status" data-i18n="kanban.dialog.search.statusLabel"></label>
-        <select id="search-status">
-            <option value="" data-i18n="kanban.dialog.search.statusAll"></option>
-            <option value="active" data-i18n="kanban.dialog.search.statusPending"></option>
-            <option value="completed" data-i18n="kanban.dialog.search.statusCompleted"></option>
-        </select>
+    <!-- Conteúdo da Aba de Busca Global -->
+    <div id="search-global-pane" class="details-tab-pane">
+        <!-- Os mesmos controles de filtro, mas com IDs diferentes -->
+        <div class="form-group">
+            <label for="global-search-text" data-i18n="kanban.dialog.search.textLabel"></label>
+            <input type="text" id="global-search-text" data-i18n-placeholder="kanban.dialog.search.textPlaceholder">
+        </div>
+        <div class="form-group">
+            <label for="global-search-creator" data-i18n="kanban.dialog.search.creatorLabel"></label>
+            <select id="global-search-creator"></select>
+        </div>
+        <div class="form-group">
+            <label for="global-search-status" data-i18n="kanban.dialog.search.statusLabel"></label>
+            <select id="global-search-status">
+                <option value="" data-i18n="kanban.dialog.search.statusAll"></option>
+                <option value="active" data-i18n="kanban.dialog.search.statusPending"></option>
+                <option value="completed" data-i18n="kanban.dialog.search.statusCompleted"></option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="global-search-assignee" data-i18n="kanban.dialog.search.assigneeLabel"></label>
+            <select id="global-search-assignee"></select>
+        </div>
+        <div class="form-group">
+            <label for="global-search-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
+            <select id="global-search-due-date">
+                <option value="" data-i18n="kanban.dialog.search.dueDateAll"></option>
+                <option value="today" data-i18n="kanban.dialog.search.dueDateToday"></option>
+                <option value="week" data-i18n="kanban.dialog.search.dueDateWeek"></option>
+                <option value="overdue" data-i18n="kanban.dialog.search.dueDateOverdue"></option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="global-search-tags" data-i18n="kanban.dialog.search.tagsLabel"></label>
+            <select id="global-search-tags"></select>
+        </div>
     </div>
-
-    <div class="form-group">
-        <label for="search-assignee" data-i18n="kanban.dialog.search.assigneeLabel"></label>
-        <select id="search-assignee">
-            <!-- Opções preenchidas pelo JS -->
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="search-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
-        <select id="search-due-date">
-            <option value="" data-i18n="kanban.dialog.search.dueDateAll"></option>
-            <option value="today" data-i18n="kanban.dialog.search.dueDateToday"></option>
-            <option value="week" data-i18n="kanban.dialog.search.dueDateWeek"></option>
-            <option value="overdue" data-i18n="kanban.dialog.search.dueDateOverdue"></option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="search-tags" data-i18n="kanban.dialog.search.tagsLabel"></label>
-        <select id="search-tags">
-            <!-- Opções preenchidas pelo JS -->
-        </select>
-    </div>
-    
+        <div class="feedback"></div>
     <div class="modal-actions">
         <button id="search-cancel-btn" class="btn cancel" data-i18n="kanban.dialog.search.closeButton"></button>
         <button id="search-reset-btn" class="btn alternative1" data-i18n="kanban.dialog.search.resetButton"></button>
