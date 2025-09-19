@@ -2507,6 +2507,7 @@ function createCardContextMenu(event, cardEl) {
         { label: t('kanban.contextMenu.card.copy'), icon: '📋', action: () => handleCopyCard(cardId) }, // Copiar é sempre permitido
         { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId) },
         { isSeparator: true },
+        { label: t('kanban.contextMenu.card.archive'), icon: '🗄️', action: () => handleArchiveCard(cardId) },
         { label: t('kanban.contextMenu.card.delete'), icon: '🗑️', action: () => handleDeleteCard(cardId), isDestructive: true }
     ];
 
@@ -2825,19 +2826,41 @@ function handleDeleteCard(cardId) {
     showConfirmationDialog(
         t('kanban.confirm.deleteCard'),
         (dialog) => {
-            const columnData = getColumn(currentBoard.columns.find(c => c.cardIds.includes(cardId)).id);
-            columnData.cardIds = columnData.cardIds.filter(id => id !== cardId);
-            saveColumn(columnData);
-            deleteCard(cardId);
-            currentBoard = getFullBoardData(currentBoard.id);
-            renderCurrentBoard();
+            const { card, column } = findCardAndColumn(cardId);
+            if (!card || !column) return false;
+
+            // CORREÇÃO: Em vez de deletar, arquiva com o motivo 'deleted' (move para a lixeira).
+            archiveCard(cardId, currentUser.id, 'deleted', column.id);
+
+            // Remove da visualização atual em memória
+            column.cardIds = column.cardIds.filter(id => id !== cardId);
+            column.cards = column.cards.filter(c => c.id !== cardId);
+            
             saveState();
             showDialogMessage(dialog, t('kanban.feedback.cardDeleted'), 'success');
+            showSuccessAndRefresh(dialog, currentBoard.id);
             return true;
         },
         null,
         t('ui.yesDelete'), t('ui.no')
     );
+}
+
+function handleArchiveCard(cardId) {
+    if (!hasPermission(currentBoard, 'editColumns')) { // Archiving is an edit action
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+    const { card, column } = findCardAndColumn(cardId);
+    if (!card) return;
+
+    showConfirmationDialog(t('archive.confirm.archiveCard', { cardTitle: card.title }), (dialog) => {
+        archiveCard(cardId, currentUser.id, 'archived', column.id);
+        saveState();
+        showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
+        showSuccessAndRefresh(dialog, currentBoard.id);
+        return true;
+    });
 }
 
 function saveState() {

@@ -174,15 +174,19 @@ export function deleteCard(cardId) { return deleteItem(cardId, 'card'); }
  * Arquiva um cartão, marcando-o como arquivado em vez de deletá-lo.
  * @param {string} cardId - O ID do cartão a ser arquivado.
  * @param {string} userId - O ID do usuário que está arquivando.
- * @param {string} reason - O motivo do arquivamento ('archived' ou 'deleted').
+ * @param {string} reason - O motivo do arquivamento ('archived' ou 'deleted' para lixeira).
+ * @param {string|null} columnId - O ID da coluna original do cartão.
  */
-export function archiveCard(cardId, userId, reason = 'archived') {
+export function archiveCard(cardId, userId, reason = 'archived', columnId = null) {
     const card = getCard(cardId);
     if (!card) return null;
     card.isArchived = true;
     card.archivedAt = new Date().toISOString();
     card.archivedBy = userId;
     card.archiveReason = reason; // 'archived' ou 'deleted' (para lixeira)
+    if (columnId) { // Armazena a coluna original para facilitar a restauração
+        card.columnId = columnId;
+    }
     return saveCard(card);
 }
 

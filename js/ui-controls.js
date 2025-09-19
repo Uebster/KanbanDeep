@@ -1066,6 +1066,7 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
  * Exibe um diálogo para enviar uma mensagem privada a um usuário.
  * @param {string} targetUserId - O ID do usuário que receberá a mensagem.
  */
+// CORREÇÃO: Exporta a função para ser usada em outras partes da aplicação.
 export function showPrivateMessageDialog(targetUserId) {
     const currentUser = getCurrentUser();
     const allUsers = JSON.parse(localStorage.getItem('kanbandeep_users_list') || '[]').map(id => JSON.parse(localStorage.getItem(`kanbandeep_user_${id}`)));

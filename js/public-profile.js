@@ -9,9 +9,9 @@ import {
     saveNotifications,  
     getUserProfile,
     getAllGroups,
-    getFullBoardData 
+    getFullBoardData
 } from './storage.js';
-import { showDialogMessage, initDraggableElements, showConfirmationDialog, showFloatingMessage } from './ui-controls.js';
+import { showDialogMessage, initDraggableElements, showConfirmationDialog, showFloatingMessage, showPrivateMessageDialog } from './ui-controls.js';
 import { 
     addFriendRequestNotification, 
     addFollowNotification,
@@ -512,50 +512,8 @@ function toggleFollow() {
 }
 
 function sendMessage() {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'draggable';
-    dialog.innerHTML = `
-        <h3 class="drag-handle">${t('publicProfile.messageDialog.title', { name: viewedUser.name })}</h3>
-        <div class="form-group">
-            <label for="friend-request-message">${t('publicProfile.friendRequest.description')}</label>
-            <textarea id="friend-request-message" placeholder="${t('publicProfile.friendRequest.placeholder')}" rows="3"></textarea>
-        </div>
-        <div class="feedback"></div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary">Cancelar</button>
-            <button class="btn btn-primary">Enviar</button>
-        </div>
-    `;
-
-    document.body.appendChild(dialog);
-    initDraggableElements(); // Torna o diálogo arrastável
-    dialog.showModal();
-
-    const textarea = dialog.querySelector('#private-message-textarea');
-    const sendBtn = dialog.querySelector('.btn-primary');
-    const cancelBtn = dialog.querySelector('.btn-secondary');
-
-    const closeDialog = () => {
-        dialog.close();
-        dialog.remove();
-    };
-
-    cancelBtn.addEventListener('click', closeDialog);
-
-    sendBtn.addEventListener('click', () => {
-        const message = textarea.value.trim();
-        if (!message) {
-            showDialogMessage(dialog, t('publicProfile.messageDialog.emptyError'), 'error');
-            return;
-        }
-
-        addMessageNotification(currentUser.name, currentUser.id, viewedUser.id, message.length > 50 ? message.substring(0, 50) + '...' : message);
-
-        showDialogMessage(dialog, t('publicProfile.messageDialog.success'), 'success');
-        sendBtn.disabled = true;
-        cancelBtn.disabled = true;
-        setTimeout(closeDialog, 1500);
-    });
+    // CORREÇÃO: Usa a função universal de diálogo de mensagem para consistência e correção de bugs.
+    showPrivateMessageDialog(viewedUser.id);
 }
 
 function unfriendUser() {

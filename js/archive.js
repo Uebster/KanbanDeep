@@ -217,16 +217,38 @@ function handleMoveToTrash(itemId, type) {
 function handleRestoreCard(cardId) {
     showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
         const card = getCard(cardId);
-        if (!card) return false;
+        if (!card) {
+            showDialogMessage(dialog, t('kanban.feedback.cardNotFound'), 'error'); // Reutilizando chave
+            return false;
+        }
 
         // Se estiver na lixeira, a restauração o move de volta para "Arquivados".
         if (card.archiveReason === 'deleted') {
             delete card.archiveReason;
+            saveCard(card);
         } else {
             // Se estiver em "Arquivados", a restauração o move de volta para o quadro.
-            card.isArchived = false; // A lógica de re-inserir no quadro acontece no Kanban
+            if (!card.columnId) {
+                showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnNotFound'), 'error');
+                return false;
+            }
+            const column = getColumn(card.columnId);
+            if (!column) {
+                showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnDeleted'), 'error');
+                return false;
+            }
+
+            // Re-insere o card na sua coluna original
+            if (!column.cardIds.includes(cardId)) {
+                column.cardIds.push(cardId);
+                saveColumn(column);
+            }
+            
+            card.isArchived = false;
+            delete card.archivedAt;
+            delete card.archivedBy;
+            saveCard(card);
         }
-        saveCard(card);
 
         showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
         loadAllArchivedItems();
