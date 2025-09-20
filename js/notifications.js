@@ -512,6 +512,13 @@ function acceptNotification(notificationId) {
                             saveUserProfile(userProfile);
                         }
                         
+                        // PASSO 2: Adiciona log de entrada no grupo
+                        if (!group.activityLog) group.activityLog = [];
+                        group.activityLog.push({
+                            action: 'member_joined', userId: currentUser.id, timestamp: new Date().toISOString(), memberName: currentUser.name
+                        });
+                        saveGroup(group);
+
                         showDialogMessage(dialog, t('notifications.feedback.groupInviteAccepted'), 'success');
                     }
                 }

@@ -2298,6 +2298,15 @@ function handleSaveCard() {
                     targetColumn.cardIds.push(newCard.id);
                     saveColumn(targetColumn);
                 }
+
+                // FASE 2: Atualiza contador de tarefas do grupo
+                if (currentBoard.groupId) {
+                    const group = getGroup(currentBoard.groupId);
+                    if (group) {
+                        group.taskCount = (group.taskCount || 0) + 1;
+                        saveGroup(group);
+                    }
+                }
             }
 
             // Enviar notificação se a atribuição mudou para um novo usuário
@@ -2994,10 +3003,13 @@ function renderActivityLog(card, container) {
         const date = new Date(entry.timestamp).toLocaleString();
         const fromLocation = entry.from === 'trash' ? t('archive.tabs.trash') : t('archive.tabs.archived');
         
+        // CORREÇÃO: Adiciona todos os placeholders possíveis para a tradução.
         const replacements = {
             user: `<strong>${user}</strong>`,
             from: entry.fromColumn || fromLocation,
-            to: entry.toColumn
+            to: entry.toColumn,
+            fromBoard: entry.fromBoard,
+            toBoard: entry.toBoard
         };
         
         const message = t(`activityLog.action.${entry.action}`, replacements)
@@ -3034,10 +3046,13 @@ function renderColumnActivityLog(column, container) {
         const date = new Date(entry.timestamp).toLocaleString();
         const fromLocation = entry.from === 'trash' ? t('archive.tabs.trash') : t('archive.tabs.archived');
         
+        // CORREÇÃO: Adiciona todos os placeholders possíveis para a tradução.
         const replacements = {
             user: `<strong>${user}</strong>`,
             column: `<strong>${column.title}</strong>`,
-            from: fromLocation
+            from: fromLocation,
+            fromBoard: entry.fromBoard,
+            toBoard: entry.toBoard
         };
         
         const message = t(`activityLog.action.column.${entry.action}`, replacements)
@@ -3118,6 +3133,19 @@ function toggleCardComplete(cardId) {
         card.isComplete = !card.isComplete;
         saveCard(card); // Salva a alteração no armazenamento
         saveState();
+
+        // FASE 2: Atualiza contador de tarefas concluídas do grupo
+        if (currentBoard.groupId) {
+            const group = getGroup(currentBoard.groupId);
+            if (group) {
+                if (card.isComplete) {
+                    group.completedTaskCount = (group.completedTaskCount || 0) + 1;
+                } else {
+                    group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
+                }
+                saveGroup(group);
+            }
+        }
         renderCurrentBoard(); // Redesenha a tela para refletir a mudança
     }
 }
@@ -3199,7 +3227,17 @@ function handleDeleteCard(cardId) {
             saveCard(card); // Salva o log antes de arquivar
 
             // Arquiva com o motivo 'deleted' (move para a lixeira).
-            archiveCard(cardId, currentUser.id, 'deleted', column.id);
+            archiveCard(cardId, currentUser.id, 'deleted', column.id, currentBoard.id);
+
+            // FASE 2: Atualiza contadores de tarefas do grupo
+            if (currentBoard.groupId) {
+                const group = getGroup(currentBoard.groupId);
+                if (group) {
+                    group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
+                    if (card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
+                    saveGroup(group);
+                }
+            }
 
             // Remove da visualização atual em memória
             column.cardIds = column.cardIds.filter(id => id !== cardId);
@@ -3234,7 +3272,17 @@ function handleArchiveCard(cardId) {
         card.activityLog.push(logEntry);
         saveCard(card); // Salva o log antes de arquivar
 
-        archiveCard(cardId, currentUser.id, 'archived', column.id);
+        // CORREÇÃO BUG: Atualiza contadores de tarefas do grupo ao arquivar.
+        if (currentBoard.groupId) {
+            const group = getGroup(currentBoard.groupId);
+            if (group) {
+                group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
+                group.completedTaskCount = (group.completedTaskCount || 0) + 1;
+                saveGroup(group);
+            }
+        }
+
+        archiveCard(cardId, currentUser.id, 'archived', column.id, currentBoard.id);
         saveState();
         showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
         showSuccessAndRefresh(dialog, currentBoard.id);
@@ -3347,13 +3395,7 @@ function handleCopyCard(cardId) {
  * Recorta um cartão para a área de transferência, marcando-o para ser movido.
  * @param {string} cardId - O ID do cartão a ser recortado.
  */
-function handleCutCard(cardId) {
-    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-    if (!hasPermission(currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-
+function handleCutCard(cardId) {    
     const { card, column } = findCardAndColumn(cardId);
     if (card) {
         clipboard = {
@@ -3374,6 +3416,7 @@ function handleCutCard(cardId) {
  */
 function handlePasteCard(targetColumnId) {
     if (!clipboard || clipboard.type !== 'card') {
+        // Se não houver nada no clipboard, não faz nada.
         showFloatingMessage(t('kanban.feedback.noCardToPaste'), 'warning');
         return;
     }
@@ -3389,20 +3432,62 @@ function handlePasteCard(targetColumnId) {
     }
 
     if (clipboard.mode === 'cut') {
+        const sourceBoard = getBoard(clipboard.sourceBoardId);
         const sourceColumn = getColumn(clipboard.sourceColumnId);
         if (sourceColumn) {
-            // Sempre remove da origem
             const cardIndex = sourceColumn.cardIds.indexOf(clipboard.sourceCardId);
             if (cardIndex > -1) {
                 sourceColumn.cardIds.splice(cardIndex, 1);
                 saveColumn(sourceColumn);
             }
         }
-        // Sempre adiciona ao destino
         targetColumn.cardIds.push(clipboard.sourceCardId);
         saveColumn(targetColumn);
+
+        // Adiciona o log de movimentação
+        const movedCard = getCard(clipboard.sourceCardId);
+        if (movedCard) {
+            let logEntry;
+            // Verifica se a movimentação foi entre quadros diferentes
+            if (clipboard.sourceBoardId !== currentBoard.id) {
+                logEntry = {
+                    action: 'moved_board',
+                    userId: currentUser.id,
+                    timestamp: new Date().toISOString(),
+                    fromBoard: sourceBoard?.title || 'Quadro Desconhecido',
+                    toBoard: currentBoard.title
+                };
+            } else if (sourceColumn.id !== targetColumn.id) { // Movimentação entre colunas no mesmo quadro
+                logEntry = {
+                    action: 'moved',
+                    userId: currentUser.id,
+                    timestamp: new Date().toISOString(),
+                    fromColumn: sourceColumn.title,
+                    toColumn: targetColumn.title
+                };
+            }
+            if (!movedCard.activityLog) movedCard.activityLog = [];
+            movedCard.activityLog.push(logEntry);
+            saveCard(movedCard);
+        }
     } else { // 'copy'
         const newCard = saveCard(clipboard.data);
+        newCard.activityLog = [{
+            action: 'created_from_copy',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString()
+        }];
+        saveCard(newCard); // Salva novamente com o log
+
+        // CORREÇÃO BUG: Atualiza contador de tarefas do grupo ao copiar cartão.
+        if (currentBoard.groupId) {
+            const group = getGroup(currentBoard.groupId);
+            if (group) {
+                group.taskCount = (group.taskCount || 0) + 1;
+                saveGroup(group);
+            }
+        }
+
         targetColumn.cardIds.push(newCard.id);
         saveColumn(targetColumn);
     }
@@ -3564,11 +3649,27 @@ function handlePasteColumn() {
             return;
         }
 
-        // Remove a coluna do quadro de origem
+        const movedColumn = getColumn(sourceColumnId);
         const sourceBoard = getBoard(sourceBoardId);
+
+        // Remove a coluna do quadro de origem
         if (sourceBoard) {
             sourceBoard.columnIds = sourceBoard.columnIds.filter(id => id !== sourceColumnId);
             saveBoard(sourceBoard);
+        }
+
+        // Adiciona o log de movimentação entre quadros
+        if (movedColumn) {
+            const logEntry = {
+                action: 'moved_board',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString(),
+                fromBoard: sourceBoard?.title || 'Quadro Desconhecido',
+                toBoard: currentBoard.title
+            };
+            if (!movedColumn.activityLog) movedColumn.activityLog = [];
+            movedColumn.activityLog.push(logEntry);
+            saveColumn(movedColumn);
         }
 
         // Adiciona a coluna ao quadro atual
@@ -3587,8 +3688,30 @@ function handlePasteColumn() {
 
         // Lógica para COPIAR a coluna
         const columnData = clipboard.data;
-        const newCardIds = columnData.cards.map(cardData => saveCard(cardData).id);
-        const newColumn = saveColumn({ ...columnData, cardIds: newCardIds });
+        // CORREÇÃO: Cria novos cartões independentes com logs de atividade
+        const newCards = columnData.cards.map(cardData => {
+            const newCard = {
+                ...cardData,
+                id: null, // Garante um novo ID
+                title: `${cardData.title} ${t('kanban.board.copySuffix')}`,
+                activityLog: [{
+                    action: 'created_from_column_copy', // Ação específica
+                    userId: currentUser.id,
+                    timestamp: new Date().toISOString()
+                }]
+            };
+            return saveCard(newCard);
+        });
+        const newColumn = saveColumn({ ...columnData, cardIds: newCards.map(c => c.id) });
+
+        // Adiciona o log de criação a partir de cópia
+        newColumn.activityLog = [{
+            action: 'created_from_copy',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString()
+        }];
+        saveColumn(newColumn); // Salva novamente com o log
+
         const boardData = getBoard(currentBoard.id);
         boardData.columnIds.push(newColumn.id);
         saveBoard(boardData);

@@ -145,7 +145,7 @@ function createItemElement(item, type) {
     const archivedBy = allUsers.find(u => u.id === item.archivedBy)?.name || 'Unknown';
     
     let metaText = '';
-    if (type === 'card') {
+    if (type === 'card' && item.boardName && item.columnName) {
         metaText = t('archive.meta', { 
             boardName: item.boardName, 
             columnName: item.columnName, 
@@ -228,7 +228,7 @@ function handleRestoreCard(cardId) {
             const logEntry = {
                 action: 'restored',
                 userId: currentUser.id,
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString(), // A chave 'from' será adicionada abaixo
                 from: 'trash'
             };
             if (!card.activityLog) card.activityLog = [];
@@ -257,7 +257,7 @@ function handleRestoreCard(cardId) {
             const logEntry = {
                 action: 'restored',
                 userId: currentUser.id,
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString(), // A chave 'from' será adicionada abaixo
                 from: 'archive'
             };
             if (!card.activityLog) card.activityLog = [];

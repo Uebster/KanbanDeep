@@ -174,7 +174,9 @@
                         <option value="pie" data-i18n="groups.stats.chartPie"></option>
                         <option value="bar" data-i18n="groups.stats.chartBar"></option>
                         <option value="line" data-i18n="groups.stats.chartLine"></option>
+                        <option value="burndown" data-i18n="groups.stats.burndownTitle"></option>
                     </select></div>
+                    <button id="export-chart-btn" class="btn" data-i18n="kanban.actions.exportImage" style="margin-left: 10px;"></button>
                 </div>
             </div>
             <div class="stats-sections">
@@ -201,7 +203,8 @@
                         <thead>
                             <tr>
                                 <th data-i18n="listUsers.table.name"></th>
-                                <th data-i18n="groups.stats.roleHeader"></th>
+                                <th data-i18n="groups.reports.tasksCreated"></th>
+                                <th data-i18n="groups.reports.tableHeaderAssigned"></th>
                                 <th data-i18n="groups.reports.tasksCompleted"></th>
                                 <th data-i18n="groups.reports.tableHeaderProductivity"></th>
                             </tr>
@@ -236,9 +239,11 @@
                                 <option value="daily" data-i18n="ui.daily"></option>
                                 <option value="weekly" data-i18n="ui.weekly"></option>
                                 <option value="monthly" data-i18n="ui.monthly"></option>
+                                <option value="all" data-i18n="groups.stats.periodAll"></option>
                             </select>
                         </div>
                         <button id="generate-report-btn" class="btn confirm" data-i18n="groups.reports.generateButton"></button>
+                        <button id="export-report-csv-btn" class="btn alternative1 hidden" data-i18n="groups.reports.exportCsv"></button>
                     </div>
                 </div>
                 <div id="report-container"></div>
@@ -256,95 +261,100 @@
 
     <!-- Diálogos -->
     <dialog id="edit-group-dialog" class="draggable">
-        <h3 class="drag-handle" data-i18n="groups.edit.title"></h3>
-        <form id="edit-group-form" class="form-layout">
-            <div class="form-column">
-                <div class="form-section">
-                    <h3 data-i18n="groups.edit.groupInfo"></h3>
-                    <div class="form-group">
-                        <label for="edit-group-icon" data-i18n="templateEditor.iconLabel"></label>
-                        <div class="icon-input-group">
-                            <input type="text" id="edit-group-icon" class="icon-display" readonly>
-                            <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm" data-i18n="ui.choose"></button>
-                        </div>
+        <h3 class="drag-handle" id="edit-group-dialog-title" data-i18n="groups.edit.title"></h3>
+        
+        <nav class="showcase-navbar">
+            <button class="nav-item active" data-tab="edit-group-info-pane" data-i18n="groups.edit.groupInfo"></button>
+            <button class="nav-item" data-tab="edit-group-participants-pane" data-i18n="groups.edit.participants"></button>
+            <button class="nav-item" data-tab="edit-group-permissions-pane" data-i18n="groups.permissions.title"></button>
+            <button class="nav-item" data-tab="edit-group-reports-pane" data-i18n="groups.edit.autoReports"></button>
+            <button class="nav-item" data-tab="edit-group-activity-pane" data-i18n="activityLog.details.tabActivity"></button>
+        </nav>
+
+        <form id="edit-group-form">
+            <div id="edit-group-info-pane" class="tab-content active">
+                <div class="form-group">
+                    <label for="edit-group-icon" data-i18n="templateEditor.iconLabel"></label>
+                    <div class="icon-input-group">
+                        <input type="text" id="edit-group-icon" class="icon-display" readonly>
+                        <button type="button" id="btn-choose-edit-group-icon" class="btn btn-sm" data-i18n="ui.choose"></button>
                     </div>
-                    <div class="form-group">
-                        <label for="edit-group-name" data-i18n="groups.create.nameLabel"></label>
-                        <input type="text" id="edit-group-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-group-name" data-i18n="groups.create.nameLabel"></label>
+                    <input type="text" id="edit-group-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-group-description" data-i18n="templateEditor.descriptionLabel"></label>
+                    <textarea id="edit-group-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-group-access" data-i18n="groups.create.accessLabel"></label>
+                    <div class="custom-select">
+                        <select id="edit-group-access">
+                            <option value="public" data-i18n="groups.create.accessPublic"></option>
+                            <option value="private" data-i18n="groups.create.accessPrivate"></option>
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label for="edit-group-description" data-i18n="templateEditor.descriptionLabel"></label>
-                        <textarea id="edit-group-description" rows="3"></textarea>
-                    </div>
-                    <!-- CAMPO DE ACESSO REINSERIDO -->
-                    <div class="form-group">
-                        <label for="edit-group-access" data-i18n="groups.create.accessLabel"></label>
-                        <div class="custom-select">
-                            <select id="edit-group-access">
-                                <option value="public" data-i18n="groups.create.accessPublic"></option>
-                                <option value="private" data-i18n="groups.create.accessPrivate"></option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-group-tag-template" data-i18n="preferences.defaultTagSet"></label>
-                        <div class="custom-select">
-                            <select id="edit-group-tag-template"></select>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit-group-tag-template" data-i18n="preferences.defaultTagSet"></label>
+                    <div class="custom-select">
+                        <select id="edit-group-tag-template"></select>
                     </div>
                 </div>
             </div>
+
+            <div id="edit-group-participants-pane" class="tab-content">
+                <div id="group-members-list"></div>
+                <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;" data-i18n="groups.edit.addParticipantTitle"></button>
             </div>
-            <div class="form-column">
-                <div class="form-section">
-                    <h3 data-i18n="groups.edit.participants"></h3>
-                    <div id="group-members-list"></div>
-                    <button type="button" id="btn-add-participant" class="btn alternative1" style="width: 100%; margin-top: 10px;" data-i18n="groups.edit.addParticipantTitle"></button>
-                </div>
-                <!-- SEÇÃO DE PERMISSÕES MOVIDA PARA A COLUNA 2 -->
-                <div class="form-section">
-                    <h3 data-i18n="groups.permissions.title"></h3>
-                    <div id="edit-group-permissions">
-                        <label class="checkbox-container" data-i18n="groups.permissions.createBoards"><input type="checkbox" id="edit-perm-create-boards"><span class="checkmark"></span></label>
-                        <label class="checkbox-container" data-i18n="groups.permissions.editBoards"><input type="checkbox" id="edit-perm-edit-boards"><span class="checkmark"></span></label>
-                        <label class="checkbox-container" data-i18n="groups.permissions.createColumns"><input type="checkbox" id="edit-perm-create-columns"><span class="checkmark"></span></label>
-                        <label class="checkbox-container" data-i18n="groups.permissions.editColumns"><input type="checkbox" id="edit-perm-edit-columns"><span class="checkmark"></span></label>
-                        <label class="checkbox-container" data-i18n="groups.permissions.createCards"><input type="checkbox" id="edit-perm-create-cards"><span class="checkmark"></span></label>
-                    </div>
-                </div>
-                <div class="form-section">
-                    <h3 data-i18n="groups.edit.autoReports"></h3>
-                    <div class="form-group">
-                        <label for="edit-group-report-frequency" data-i18n="groups.edit.frequency"></label>
-                        <div class="custom-select">
-                            <select id="edit-group-report-frequency">
-                                <option value="none" data-i18n="preferences.tagTemplate.none"></option>
-                                <option value="daily" data-i18n="ui.daily"></option>
-                                <option value="weekly" data-i18n="ui.weekly"></option>
-                                <option value="monthly" data-i18n="ui.monthly"></option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="edit-group-report-day-of-week-container" class="form-group hidden">
-                        <label for="edit-group-report-day-of-week" data-i18n="groups.edit.dayOfWeek"></label>
-                        <div class="custom-select">
-                            <select id="edit-group-report-day-of-week">
-                                <option value="1" data-i18n="ui.day.monday"></option>
-                                <option value="2" data-i18n="ui.day.tuesday"></option>
-                                <option value="3" data-i18n="ui.day.wednesday"></option>
-                                <option value="4" data-i18n="ui.day.thursday"></option>
-                                <option value="5" data-i18n="ui.day.friday"></option>
-                                <option value="6" data-i18n="ui.day.saturday"></option>
-                                <option value="0" data-i18n="ui.day.sunday"></option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="edit-group-report-day-of-month-container" class="form-group hidden">
-                        <label for="edit-group-report-day-of-month" data-i18n="groups.edit.dayOfMonth"></label>
-                        <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
-                    </div>
+
+            <div id="edit-group-permissions-pane" class="tab-content">
+                <div id="edit-group-permissions">
+                    <label class="checkbox-container" data-i18n="groups.permissions.createBoards"><input type="checkbox" id="edit-perm-create-boards"><span class="checkmark"></span></label>
+                    <label class="checkbox-container" data-i18n="groups.permissions.editBoards"><input type="checkbox" id="edit-perm-edit-boards"><span class="checkmark"></span></label>
+                    <label class="checkbox-container" data-i18n="groups.permissions.createColumns"><input type="checkbox" id="edit-perm-create-columns"><span class="checkmark"></span></label>
+                    <label class="checkbox-container" data-i18n="groups.permissions.editColumns"><input type="checkbox" id="edit-perm-edit-columns"><span class="checkmark"></span></label>
+                    <label class="checkbox-container" data-i18n="groups.permissions.createCards"><input type="checkbox" id="edit-perm-create-cards"><span class="checkmark"></span></label>
                 </div>
             </div>
+
+            <div id="edit-group-reports-pane" class="tab-content">
+                <div class="form-group">
+                    <label for="edit-group-report-frequency" data-i18n="groups.edit.frequency"></label>
+                    <div class="custom-select">
+                        <select id="edit-group-report-frequency">
+                            <option value="none" data-i18n="preferences.tagTemplate.none"></option>
+                            <option value="daily" data-i18n="ui.daily"></option>
+                            <option value="weekly" data-i18n="ui.weekly"></option>
+                            <option value="monthly" data-i18n="ui.monthly"></option>
+                        </select>
+                    </div>
+                </div>
+                <div id="edit-group-report-day-of-week-container" class="form-group hidden">
+                    <label for="edit-group-report-day-of-week" data-i18n="groups.edit.dayOfWeek"></label>
+                    <div class="custom-select">
+                        <select id="edit-group-report-day-of-week">
+                            <option value="1" data-i18n="ui.day.monday"></option>
+                            <option value="2" data-i18n="ui.day.tuesday"></option>
+                            <option value="3" data-i18n="ui.day.wednesday"></option>
+                            <option value="4" data-i18n="ui.day.thursday"></option>
+                            <option value="5" data-i18n="ui.day.friday"></option>
+                            <option value="6" data-i18n="ui.day.saturday"></option>
+                            <option value="0" data-i18n="ui.day.sunday"></option>
+                        </div>
+                    </div>
+                <div id="edit-group-report-day-of-month-container" class="form-group hidden">
+                    <label for="edit-group-report-day-of-month" data-i18n="groups.edit.dayOfMonth"></label>
+                    <input type="number" id="edit-group-report-day-of-month" min="1" max="31" value="1">
+                </div>
+            </div>
+
+            <div id="edit-group-activity-pane" class="tab-content">
+                <!-- O conteúdo do log de atividades será renderizado aqui pelo JS -->
+            </div>
+
             <div class="feedback"></div>
         </form>
         <div class="modal-actions">

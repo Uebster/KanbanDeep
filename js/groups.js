@@ -126,6 +126,9 @@ function setupEventListeners() {
     document.getElementById('btn-create-group')?.addEventListener('click', () => switchTab('create-group'));
 
     
+    // --- ABA "ESTATÍSTICAS" ---
+    document.getElementById('export-chart-btn')?.addEventListener('click', exportChartAsImage);
+
     // --- ABA "REUNIÕES" ---
     document.getElementById('btn-schedule-meeting')?.addEventListener('click', showMeetingDialog); // This button is already translated by data-i18n
 
@@ -143,6 +146,7 @@ function setupEventListeners() {
     
     // --- ABA "RELATÓRIOS" ---
     document.getElementById('generate-report-btn')?.addEventListener('click', generateAndRenderReport);
+    document.getElementById('export-report-csv-btn')?.addEventListener('click', exportReportToCSV);
 
     // --- ABA "MEUS GRUPOS" (USANDO DELEGAÇÃO DE EVENTOS) ---
 document.getElementById('my-groups')?.addEventListener('click', (e) => {
@@ -356,7 +360,10 @@ function handleSaveGroup() {
             defaultPermissions: permissions, // <-- MUDANÇA: Agora são as permissões padrão
             memberPermissions: {}, // <-- NOVO: Estrutura para permissões individuais
             tagTemplate: document.getElementById('group-tag-template').value,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(), // Data de criação do grupo
+            activityLog: [], // PASSO 1: Inicializa o log de atividades
+            taskCount: 0, // FASE 2: Inicializa contador
+            completedTaskCount: 0 // FASE 2: Inicializa contador
         };
 
         // 2. Salva o grupo para gerar seu ID.
@@ -365,6 +372,13 @@ function handleSaveGroup() {
             showDialogMessage(dialog, t('groups.edit.saveError'), 'error');
             return false;
         }
+
+        // PASSO 2: Adiciona o log de criação
+        addLogToGroup(savedGroup, {
+            action: 'group_created',
+            userId: currentUser.id,
+            groupName: savedGroup.name
+        });
 
         // NOVO: Envia as notificações de convite para os usuários selecionados.
         invitedUserIds.forEach(userId => {
@@ -375,6 +389,12 @@ function handleSaveGroup() {
                 currentUser.id,
                 userId
             );
+            // PASSO 2: Adiciona o log de convite
+            addLogToGroup(savedGroup, {
+                action: 'member_invited',
+                userId: currentUser.id,
+                memberName: allUsers.find(u => u.id === userId)?.name || 'Desconhecido'
+            });
         });
 
         // 3. Agora, cria os quadros iniciais, associando-os ao ID do grupo recém-criado.
@@ -1212,11 +1232,11 @@ function createGroupCard(group) {
                 <span class="stat-label">${t('groups.myGroups.card.members')}</span>
             </div>
             <div class="group-stat">
-                <span class="stat-number">${getGroupTaskCount(group.id)}</span>
+                <span class="stat-number">${group.taskCount || 0}</span>
                 <span class="stat-label">${t('groups.myGroups.card.tasks')}</span>
             </div>
             <div class="group-stat">
-                <span class="stat-number">${getCompletedTaskCount(group.id)}</span>
+                <span class="stat-number">${group.completedTaskCount || 0}</span>
                 <span class="stat-label">${t('groups.myGroups.card.completed')}</span>
             </div>
         </div>
@@ -1264,6 +1284,21 @@ function cancelGroupCreation() {
     );
 }
 
+function addLogToGroup(group, logData) {
+    if (!group) return;
+
+    const logEntry = {
+        ...logData,
+        timestamp: new Date().toISOString()
+    };
+
+    if (!group.activityLog) {
+        group.activityLog = [];
+    }
+    group.activityLog.push(logEntry);
+    saveGroup(group); // Salva o grupo com o novo log
+}
+
 function viewGroup(group) {
     // Alternar para a aba de estatísticas
     switchTab('statistics');
@@ -1281,6 +1316,20 @@ function viewGroup(group) {
 function editGroup(group) {
     const dialog = document.getElementById('edit-group-dialog');
     const form = document.getElementById('edit-group-form');
+
+    // Lógica das abas do diálogo de edição
+        const tabs = dialog.querySelectorAll('.showcase-navbar .nav-item');
+    const panes = dialog.querySelectorAll('.details-tab-pane');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            panes.forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            dialog.querySelector(`#${tab.dataset.tab}`).classList.add('active');
+        });
+    });
+    // Garante que a primeira aba esteja ativa ao abrir
+    tabs[0].click();
     
     
     document.getElementById('edit-group-name').value = group.name;
@@ -1380,6 +1429,9 @@ function editGroup(group) {
     
     loadGroupMembers(group);
     
+    // PASSO 4: Renderiza o log de atividades
+    renderGroupActivityLog(group, dialog.querySelector('#edit-group-activity-pane'));
+
     
     const feedbackEl = dialog.querySelector('.feedback');
     feedbackEl.textContent = '';
@@ -1417,6 +1469,8 @@ function saveGroupChanges(e) {
     showConfirmationDialog(
         t('groups.edit.confirmSave'),
         (confirmationDialog) => {
+            const oldGroup = { ...currentGroup }; // Clona o estado antigo para comparação
+
             currentGroup.name = name;
             currentGroup.description = document.getElementById('edit-group-description').value;
             currentGroup.icon = document.getElementById('edit-group-icon').value;
@@ -1438,6 +1492,9 @@ function saveGroupChanges(e) {
                 dayOfMonth: reportFrequency === 'monthly' ? document.getElementById('edit-group-report-day-of-month').value : null,
             };
             
+            // PASSO 2: Loga as alterações
+            logGroupChanges(oldGroup, currentGroup);
+
             
             if (window.pendingParticipants && window.pendingParticipants.length > 0) {
                 window.pendingParticipants.forEach(memberId => {
@@ -1468,6 +1525,53 @@ function saveGroupChanges(e) {
             }
         }
     );
+}
+
+function logGroupChanges(oldGroup, newGroup) {
+    const changes = [];
+    const fieldsToCompare = {
+        name: 'Nome',
+        description: 'Descrição',
+        icon: 'Ícone',
+        access: 'Acesso'
+    };
+
+    for (const field in fieldsToCompare) {
+        if ((oldGroup[field] || '') !== (newGroup[field] || '')) {
+            changes.push({
+                action: 'group_edited',
+                userId: currentUser.id,
+                field: fieldsToCompare[field],
+                from: oldGroup[field] || 'vazio',
+                to: newGroup[field] || 'vazio'
+            });
+        }
+    }
+
+    const oldPerms = oldGroup.defaultPermissions || {};
+    const newPerms = newGroup.defaultPermissions || {};
+    for (const perm in newPerms) {
+        if ((oldPerms[perm] || false) !== (newPerms[perm] || false)) {
+            changes.push({
+                action: 'permissions_changed',
+                userId: currentUser.id,
+                permission: t(`groups.permissions.${perm}`), // Traduz o nome da permissão
+                value: newPerms[perm]
+            });
+        }
+    }
+
+    const oldReport = oldGroup.reportSettings || { frequency: 'none' };
+    const newReport = newGroup.reportSettings || { frequency: 'none' };
+    if (oldReport.frequency !== newReport.frequency) {
+        changes.push({
+            action: 'report_settings_changed',
+            userId: currentUser.id,
+            frequency: newReport.frequency
+        });
+    }
+
+    changes.forEach(logData => addLogToGroup(newGroup, logData));
 }
 
 function deleteGroup() {
@@ -1704,62 +1808,121 @@ function loadAndRenderStatistics(groupId) {
     }
 
     const timeFilter = document.getElementById('time-filter').value;
-    const allCards = [];
+    const chartType = document.getElementById('chart-type').value;
 
-    (group.boardIds || []).forEach(boardId => {
-        const board = getFullBoardData(boardId);
-        if (board) {
-            board.columns.forEach(column => {
-                allCards.push(...column.cards);
-            });
+    const allCardsInGroup = (group.boardIds || []).flatMap(boardId => {
+        const board = getFullBoardData(boardId, true);
+        if (!board) return [];
+
+        // PRIVACY CHECK: Apenas quadros com visibilidade 'group' devem contar para as estatísticas do grupo.
+        const isVisibleToGroup = board.visibility === 'group';
+        if (isVisibleToGroup) {
+            return board.columns.flatMap(col => col.cards);
         }
+        return []; // Não inclui cartões de quadros privados de outros membros.
     });
 
-    
     const now = new Date();
-    const filteredCards = allCards.filter(card => {
-        if (timeFilter === 'all') return true;
-        if (!card.createdAt) return false; // Ignora cartões sem data de criação
+    let startDate = new Date(0); // Início da época para 'all'
+    if (timeFilter !== 'all') {
+        startDate = new Date(); // now
+        // CORREÇÃO: Garante que o 'today' comece hoje, e os outros contem os dias corretamente.
+        switch (timeFilter) {
+            case 'today':
+                // startDate já é hoje, está correto.
+                break;
+            case 'last7': 
+                startDate.setDate(startDate.getDate() - 6); 
+                break;
+            case 'last30': 
+                startDate.setDate(startDate.getDate() - 29); 
+                break;
+        }
+        startDate.setHours(0, 0, 0, 0);
+    }
 
-        const cardDate = new Date(card.createdAt);
-        const diffDays = (now - cardDate) / (1000 * 60 * 60 * 24);
+    const cardsCreatedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => log.action === 'created' && (timeFilter === 'all' || new Date(log.timestamp) >= startDate))
+    );
 
-        if (timeFilter === 'today') return diffDays <= 1;
-        if (timeFilter === 'last7') return diffDays <= 7;
-        if (timeFilter === 'last30') return diffDays <= 30;
-        return false;
-    });
+    // Tarefas "Concluídas" para fins estatísticos incluem as marcadas como 'completed' e as 'archived'.
+    const cardsCompletedOrArchivedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => 
+            (log.action === 'completed' || log.action === 'archived') &&
+            (timeFilter === 'all' || new Date(log.timestamp) >= startDate)
+        )
+    );
 
+    // Tarefas "Queimadas" (para o burn-down e cálculo de ativas) são as concluídas, arquivadas ou movidas para a lixeira.
+    const cardsBurnedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => 
+            (log.action === 'completed' || log.action === 'archived' || log.action === 'trashed') && 
+            (timeFilter === 'all' || new Date(log.timestamp) >= startDate)
+        )
+    );
+
+    const totalCreated = cardsCreatedInPeriod.length;
+    const totalCompleted = cardsCompletedOrArchivedInPeriod.length;
+    const activeCardsList = cardsCreatedInPeriod.filter(c => !cardsBurnedInPeriod.some(burnedCard => burnedCard.id === c.id));
     
-    const totalCards = filteredCards.length;
-    const completedCards = filteredCards.filter(c => c.isComplete).length;
-    const activeCards = totalCards - completedCards;
+    // CORREÇÃO: Separa os cartões ativos em "no prazo" e "atrasados".
+    const overdueCards = activeCardsList.filter(c => c.dueDate && new Date(c.dueDate) < now).length;
+    const onTimeCards = activeCardsList.length - overdueCards;
+
+    // O total de "ativos" para o resumo continua o mesmo.
+    const totalActive = activeCardsList.length;
 
     const tasksByMember = {};
     group.memberIds.forEach(id => {
-        tasksByMember[id] = { completed: 0, total: 0 };
+        tasksByMember[id] = { created: 0, assigned: 0, completed: 0 };
     });
 
-    filteredCards.forEach(card => {
-        if (card.assignedTo && tasksByMember[card.assignedTo]) {
-            tasksByMember[card.assignedTo].total++;
-            if (card.isComplete) {
-                tasksByMember[card.assignedTo].completed++;
+    // Lógica de contagem de performance (agora idêntica à dos relatórios)
+    allCardsInGroup.forEach(card => {
+        (card.activityLog || []).forEach(log => {
+            if (timeFilter === 'all' || new Date(log.timestamp) >= startDate) {
+                if (['created', 'created_from_copy', 'created_from_column_copy'].includes(log.action) && tasksByMember[log.userId]) {
+                    tasksByMember[log.userId].created++;
+                }
             }
+        });
+        if (cardsCreatedInPeriod.some(c => c.id === card.id) && card.assignedTo && tasksByMember[card.assignedTo]) {
+            tasksByMember[card.assignedTo].assigned++;
+        }
+        if (cardsCompletedOrArchivedInPeriod.some(c => c.id === card.id)) {
+            const logEntry = (card.activityLog || []).find(log => (log.action === 'completed' || log.action === 'archived') && (timeFilter === 'all' || new Date(log.timestamp) >= startDate));
+            if (logEntry && logEntry.userId && tasksByMember[logEntry.userId]) {
+                tasksByMember[logEntry.userId].completed++;
+             }
         }
     });
 
-    
-    renderSummary(totalCards, completedCards, activeCards);
+    renderSummary(totalCreated, totalCompleted, totalActive, overdueCards);
     renderParticipantsTable(tasksByMember, group.memberIds);
-    renderStatusChart({ active: activeCards, completed: completedCards });
+
+    // ** DISPATCHER DE GRÁFICOS **
+    if (chartType === 'pie' || chartType === 'bar') {
+        const chartData = { onTime: onTimeCards, overdue: overdueCards, completed: totalCompleted };
+        if (chartType === 'pie') renderPieChart(chartData);
+        else if (chartType === 'bar') renderBarChart(chartData);    
+    } else if (chartType === 'line') {
+        renderLineChart(allCardsInGroup, timeFilter, startDate, group);
+    } else if (chartType === 'burndown') {
+        renderBurndownChart(cardsCreatedInPeriod, timeFilter, startDate);
+    }
 }
 
-function renderSummary(total, completed, active) {
+function renderSummary(total, completed, active, overdue) { // overdue is a new parameter
     // Atualizar estatísticas resumidas
-    document.getElementById('total-cards').textContent = total;
-    document.getElementById('completed-cards').textContent = completed;
-    document.getElementById('active-cards').textContent = active;
+    // CORREÇÃO: Verifica se os elementos existem antes de tentar atualizá-los.
+    const totalEl = document.getElementById('total-cards');
+    const completedEl = document.getElementById('completed-cards');
+    const activeEl = document.getElementById('active-cards');
+    const overdueEl = document.getElementById('overdue-cards');
+    if (totalEl) totalEl.textContent = total;
+    if (completedEl) completedEl.textContent = completed;
+    if (activeEl) activeEl.textContent = active;
+    if (overdueEl) overdueEl.textContent = overdue;
 }
 
 function renderParticipantsTable(tasksByMember, memberIds) {
@@ -1771,12 +1934,14 @@ function renderParticipantsTable(tasksByMember, memberIds) {
         if (!user) return;
 
         const stats = tasksByMember[memberId];
-        const productivity = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+        const totalCompleted = Object.values(tasksByMember).reduce((sum, s) => sum + s.completed, 0);
+        const productivity = totalCompleted > 0 ? Math.round((stats.completed / totalCompleted) * 100) : 0;
 
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${user.name}</td>
-            <td>${t('groups.stats.roleMember')}</td>
+            <td>${stats.created}</td>
+            <td>${stats.assigned}</td>
             <td>${stats.completed}</td>
             <td>${productivity}%</td>
         `;
@@ -1784,42 +1949,40 @@ function renderParticipantsTable(tasksByMember, memberIds) {
     });
 }
 
-function renderStatusChart(data) {
-    const ctx = document.getElementById('status-chart').getContext('2d');
-    const chartType = document.getElementById('chart-type').value;
+function renderPieChart(data) {
+    const ctx = document.getElementById('status-chart')?.getContext('2d');
+    if (!ctx) return;
 
     if (statusChartInstance) {
         statusChartInstance.destroy();
     }
 
-    
-    const hasData = data.active > 0 || data.completed > 0;
-    const chartData = hasData ? [data.active, data.completed] : [1, 1]; // Usa dados placeholder se zerado
-    const chartColors = hasData 
-        ? ['rgba(243, 156, 18, 0.7)', 'rgba(46, 204, 113, 0.7)']
-        : ['rgba(128, 128, 128, 0.2)', 'rgba(128, 128, 128, 0.2)']; // Cinza se zerado
+    const hasData = data.onTime > 0 || data.overdue > 0 || data.completed > 0;
+    const labels = JSON.parse(t('groups.stats.chartLabels')); // ["Ativos (no prazo)", "Atrasados", "Concluídos"]
+    const colors = {
+        onTime: 'rgba(243, 156, 18, 0.7)', // Laranja
+        overdue: 'rgba(231, 76, 60, 0.7)', // Vermelho
+        completed: 'rgba(46, 204, 113, 0.7)' // Verde
+    };
+    const placeholderColor = 'rgba(128, 128, 128, 0.2)';
 
     statusChartInstance = new Chart(ctx, {
-        type: chartType, 
+        type: 'pie',
         data: {
-            labels: JSON.parse(t('groups.stats.chartLabels')),
+            labels: labels,
             datasets: [{
-                label: t('groups.stats.chartDatasetLabel'),
-                data: chartData,
-                backgroundColor: chartColors,
-                borderColor: [
-                    'rgba(243, 156, 18, 1)',
-                    'rgba(46, 204, 113, 1)'
-                ],
-                borderWidth: 1
+                data: hasData ? [data.onTime, data.overdue, data.completed] : [1, 1, 1],
+                backgroundColor: hasData ? [colors.onTime, colors.overdue, colors.completed] : [placeholderColor, placeholderColor, placeholderColor],
+                borderWidth: 0 // Remove a borda branca
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'top',
+                legend: { // CORREÇÃO: Garante que a legenda apareça em ambos os gráficos
+                    display: true,
+                    position: 'top'
                 },
                 title: {
                     display: true,
@@ -1831,6 +1994,261 @@ function renderStatusChart(data) {
                     }
                 }
             }
+        }
+    });
+}
+
+function renderBarChart(data) {
+    const ctx = document.getElementById('status-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    if (statusChartInstance) {
+        statusChartInstance.destroy();
+    }
+
+    const hasData = data.onTime > 0 || data.overdue > 0 || data.completed > 0;
+    const labels = JSON.parse(t('groups.stats.chartLabels')); // ["Ativos (no prazo)", "Atrasados", "Concluídos"]
+    const colors = {
+        onTime: 'rgba(243, 156, 18, 0.7)', // Laranja
+        overdue: 'rgba(231, 76, 60, 0.7)', // Vermelho
+        completed: 'rgba(46, 204, 113, 0.7)', // Verde
+    };
+    const placeholderColor = 'rgba(128, 128, 128, 0.2)';
+
+    statusChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [t('groups.stats.chartTitle')], // Um único label para o eixo X.
+            datasets: hasData ? [
+                { label: labels[0], data: [data.onTime], backgroundColor: colors.onTime },
+                { label: labels[1], data: [data.overdue], backgroundColor: colors.overdue },
+                { label: labels[2], data: [data.completed], backgroundColor: colors.completed }
+            ] : [
+                { label: labels[0], data: [0], backgroundColor: placeholderColor },
+                { label: labels[1], data: [0], backgroundColor: placeholderColor },
+                { label: labels[2], data: [0], backgroundColor: placeholderColor }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: hasData ? t('groups.stats.chartTitle') : t('groups.stats.chartNoData')
+                },
+                tooltip: {
+                    enabled: hasData
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1 // Ensures y-axis shows whole numbers
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
+    const ctx = document.getElementById('status-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    if (statusChartInstance) {
+        statusChartInstance.destroy();
+    }
+
+    const hasData = allCardsInGroup.length > 0;
+
+    // CORREÇÃO: Permite que o gráfico de linha funcione para "Todo o Período"
+    if (timeFilter === 'all') {
+        const groupData = getGroup(document.getElementById('stats-group-select').value);
+        if (groupData && groupData.createdAt) {
+            startDate = new Date(groupData.createdAt);
+            startDate.setHours(0, 0, 0, 0);
+        }
+    }
+
+    const labels = [];
+    const activeData = [];
+    const completedData = [];
+    const overdueData = [];
+    const now = new Date();
+    let periodInDays = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24));
+
+    if (periodInDays <= 1) {
+        periodInDays = 2;
+        startDate.setDate(startDate.getDate() - 1);
+    }
+
+    for (let i = 0; i < periodInDays; i++) {
+        const day = new Date(startDate);
+        day.setDate(startDate.getDate() + i);
+        labels.push(day.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' }));
+
+        if (hasData) {
+            const endOfDay = new Date(day);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const createdUpToDay = allCardsInGroup.filter(c =>
+                (c.activityLog || []).some(log => 
+                    ['created', 'created_from_copy', 'created_from_column_copy'].includes(log.action) &&
+                    new Date(log.timestamp) <= endOfDay)
+            );
+
+            const burnedUpToDay = createdUpToDay.filter(c =>
+                (c.activityLog || []).some(log => (log.action === 'completed' || log.action === 'archived' || log.action === 'trashed') && new Date(log.timestamp) <= endOfDay)
+            );
+            const activeOnDay = createdUpToDay.filter(c => !burnedUpToDay.some(b => b.id === c.id));
+            const overdueOnDay = activeOnDay.filter(c => c.dueDate && new Date(c.dueDate) < endOfDay);
+
+            activeData.push(activeOnDay.length);
+            completedData.push(burnedUpToDay.length);
+            overdueData.push(overdueOnDay.length);
+        } else {
+            activeData.push(0);
+            completedData.push(0);
+            overdueData.push(0);
+        }
+    }
+    
+    const placeholderColor = 'rgba(128, 128, 128, 0.2)';
+    const placeholderBorderColor = 'rgba(128, 128, 128, 0.5)';
+
+    statusChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: t('groups.reports.tasksCompleted'),
+                    data: completedData,
+                    borderColor: hasData ? 'rgba(46, 204, 113, 1)' : placeholderBorderColor,
+                    backgroundColor: hasData ? 'rgba(46, 204, 113, 0.2)' : placeholderColor,
+                    fill: true,
+                    tension: 0.2
+                },
+                {
+                    label: t('kanban.dialog.details.statusActive'),
+                    data: activeData,
+                    borderColor: hasData ? 'rgba(243, 156, 18, 1)' : placeholderBorderColor,
+                    backgroundColor: hasData ? 'rgba(243, 156, 18, 0.2)' : placeholderColor,
+                    fill: true,
+                    tension: 0.2
+                },
+                {
+                    label: t('groups.reports.overdueTasks'),
+                    data: overdueData,
+                    borderColor: hasData ? 'rgba(231, 76, 60, 1)' : placeholderBorderColor,
+                    backgroundColor: hasData ? 'rgba(231, 76, 60, 0.2)' : placeholderColor,
+                    fill: true,
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                title: { display: true, text: hasData ? t('groups.stats.chartTitle') : t('groups.stats.chartNoData') },
+                tooltip: { enabled: hasData }
+            },
+            scales: { y: { beginAtZero: true, title: { display: true, text: t('groups.myGroups.card.tasks') } } }
+        }
+    });
+}
+
+function renderBurndownChart(createdCards, timeFilter, startDate) {
+    const ctx = document.getElementById('status-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    if (statusChartInstance) {
+        statusChartInstance.destroy();
+    }
+
+    const hasData = createdCards.length > 0;
+
+    if (timeFilter === 'all') {
+        const group = getGroup(document.getElementById('stats-group-select').value);
+        if (group && group.createdAt) {
+            startDate = new Date(group.createdAt);
+            startDate.setHours(0, 0, 0, 0);
+        }
+    }
+
+    let periodInDays = Math.max(1, Math.ceil((new Date() - startDate) / (1000 * 60 * 60 * 24)));
+    if (periodInDays <= 1) {
+        periodInDays = 2;
+        startDate.setDate(startDate.getDate() - 1);
+    }
+
+    const totalTasks = createdCards.length;
+    const labels = [];
+    const idealData = [];
+    const actualData = [];
+
+    for (let i = 0; i < periodInDays; i++) {
+        const day = new Date(startDate);
+        day.setDate(startDate.getDate() + i);
+        labels.push(day.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' }));
+
+        if (hasData) {
+            const idealValue = totalTasks - (totalTasks / Math.max(1, periodInDays - 1)) * i;
+            idealData.push(Math.max(0, idealValue.toFixed(2)));
+
+            const endOfDay = new Date(day);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const burnedUpToDay = createdCards.filter(card => 
+                (card.activityLog || []).some(log => 
+                    (log.action === 'completed' || log.action === 'archived' || log.action === 'trashed') && 
+                    new Date(log.timestamp) <= endOfDay
+                )
+            ).length;
+            actualData.push(totalTasks - burnedUpToDay);
+        } else {
+            idealData.push(0);
+            actualData.push(0);
+        }
+    }
+    
+    const placeholderColor = 'rgba(128, 128, 128, 0.2)';
+    const placeholderBorderColor = 'rgba(128, 128, 128, 0.5)';
+
+    statusChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: t('groups.stats.burndownIdeal'),
+                data: idealData,
+                borderColor: hasData ? 'rgba(255, 99, 132, 0.5)' : placeholderBorderColor,
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0.2
+            }, {
+                label: t('groups.stats.burndownActual'),
+                data: actualData,
+                borderColor: hasData ? 'rgba(54, 162, 235, 1)' : placeholderBorderColor,
+                backgroundColor: hasData ? 'rgba(54, 162, 235, 0.2)' : placeholderColor,
+                fill: 'start',
+                tension: 0.2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                title: { display: true, text: hasData ? t('groups.stats.burndownTitle') : t('groups.stats.chartNoData') },
+                tooltip: { enabled: hasData }
+            },
+            scales: { y: { beginAtZero: true, title: { display: true, text: t('groups.stats.remainingTasks') } } },
+            interaction: { mode: 'index', intersect: false }
         }
     });
 }
@@ -1860,15 +2278,18 @@ function generateAndRenderReport() {
     const groupId = document.getElementById('report-group-select').value;
     const period = document.getElementById('report-period-select').value;
     const container = document.getElementById('report-container');
+    const exportBtn = document.getElementById('export-report-csv-btn');
 
     if (!groupId) {
         container.innerHTML = `<p class="no-templates">${t('groups.reports.selectGroup')}</p>`;
+        exportBtn.classList.add('hidden');
         return;
     }
 
     const group = getGroup(groupId);
     if (!group) {
         container.innerHTML = `<p class="no-templates">${t('groups.feedback.groupNotFound')}</p>`;
+        exportBtn.classList.add('hidden');
         return;
     }
 
@@ -1876,37 +2297,76 @@ function generateAndRenderReport() {
     const now = new Date();
     let startDate = new Date();
     switch (period) {
-        case 'daily': startDate.setDate(now.getDate() - 1); break; // Mantido, mas a UI oferece 'today'
+        case 'daily': startDate.setDate(now.getDate() - 1); break;
         case 'weekly': startDate.setDate(now.getDate() - 7); break;
         case 'monthly': startDate.setMonth(now.getMonth() - 1); break;
+        case 'all': startDate = new Date(0); break; // Início da época Unix para pegar tudo
     }
 
+    // A lógica de busca de cartões já inclui os arquivados (getFullBoardData(..., true))
     const allCardsInGroup = (group.boardIds || []).flatMap(boardId => {
-        const board = getFullBoardData(boardId);
-        return board ? board.columns.flatMap(col => col.cards) : [];
+        const board = getFullBoardData(boardId, true); // Inclui cartões arquivados para o relatório
+        if (!board) return [];
+
+        // PRIVACY CHECK: Apenas quadros com visibilidade 'group' devem contar para os relatórios do grupo.
+        const isVisibleToGroup = board.visibility === 'group';
+        if (isVisibleToGroup) {
+            return board.columns.flatMap(col => col.cards);
+        }
+        return []; // Não inclui cartões de quadros privados de outros membros.
     });
 
     // Se não houver nenhum cartão no grupo, exibe a mensagem e para.
     if (allCardsInGroup.length === 0) {
-        container.innerHTML = `<p class="no-templates">${t('groups.reports.noActivity')}</p>`;
+        container.innerHTML = `<div class="report-section"><p class="no-templates">${t('groups.reports.noActivity')}</p></div>`;
+        exportBtn.classList.add('hidden');
         return;
     }
 
-    const cardsInPeriod = allCardsInGroup.filter(card => new Date(card.createdAt) >= startDate);
-    const cardsCompletedInPeriod = allCardsInGroup.filter(card => card.isComplete && new Date(card.completedAt) >= startDate);
+    // FASE 3: Lógica de relatório baseada no ActivityLog
+    const cardsCreatedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => ['created', 'created_from_copy', 'created_from_column_copy'].includes(log.action) && 
+        (period === 'all' || new Date(log.timestamp) >= startDate))
+    );
+    const cardsCompletedInPeriodLog = allCardsInGroup.filter(card => 
+        // CORREÇÃO: Alinha com a lógica dos gráficos, considerando 'completed' e 'archived'.
+        (card.activityLog || []).some(log => 
+            (log.action === 'completed' || log.action === 'archived') && 
+            (period === 'all' || new Date(log.timestamp) >= startDate)
+        )
+    );
+    // NOVAS MÉTRICAS
+    const cardsArchivedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => log.action === 'archived' && (period === 'all' || new Date(log.timestamp) >= startDate))
+    );
+    const cardsTrashedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => log.action === 'trashed' && (period === 'all' || new Date(log.timestamp) >= startDate))
+    );
 
-    
-    const totalCreated = cardsInPeriod.length;
-    const totalCompleted = cardsCompletedInPeriod.length;
+    const totalCreated = cardsCreatedInPeriod.length;
+    const totalCompleted = cardsCompletedInPeriodLog.length;
     const completionRate = totalCreated > 0 ? ((totalCompleted / totalCreated) * 100).toFixed(1) : 0;
 
     const memberPerformance = group.memberIds.map(memberId => {
         const user = allUsers.find(u => u.id === memberId);
         if (!user) return null;
-        const assigned = cardsInPeriod.filter(c => c.assignedTo === memberId).length;
-        const completed = cardsCompletedInPeriod.filter(c => c.assignedTo === memberId).length;
-        const productivity = assigned > 0 ? ((completed / assigned) * 100).toFixed(1) : 0;
-        return { name: user.name, assigned, completed, productivity };
+        
+        // QUEM CRIOU: Conta os logs de criação feitos pelo usuário.
+        const created = allCardsInGroup.filter(c => (c.activityLog || []).some(log => 
+            ['created', 'created_from_copy', 'created_from_column_copy'].includes(log.action) && 
+            log.userId === memberId && (period === 'all' || new Date(log.timestamp) >= startDate))).length;
+        
+        // QUEM COMPLETOU: Conta os logs de conclusão feitos pelo usuário.
+        const completed = allCardsInGroup.filter(c => (c.activityLog || []).some(log => 
+            (log.action === 'completed' || log.action === 'archived') && // CORREÇÃO: Inclui arquivamentos na produtividade.
+            log.userId === memberId && (period === 'all' || new Date(log.timestamp) >= startDate))).length;
+
+        // TAREFAS ATRIBUÍDAS (mantém a lógica original para essa métrica)
+        const assigned = cardsCreatedInPeriod.filter(c => c.assignedTo === memberId).length;
+
+        // CORREÇÃO: Produtividade como contribuição para o total concluído.
+        const productivity = totalCompleted > 0 ? ((completed / totalCompleted) * 100).toFixed(1) : 0;
+        return { name: user.name, created, assigned, completed, productivity };
     }).filter(Boolean);
 
     const overdueCards = allCardsInGroup.filter(c => !c.isComplete && c.dueDate && new Date(c.dueDate) < now).length;
@@ -1937,6 +2397,14 @@ function generateAndRenderReport() {
                     <span class="stat-number">${overdueCards}</span>
                     <span class="stat-label">${t('groups.reports.overdueTasks')}</span>
                 </div>
+                <div class="stat-item">
+                    <span class="stat-number">${cardsArchivedInPeriod.length}</span>
+                    <span class="stat-label">${t('archive.tabs.archived')}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${cardsTrashedInPeriod.length}</span>
+                    <span class="stat-label">${t('archive.tabs.trash')}</span>
+                </div>
             </div>
         </div>
 
@@ -1946,6 +2414,7 @@ function generateAndRenderReport() {
                 <thead>
                     <tr>
                         <th>${t('groups.reports.tableHeaderMember')}</th>
+                        <th>${t('groups.reports.tasksCreated')}</th>
                         <th>${t('groups.reports.tableHeaderAssigned')}</th>
                         <th>${t('groups.reports.tableHeaderCompleted')}</th>
                         <th>${t('groups.reports.tableHeaderProductivity')}</th>
@@ -1955,6 +2424,7 @@ function generateAndRenderReport() {
                     ${memberPerformance.map(p => `
                         <tr>
                             <td>${p.name}</td>
+                            <td>${p.created}</td>
                             <td>${p.assigned}</td>
                             <td>${p.completed}</td>
                             <td>${p.productivity}%</td>
@@ -1964,6 +2434,89 @@ function generateAndRenderReport() {
             </table>
         </div>
     `;
+
+    // Mostra o botão de exportar
+    exportBtn.classList.remove('hidden');
+}
+
+function exportReportToCSV() {
+    const groupId = document.getElementById('report-group-select').value;
+    const group = getGroup(groupId);
+    if (!group) return;
+
+    const table = document.querySelector('#report-container .participants-table');
+    if (!table) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    // Cabeçalho do CSV
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => `"${th.textContent}"`).join(',');
+    csvContent += headers + '\r\n';
+
+    // Linhas do CSV
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowData = Array.from(row.querySelectorAll('td')).map(td => {
+            let data = td.textContent.replace(/"/g, '""'); // Escapa aspas duplas
+            return `"${data}"`;
+        }).join(',');
+        csvContent += rowData + '\r\n';
+    });
+
+    // Cria e baixa o arquivo
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    const periodSelect = document.getElementById('report-period-select');
+    const period = periodSelect.options[periodSelect.selectedIndex].text;
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `relatorio_${group.name.replace(/ /g, '_')}_${period}_${date}.csv`;
+
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+
+    link.click();
+    document.body.removeChild(link);
+
+    showFloatingMessage('Relatório exportado com sucesso!', 'success');
+}
+
+/**
+ * Exporta o gráfico atualmente exibido na aba de estatísticas como uma imagem PNG.
+ */
+function exportChartAsImage() {
+    if (!statusChartInstance) {
+        showFloatingMessage(t('kanban.feedback.exportFail'), 'warning'); // Reutilizando chave, idealmente seria uma nova.
+        return;
+    }
+
+    const canvas = document.getElementById('status-chart');
+    if (!canvas) {
+        showFloatingMessage(t('kanban.feedback.exportFail'), 'error');
+        return;
+    }
+
+    showFloatingMessage(t('kanban.feedback.preparingExport'), 'info');
+
+    // Timeout para garantir que animações do gráfico tenham terminado.
+    setTimeout(() => {
+        try {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            
+            const groupName = document.getElementById('stats-group-select').selectedOptions[0].text;
+            const chartType = document.getElementById('chart-type').value;
+            const date = new Date().toISOString().split('T')[0];
+
+            link.download = `grafico_${groupName.replace(/ /g, '_')}_${chartType}_${date}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            console.error("Erro ao exportar imagem do gráfico:", err);
+            showFloatingMessage(t('kanban.feedback.exportFail'), 'error');
+        }
+    }, 500);
 }
 
 async function testServerConnection(serverUrl) {
@@ -2003,6 +2556,12 @@ function removeMemberFromGroup(group, memberId) {
             // Enviar notificação de remoção
             notifyGroupRemoval(currentGroup.name, memberId);
             
+            // PASSO 2: Adiciona o log de remoção
+            addLogToGroup(currentGroup, {
+                action: 'member_removed',
+                userId: currentUser.id,
+                memberName: member.name
+            });
             
             showDialogMessage(dialog, t('groups.edit.memberWillBeRemoved', { name: member.name }), 'info');
             
@@ -2232,39 +2791,6 @@ function showAddParticipantDialog() {
 }
 
 /**
- * Calcula o número total de tarefas (cartões) em todos os quadros de um grupo.
- * 
- * @returns {number} O número total de tarefas.
- */
-function getGroupTaskCount(groupId) {
-    const group = getGroup(groupId);
-    if (!group || !group.boardIds) return 0;
-
-    return group.boardIds.reduce((total, boardId) => {
-        const board = getFullBoardData(boardId);
-        if (!board) return total;
-        return total + board.columns.reduce((boardTotal, column) => boardTotal + column.cards.length, 0);
-    }, 0);
-}
-
-/**
- * Calcula o número de tarefas concluídas em todos os quadros de um grupo.
- * 
- * @returns {number} O número de tarefas concluídas.
- */
-function getCompletedTaskCount(groupId) {
-    const group = getGroup(groupId);
-    if (!group || !group.boardIds) return 0;
-
-    return group.boardIds.reduce((total, boardId) => {
-        const board = getFullBoardData(boardId);
-        if (!board) return total;
-        return total + board.columns.reduce((boardTotal, column) => 
-            boardTotal + column.cards.filter(card => card.isComplete).length, 0);
-    }, 0);
-}
-
-/**
  * Calcula o número de tarefas atrasadas em todos os quadros de um grupo.
  * 
  * @returns {number} O número de tarefas atrasadas.
@@ -2329,6 +2855,13 @@ function showMemberPermissionsDialog(group, memberId) {
             // Se "Usar padrão" está marcado, remove as permissões individuais deste membro
             if (currentGroup.memberPermissions && currentGroup.memberPermissions[memberId]) {
                 delete currentGroup.memberPermissions[memberId];
+                // PASSO 2: Adiciona log de alteração de permissão individual
+                addLogToGroup(currentGroup, {
+                    action: 'member_permissions_changed',
+                    userId: currentUser.id,
+                    memberName: member.name,
+                    details: 'reverted_to_default'
+                });
             }
         } else {
             // Se não, salva as permissões individuais
@@ -2342,6 +2875,13 @@ function showMemberPermissionsDialog(group, memberId) {
                 editColumns: dialog.querySelector('#member-perm-edit-columns').checked,
                 createCards: dialog.querySelector('#member-perm-create-cards').checked,
             };
+            // PASSO 2: Adiciona log de alteração de permissão individual
+            addLogToGroup(currentGroup, {
+                action: 'member_permissions_changed',
+                userId: currentUser.id,
+                memberName: member.name,
+                details: 'customized'
+            });
         }
 
         // Marca o diálogo principal de edição como "não salvo" para que o admin precise salvar o grupo
@@ -2352,4 +2892,44 @@ function showMemberPermissionsDialog(group, memberId) {
     };
 
     dialog.showModal();
+}
+
+/**
+ * Renderiza o log de atividades de um grupo em um container.
+ * @param {object} group - O objeto do grupo.
+ * @param {HTMLElement} container - O elemento onde o log será renderizado.
+ */
+function renderGroupActivityLog(group, container) {
+    const log = group.activityLog || [];
+    if (log.length === 0) {
+        container.innerHTML = `<p class="activity-log-empty">${t('activityLog.empty')}</p>`;
+        return;
+    }
+
+    const sortedLog = log.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    let logHtml = '<ul class="activity-log-list">';
+    sortedLog.forEach(entry => {
+        const user = allUsers.find(u => u.id === entry.userId)?.name || 'Sistema';
+        const date = new Date(entry.timestamp).toLocaleString();
+        
+        const replacements = {
+            user: `<strong>${user}</strong>`,
+            groupName: `<strong>${entry.groupName || group.name}</strong>`,
+            field: `<strong>${entry.field}</strong>`,
+            from: `<em>${entry.from}</em>`,
+            to: `<em>${entry.to}</em>`,
+            permission: `<strong>${entry.permission}</strong>`,
+            value: `<strong>${entry.value ? 'ativada' : 'desativada'}</strong>`,
+            memberName: `<strong>${entry.memberName}</strong>`,
+            frequency: `<strong>${entry.frequency}</strong>`
+        };
+        
+        const message = t(`activityLog.action.group.${entry.action}`, replacements)
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        logHtml += `<li class="activity-log-item"><div class="log-message">${message}</div><div class="log-date">${date}</div></li>`;
+    });
+    logHtml += '</ul>';
+    container.innerHTML = logHtml;
 }

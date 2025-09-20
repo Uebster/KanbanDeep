@@ -275,8 +275,24 @@ export function getFullBoardData(boardId, includeArchived = false) {
     const hydratedColumns = columnIdsToLoad.map(columnId => {
         const column = getColumn(columnId);
         if (!column) return null;
+        
+        // Pega os cartões ativos da coluna
+        const activeCards = (column.cardIds || []).map(cardId => getCard(cardId)).filter(Boolean);
 
-        const hydratedCards = (column.cardIds || []).map(cardId => getCard(cardId)).filter(card => card && (includeArchived || !card.isArchived));
+        let allCardsForColumn = activeCards;
+
+        // Se for para incluir arquivados, busca todos os cartões que já pertenceram a esta coluna
+        if (includeArchived) {
+            const allCardKeys = Object.keys(isElectron() ? {} : localStorage).filter(k => k.startsWith(STORAGE_PREFIX + 'card_'));
+            const archivedCardsForThisColumn = allCardKeys.map(key => universalLoad(key.replace(STORAGE_PREFIX, ''))).filter(card => card && card.isArchived && card.columnId === columnId);
+            
+            // Combina e remove duplicatas
+            const cardMap = new Map();
+            [...activeCards, ...archivedCardsForThisColumn].forEach(card => cardMap.set(card.id, card));
+            allCardsForColumn = Array.from(cardMap.values());
+        }
+
+        const hydratedCards = allCardsForColumn.filter(card => card && (includeArchived || !card.isArchived));
         return { ...column, cards: hydratedCards };
     }).filter(Boolean);
 
