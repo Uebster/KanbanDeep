@@ -180,25 +180,35 @@ document.getElementById('my-groups')?.addEventListener('click', (e) => {
             break;
     }
 });
-    document.getElementById('edit-group-form')?.addEventListener('submit', saveGroupChanges);
-    document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
-    const editDialog = document.getElementById('edit-group-dialog');
-    if (isGroupSaved) {
-        editDialog.close();
-        return;
-    }
 
-    showConfirmationDialog(
-        t('ui.unsavedChanges'),
-        (confirmationDialog) => {
-            showDialogMessage(confirmationDialog, t('kanban.feedback.changesDiscarded'), 'info');
-            setTimeout(() => {
-                editDialog.close();
-            }, 1500);
-            return true;
+    // --- DIÁLOGO DE EDIÇÃO: LISTENERS CONFIGURADOS UMA ÚNICA VEZ ---
+    const editDialog = document.getElementById('edit-group-dialog');
+    // Botões de Salvar e Cancelar
+    document.getElementById('save-edit-group-btn')?.addEventListener('click', saveGroupChanges);
+    document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
+        const dialog = document.getElementById('edit-group-dialog');
+        if (isGroupSaved) {
+            dialog.close();
+            return;
         }
-    );
-});
+        showConfirmationDialog(
+            t('ui.unsavedChanges'),
+            (confirmationDialog) => {
+                showDialogMessage(confirmationDialog, t('kanban.feedback.changesDiscarded'), 'info');
+                setTimeout(() => dialog.close(), 1500);
+                return true;
+            }
+        );
+    });
+    // Lógica das Abas (isolada para o diálogo com as novas classes)
+    editDialog?.querySelectorAll('.dialog-nav-item').forEach(tab => {
+        tab.addEventListener('click', () => {
+            editDialog.querySelectorAll('.dialog-nav-item, .details-tab-pane').forEach(el => el.classList.remove('active'));
+            tab.classList.add('active');
+            const targetPane = editDialog.querySelector(`#${tab.dataset.tab}`);
+            if (targetPane) targetPane.classList.add('active');
+        });
+    });
 
 document.getElementById('btn-add-participant')?.addEventListener('click', () => {
     // Verifique se currentGroup está definido
@@ -1315,23 +1325,6 @@ function viewGroup(group) {
 
 function editGroup(group) {
     const dialog = document.getElementById('edit-group-dialog');
-    const form = document.getElementById('edit-group-form');
-
-    // Lógica das abas do diálogo de edição
-        const tabs = dialog.querySelectorAll('.showcase-navbar .nav-item');
-    const panes = dialog.querySelectorAll('.details-tab-pane');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            panes.forEach(p => p.classList.remove('active'));
-            tab.classList.add('active');
-            dialog.querySelector(`#${tab.dataset.tab}`).classList.add('active');
-        });
-    });
-    // Garante que a primeira aba esteja ativa ao abrir
-    tabs[0].click();
-    
-    
     document.getElementById('edit-group-name').value = group.name;
     const iconInput = document.getElementById('edit-group-icon');
     iconInput.value = group.icon || '👥';
@@ -1437,13 +1430,18 @@ function editGroup(group) {
     feedbackEl.textContent = '';
     feedbackEl.className = 'feedback';
     
+    // Garante que a primeira aba esteja ativa ao abrir, usando a nova classe
+    const tabs = dialog.querySelectorAll('.dialog-nav-item');
+    if (tabs.length > 0) {
+        tabs[0].click();
+    }
+
     initCustomSelects();
     
     dialog.showModal();
 }
 
-function saveGroupChanges(e) {
-    e.preventDefault();
+function saveGroupChanges() {
     
     const dialog = document.getElementById('edit-group-dialog');
     const feedbackEl = dialog.querySelector('.feedback');
@@ -2296,11 +2294,23 @@ function generateAndRenderReport() {
     
     const now = new Date();
     let startDate = new Date();
+    // CORREÇÃO: A data de início do período deve ser normalizada para o começo do dia (00:00:00)
+    // para garantir que o filtro '>= startDate' funcione como esperado para "hoje", "últimos 7 dias", etc.
     switch (period) {
-        case 'daily': startDate.setDate(now.getDate() - 1); break;
-        case 'weekly': startDate.setDate(now.getDate() - 7); break;
-        case 'monthly': startDate.setMonth(now.getMonth() - 1); break;
-        case 'all': startDate = new Date(0); break; // Início da época Unix para pegar tudo
+        case 'daily': 
+            startDate.setHours(0, 0, 0, 0); // Início do dia de hoje
+            break;
+        case 'weekly': 
+            startDate.setDate(now.getDate() - 6); // Inclui hoje + 6 dias anteriores
+            startDate.setHours(0, 0, 0, 0);
+            break;
+        case 'monthly': 
+            startDate.setMonth(now.getMonth() - 1); // Mês anterior
+            startDate.setHours(0, 0, 0, 0);
+            break;
+        case 'all': 
+            startDate = new Date(0); // Início da época Unix para pegar tudo
+            break;
     }
 
     // A lógica de busca de cartões já inclui os arquivados (getFullBoardData(..., true))
@@ -2369,7 +2379,16 @@ function generateAndRenderReport() {
         return { name: user.name, created, assigned, completed, productivity };
     }).filter(Boolean);
 
-    const overdueCards = allCardsInGroup.filter(c => !c.isComplete && c.dueDate && new Date(c.dueDate) < now).length;
+    // CORREÇÃO: A métrica de cartões "Atrasados" deve respeitar o período do filtro.
+    // A lógica anterior considerava todos os cartões do grupo, ignorando o filtro de data.
+    const cardsBurnedInPeriod = allCardsInGroup.filter(card => 
+        (card.activityLog || []).some(log => 
+            (log.action === 'completed' || log.action === 'archived' || log.action === 'trashed') && 
+            (period === 'all' || new Date(log.timestamp) >= startDate)
+        )
+    );
+    const activeCardsInPeriod = cardsCreatedInPeriod.filter(c => !cardsBurnedInPeriod.some(burnedCard => burnedCard.id === c.id));
+    const overdueCards = activeCardsInPeriod.filter(c => c.dueDate && new Date(c.dueDate) < now).length;
 
     
     container.innerHTML = `

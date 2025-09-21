@@ -263,13 +263,13 @@
     <dialog id="edit-group-dialog" class="draggable">
         <h3 class="drag-handle" id="edit-group-dialog-title" data-i18n="groups.edit.title"></h3>
         
-        <nav class="showcase-navbar">
-            <button class="nav-item active" data-tab="edit-group-info-pane" data-i18n="groups.edit.groupInfo"></button>
-            <button class="nav-item" data-tab="edit-group-participants-pane" data-i18n="groups.edit.participants"></button>
-            <button class="nav-item" data-tab="edit-group-permissions-pane" data-i18n="groups.permissions.title"></button>
-            <button class="nav-item" data-tab="edit-group-reports-pane" data-i18n="groups.edit.autoReports"></button>
-            <button class="nav-item" data-tab="edit-group-activity-pane" data-i18n="activityLog.details.tabActivity"></button>
-        </nav>
+        <div class="dialog-showcase-navbar">
+            <button class="dialog-nav-item active" data-tab="edit-group-info-pane" data-i18n="groups.edit.groupInfo"></button>
+            <button class="dialog-nav-item" data-tab="edit-group-participants-pane" data-i18n="groups.edit.participants"></button>
+            <button class="dialog-nav-item" data-tab="edit-group-permissions-pane" data-i18n="groups.permissions.title"></button>
+            <button class="dialog-nav-item" data-tab="edit-group-reports-pane" data-i18n="groups.edit.autoReports"></button>
+            <button class="dialog-nav-item" data-tab="edit-group-activity-pane" data-i18n="activityLog.details.tabActivity"></button>
+        </div>
 
         <form id="edit-group-form">
             <div id="edit-group-info-pane" class="tab-content active">
@@ -343,7 +343,7 @@
                             <option value="5" data-i18n="ui.day.friday"></option>
                             <option value="6" data-i18n="ui.day.saturday"></option>
                             <option value="0" data-i18n="ui.day.sunday"></option>
-                        </div>
+                        </select>
                     </div>
                 <div id="edit-group-report-day-of-month-container" class="form-group hidden">
                     <label for="edit-group-report-day-of-month" data-i18n="groups.edit.dayOfMonth"></label>
@@ -357,10 +357,10 @@
 
             <div class="feedback"></div>
         </form>
-        <div class="modal-actions">
-            <button id="cancel-edit-group" class="btn cancel" data-i18n="ui.cancel"></button>
-            <button type="submit" form="edit-group-form" class="btn confirm" data-i18n="profile.button.saveChanges"></button>
-        </div>
+<div class="modal-actions">
+    <button type="button" id="cancel-edit-group" class="btn cancel" data-i18n="ui.cancel"></button>
+    <button type="button" id="save-edit-group-btn" class="btn confirm" data-i18n="ui.save"></button>
+</div>
     </dialog>
 
     <dialog id="add-participant-dialog" class="draggable">
