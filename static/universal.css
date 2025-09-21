@@ -1134,6 +1134,16 @@ body.no-primary-effects .color-swatch.special:hover {
     display: block;
 }
 
+/* ===== ESTILOS PARA ABAS DE CONTEÚDO (UNIVERSAL) ===== */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
 /* ===== LOG DE ATIVIDADES (UNIVERSAL) ===== */
 .activity-log-list { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; }
 .activity-log-item { padding: 12px 0; border-bottom: 1px solid var(--border-light); }

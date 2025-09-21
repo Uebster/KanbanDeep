@@ -2522,6 +2522,9 @@ function handleDragLeave(e) {
  */
 function handleDrop(e) {
     e.preventDefault();
+    // CORREÇÃO: Garante que o estado de "arrastando" seja finalizado ao soltar,
+    // reativando o tooltip imediatamente.
+    isDragging = false;
     if (!draggedElement) return;
     
     // Limpa todos os highlights visuais ao soltar

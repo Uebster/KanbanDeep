@@ -183,32 +183,34 @@ document.getElementById('my-groups')?.addEventListener('click', (e) => {
 
     // --- DIÁLOGO DE EDIÇÃO: LISTENERS CONFIGURADOS UMA ÚNICA VEZ ---
     const editDialog = document.getElementById('edit-group-dialog');
-    // Botões de Salvar e Cancelar
-    document.getElementById('save-edit-group-btn')?.addEventListener('click', saveGroupChanges);
-    document.getElementById('cancel-edit-group')?.addEventListener('click', () => {
-        const dialog = document.getElementById('edit-group-dialog');
-        if (isGroupSaved) {
-            dialog.close();
-            return;
-        }
-        showConfirmationDialog(
-            t('ui.unsavedChanges'),
-            (confirmationDialog) => {
-                showDialogMessage(confirmationDialog, t('kanban.feedback.changesDiscarded'), 'info');
-                setTimeout(() => dialog.close(), 1500);
-                return true;
+    if (editDialog) {
+        // Botões de Salvar e Cancelar
+        editDialog.querySelector('#save-edit-group-btn')?.addEventListener('click', saveGroupChanges);
+        editDialog.querySelector('#cancel-edit-group')?.addEventListener('click', () => {
+            if (isGroupSaved) {
+                editDialog.close();
+                return;
             }
-        );
-    });
-    // Lógica das Abas (isolada para o diálogo com as novas classes)
-    editDialog?.querySelectorAll('.dialog-nav-item').forEach(tab => {
-        tab.addEventListener('click', () => {
-            editDialog.querySelectorAll('.dialog-nav-item, .details-tab-pane').forEach(el => el.classList.remove('active'));
-            tab.classList.add('active');
-            const targetPane = editDialog.querySelector(`#${tab.dataset.tab}`);
-            if (targetPane) targetPane.classList.add('active');
+            showConfirmationDialog(t('ui.unsavedChanges'), (confirmationDialog) => {
+                showDialogMessage(confirmationDialog, t('kanban.feedback.changesDiscarded'), 'info');
+                setTimeout(() => editDialog.close(), 1500);
+                return true;
+            });
         });
-    });
+
+        // Lógica das Abas (CORRIGIDA)
+        const dialogTabs = editDialog.querySelectorAll('.dialog-nav-item');
+        const dialogPanes = editDialog.querySelectorAll('.tab-content'); // <-- CORREÇÃO: Usa a classe correta do seu HTML
+        dialogTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                dialogTabs.forEach(t => t.classList.remove('active'));
+                dialogPanes.forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                const targetPane = editDialog.querySelector(`#${tab.dataset.tab}`);
+                if (targetPane) targetPane.classList.add('active');
+            });
+        });
+    }
 
 document.getElementById('btn-add-participant')?.addEventListener('click', () => {
     // Verifique se currentGroup está definido
@@ -1904,9 +1906,9 @@ function loadAndRenderStatistics(groupId) {
         if (chartType === 'pie') renderPieChart(chartData);
         else if (chartType === 'bar') renderBarChart(chartData);    
     } else if (chartType === 'line') {
-        renderLineChart(allCardsInGroup, timeFilter, startDate, group);
+        renderLineChart(cardsCreatedInPeriod, timeFilter, startDate, group);
     } else if (chartType === 'burndown') {
-        renderBurndownChart(cardsCreatedInPeriod, timeFilter, startDate);
+        renderBurndownChart(cardsCreatedInPeriod, timeFilter, startDate, group);
     }
 }
 
@@ -2055,7 +2057,7 @@ function renderBarChart(data) {
     });
 }
 
-function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
+function renderLineChart(cardsCreatedInPeriod, timeFilter, startDate, group) {
     const ctx = document.getElementById('status-chart')?.getContext('2d');
     if (!ctx) return;
 
@@ -2063,13 +2065,12 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
         statusChartInstance.destroy();
     }
 
-    const hasData = allCardsInGroup.length > 0;
+    const hasData = cardsCreatedInPeriod.length > 0;
 
     // CORREÇÃO: Permite que o gráfico de linha funcione para "Todo o Período"
     if (timeFilter === 'all') {
-        const groupData = getGroup(document.getElementById('stats-group-select').value);
-        if (groupData && groupData.createdAt) {
-            startDate = new Date(groupData.createdAt);
+        if (group && group.createdAt) {
+            startDate = new Date(group.createdAt);
             startDate.setHours(0, 0, 0, 0);
         }
     }
@@ -2079,7 +2080,7 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
     const completedData = [];
     const overdueData = [];
     const now = new Date();
-    let periodInDays = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24));
+    let periodInDays = Math.max(1, Math.ceil((now - startDate) / (1000 * 60 * 60 * 24)));
 
     if (periodInDays <= 1) {
         periodInDays = 2;
@@ -2095,7 +2096,7 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
             const endOfDay = new Date(day);
             endOfDay.setHours(23, 59, 59, 999);
 
-            const createdUpToDay = allCardsInGroup.filter(c =>
+            const createdUpToDay = cardsCreatedInPeriod.filter(c =>
                 (c.activityLog || []).some(log => 
                     ['created', 'created_from_copy', 'created_from_column_copy'].includes(log.action) &&
                     new Date(log.timestamp) <= endOfDay)
@@ -2130,7 +2131,7 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
                     data: completedData,
                     borderColor: hasData ? 'rgba(46, 204, 113, 1)' : placeholderBorderColor,
                     backgroundColor: hasData ? 'rgba(46, 204, 113, 0.2)' : placeholderColor,
-                    fill: true,
+                    fill: hasData ? 'start' : true, // Garante o preenchimento no placeholder
                     tension: 0.2
                 },
                 {
@@ -2138,7 +2139,7 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
                     data: activeData,
                     borderColor: hasData ? 'rgba(243, 156, 18, 1)' : placeholderBorderColor,
                     backgroundColor: hasData ? 'rgba(243, 156, 18, 0.2)' : placeholderColor,
-                    fill: true,
+                    fill: hasData ? 'start' : true,
                     tension: 0.2
                 },
                 {
@@ -2146,7 +2147,7 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
                     data: overdueData,
                     borderColor: hasData ? 'rgba(231, 76, 60, 1)' : placeholderBorderColor,
                     backgroundColor: hasData ? 'rgba(231, 76, 60, 0.2)' : placeholderColor,
-                    fill: true,
+                    fill: hasData ? 'start' : true,
                     tension: 0.2
                 }
             ]
@@ -2162,7 +2163,7 @@ function renderLineChart(allCardsInGroup, timeFilter, startDate, group) {
     });
 }
 
-function renderBurndownChart(createdCards, timeFilter, startDate) {
+function renderBurndownChart(createdCards, timeFilter, startDate, group) {
     const ctx = document.getElementById('status-chart')?.getContext('2d');
     if (!ctx) return;
 
@@ -2172,8 +2173,8 @@ function renderBurndownChart(createdCards, timeFilter, startDate) {
 
     const hasData = createdCards.length > 0;
 
+    // CORREÇÃO: Ajusta a data de início para a criação do grupo se o período for "all"
     if (timeFilter === 'all') {
-        const group = getGroup(document.getElementById('stats-group-select').value);
         if (group && group.createdAt) {
             startDate = new Date(group.createdAt);
             startDate.setHours(0, 0, 0, 0);
