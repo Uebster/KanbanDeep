@@ -1,8 +1,8 @@
 import { getCurrentUser } from './auth.js';
 import { 
     getUserProfile, saveUserProfile,
-    getAllGroups, 
-    getFullBoardData, 
+    getAllGroups,
+    getFullBoardData,
     getCard, 
     saveCard, 
     getColumn, 
@@ -10,7 +10,7 @@ import {
     getBoard, 
     saveBoard, deleteBoard,
     deleteCard, // Hard delete
-    deleteColumn, // Hard delete
+    deleteColumn,
     getAllUsers
 } from './storage.js';
 import { showConfirmationDialog, showFloatingMessage, showDialogMessage } from './ui-controls.js';
@@ -27,7 +27,7 @@ export async function initArchivePage() {
         return;
     }
 
-    await initTranslations(); // Wait for translations to load
+    await initTranslations();
 
     allUsers = getAllUsers();
     loadAllArchivedItems();
@@ -37,14 +37,13 @@ export async function initArchivePage() {
 
 function loadAllArchivedItems() {
     const userProfile = getUserProfile(currentUser.id);
-    const allGroups = getAllGroups();
-    const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
-    const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
-    const allVisibleBoardIds = new Set([...(userProfile.boardIds || []), ...groupBoardIds]);
-
     allArchivedItems = { cards: [], columns: [], boards: [] };
 
-    allVisibleBoardIds.forEach(boardId => {
+    // Busca todos os quadros para encontrar itens arquivados, mesmo que o quadro em si não esteja mais na lista ativa do usuário.
+    const allBoardKeys = Object.keys(localStorage).filter(k => k.startsWith('kanbandeep_board_'));
+
+    allBoardKeys.forEach(key => {
+        const boardId = key.replace('kanbandeep_board_', '');
         const board = getFullBoardData(boardId, true); // true to include archived items
         if (!board) return;
 
@@ -54,8 +53,6 @@ function loadAllArchivedItems() {
                 if (card.isArchived) {
                     allArchivedItems.cards.push({
                         ...card,
-                        boardName: board.title,
-                        columnName: column.title,
                         boardId: board.id,
                         columnId: column.id
                     });
@@ -66,7 +63,7 @@ function loadAllArchivedItems() {
         // Find archived columns
         const archivedColumns = (board.archivedColumnIds || []).map(colId => {
             const col = getColumn(colId);
-            return col ? { ...col, boardName: board.title, boardId: board.id } : null;
+            return col ? { ...col, boardId: board.id } : null;
         }).filter(Boolean);
         
         allArchivedItems.columns.push(...archivedColumns);
@@ -74,7 +71,7 @@ function loadAllArchivedItems() {
 
     // Carrega quadros arquivados do perfil do usuário
     const archivedBoardIds = userProfile.archivedBoardIds || [];
-    const archivedBoards = archivedBoardIds.map(id => getBoard(id)).filter(Boolean);
+    const archivedBoards = archivedBoardIds.map(id => getBoard(id)).filter(b => b && b.isArchived);
     allArchivedItems.boards.push(...archivedBoards);
 }
 
@@ -84,7 +81,7 @@ function renderAllLists() {
     const archivedCardsList = document.getElementById('archived-cards-list');
     const archivedColumnsList = document.getElementById('archived-columns-list');
     
-    // Trash Tab
+    // Lixeira
     const trashCardsList = document.getElementById('trash-cards-list');
     const trashColumnsList = document.getElementById('trash-columns-list'); // Novo container
     const trashBoardsList = document.getElementById('trash-boards-list');
@@ -101,7 +98,7 @@ function renderAllLists() {
     const archivedColumns = allArchivedItems.columns.filter(c => c.archiveReason !== 'deleted');
 
     const trashBoards = allArchivedItems.boards.filter(b => b.archiveReason === 'deleted');
-    const trashCards = allArchivedItems.cards.filter(c => c.archiveReason === 'deleted');
+    const trashCards = allArchivedItems.cards.filter(c => c.archiveReason === 'deleted'); // Corrigido
     const trashColumns = allArchivedItems.columns.filter(c => c.archiveReason === 'deleted'); // Nova lista
 
     // Renderiza cada seção com agrupamento
@@ -118,7 +115,8 @@ function groupAndRenderItems(items, container, type) {
     if (items.length === 0) return;
 
     const groupedByBoard = items.reduce((acc, item) => {
-        const boardName = item.boardName || 'Unknown Board';
+        const board = getBoard(item.boardId);
+        const boardName = board ? board.title : t('archive.unknownBoard');
         if (!acc[boardName]) acc[boardName] = [];
         acc[boardName].push(item);
         return acc;
@@ -145,15 +143,18 @@ function createItemElement(item, type) {
     const archivedBy = allUsers.find(u => u.id === item.archivedBy)?.name || 'Unknown';
     
     let metaText = '';
-    if (type === 'card' && item.boardName && item.columnName) {
-        metaText = t('archive.meta', { 
-            boardName: item.boardName, 
-            columnName: item.columnName, 
+    if (type === 'card') {
+        const boardName = getBoard(item.boardId)?.title || '?';
+        const columnName = getColumn(item.columnId)?.title || '?';
+        metaText = t('archive.meta.card', { 
+            boardName: boardName, 
+            columnName: columnName, 
             date: archivedAt, 
             user: archivedBy 
         });
     } else if (type === 'column') {
-        metaText = t('archive.meta.column', { boardName: item.boardName, date: archivedAt, user: archivedBy });
+        const boardName = getBoard(item.boardId)?.title || '?';
+        metaText = t('archive.meta.column', { boardName: boardName, date: archivedAt, user: archivedBy });
     } else if (type === 'board') {
         metaText = t('archive.meta.board', { date: archivedAt, user: archivedBy });
     }
@@ -161,9 +162,9 @@ function createItemElement(item, type) {
     const isTrash = item.archiveReason === 'deleted';
     let actionsHtml = `<button class="btn restore-btn">${t('archive.buttons.restore')}</button>`;
     if (isTrash) {
-        actionsHtml += `<button class="btn danger delete-btn">${t('archive.buttons.delete')}</button>`;
+        actionsHtml += `<button class="btn danger delete-btn">${t('archive.buttons.delete')}</button>`; // Corrigido
     } else {
-        actionsHtml += `<button class="btn alternative1 move-to-trash-btn">${t('archive.buttons.moveToTrash')}</button>`;
+        actionsHtml += `<button class="btn alternative1 move-to-trash-btn">${t('archive.buttons.moveToTrash')}</button>`; // Corrigido
     }
 
     itemEl.innerHTML = `
@@ -225,7 +226,7 @@ function handleRestoreCard(cardId) {
         // Se estiver na lixeira, a restauração o move de volta para "Arquivados".
         if (card.archiveReason === 'deleted') {
             // Adiciona o log de restauração da lixeira
-            const logEntry = {
+            const logEntry = { // Corrigido
                 action: 'restored',
                 userId: currentUser.id,
                 timestamp: new Date().toISOString(), // A chave 'from' será adicionada abaixo
@@ -254,7 +255,7 @@ function handleRestoreCard(cardId) {
             }
             
             // Adiciona o log de restauração do arquivo
-            const logEntry = {
+            const logEntry = { // Corrigido
                 action: 'restored',
                 userId: currentUser.id,
                 timestamp: new Date().toISOString(), // A chave 'from' será adicionada abaixo
@@ -307,7 +308,7 @@ function handleRestoreColumn(columnId) {
         }
 
         // Adiciona a entrada de log
-        const logEntry = {
+        const logEntry = { // Corrigido
             action: logAction,
             userId: currentUser.id,
             timestamp: new Date().toISOString(),
@@ -355,7 +356,7 @@ function handleDeleteCard(cardId) {
         // Antes de deletar, adicionamos um último log.
         const card = getCard(cardId);
         if (card) {
-            const logEntry = {
+            const logEntry = { // Corrigido
                 action: 'deleted',
                 userId: currentUser.id,
                 timestamp: new Date().toISOString()
@@ -381,7 +382,7 @@ function handleDeleteColumn(columnId) {
         // Adiciona o log de exclusão antes de deletar
         const column = getColumn(columnId);
         if (column) {
-            const logEntry = {
+            const logEntry = { // Corrigido
                 action: 'deleted',
                 userId: currentUser.id,
                 timestamp: new Date().toISOString()
