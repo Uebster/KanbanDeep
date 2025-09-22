@@ -919,6 +919,8 @@
     "tour.step_profile.title": "Your Profile",
     "tour.step_save_template.text": "Like a board's structure? Save it as a template to create new boards with the same setup in seconds.",
     "tour.step_save_template.title": "Reuse Your Work",
+    "tour.step_archive.text": "Here you can manage items you have archived or moved to the trash, allowing you to restore or permanently delete them.",
+    "tour.step_archive.title": "Archive & Trash",
     "tour.step_search.text": "Use the advanced search to find cards by title, description, assignee, date, and more. It's a powerful tool for managing your tasks.",
     "tour.step_search.title": "Find What You Need",
     "ui.add": "Add",

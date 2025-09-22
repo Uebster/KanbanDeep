@@ -1,9 +1,21 @@
 /* static/archive.css */
 
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
 main.card {
-    padding: 2rem;
-    max-width: 1200px;
+    /* Padrão de card principal, igual a outras páginas */
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5), 0 0 25px rgba(var(--primary-rgb));
+    padding: 30px;
+    width: 100%;
+    max-width: 1600px;
     margin: 20px auto;
+    border: 1px solid var(--primary);
 }
 
 .tab-content {
@@ -16,14 +28,18 @@ main.card {
 }
 
 .archive-section {
-    margin-bottom: 2.5rem;
+    /* Padrão de seção, com borda na cor primária */
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 25px;
 }
 
 .archive-section h3 {
-    color: var(--text);
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 0.5rem;
-    margin-bottom: 1.5rem;
+    /* O título da seção agora não precisa de borda inferior */
+    color: var(--primary);
+    margin-bottom: 20px;
+    padding-bottom: 0;
 }
 
 .archive-group-header {

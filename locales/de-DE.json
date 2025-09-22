@@ -919,6 +919,8 @@
     "tour.step_profile.title": "Ihr Profil",
     "tour.step_save_template.text": "Gefällt Ihnen die Struktur eines Boards? Speichern Sie es als Vorlage, um neue Boards mit der gleichen Einrichtung in Sekunden zu erstellen.",
     "tour.step_save_template.title": "Verwenden Sie Ihre Arbeit wieder",
+    "tour.step_archive.text": "Hier können Sie Elemente verwalten, die Sie archiviert oder in den Papierkorb verschoben haben, und sie wiederherstellen oder dauerhaft löschen.",
+    "tour.step_archive.title": "Archiv & Papierkorb",
     "tour.step_search.text": "Verwenden Sie die erweiterte Suche, um Karten nach Titel, Beschreibung, zugewiesener Person, Datum und mehr zu finden. Es ist ein leistungsstarkes Werkzeug zur Verwaltung Ihrer Aufgaben.",
     "tour.step_search.title": "Finden Sie, was Sie brauchen",
     "ui.add": "Hinzufügen",
