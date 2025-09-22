@@ -335,12 +335,10 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         if (success) {
             setTimeout(closeAndCleanup, 1500);
         } else {
-            // Se o retorno for explicitamente false, não faz nada (mantém o diálogo aberto e botões desabilitados).
-            // Se for undefined ou null, reabilita os botões.
-            if (success !== false) {
-                confirmBtn.disabled = false;
-                cancelBtn.disabled = false;
-            }
+            // Se a operação falhou (retornou false), a função onConfirm já mostrou a mensagem de erro.
+            // Esperamos um pouco para que a mensagem seja lida e então fechamos o diálogo.
+            // Isso permite que o usuário corrija o formulário.
+            setTimeout(closeAndCleanup, 2000);
         }
     });
 }
@@ -488,30 +486,6 @@ function applyFontSize(size) {
     document.documentElement.style.fontSize = fontSizeValue;
 }
 
-/**
- * Inicializa ou desativa o comportamento de "header inteligente" (auto-ocultar).
- */
-function initSmartHeader() {
-    const user = getCurrentUser();
-    const header = document.getElementById('main-header');
-    if (!user || !header) return;
-
-    const isEnabled = user.preferences?.smartHeader === true;
-
-    // Remove listeners antigos para evitar duplicação
-    document.removeEventListener('mousemove', handleHeaderMouseMove);
-
-    if (isEnabled) {
-        document.body.classList.add('smart-header-enabled');
-        document.addEventListener('mousemove', handleHeaderMouseMove);
-    } else {
-        document.body.classList.remove('smart-header-enabled');
-        header.classList.remove('show-header');
-        // Garante que a classe do indicador seja removida ao desativar a função
-        document.body.classList.remove('header-is-visible');
-    }
-}
-
 let hideHeaderTimeout; // Variável para controlar o delay de fechamento
 
 /**
@@ -520,6 +494,12 @@ let hideHeaderTimeout; // Variável para controlar o delay de fechamento
 function handleHeaderMouseMove(e) {
     const header = document.getElementById('main-header');
     if (!header) return;
+
+    // CORREÇÃO DEFINITIVA: Se qualquer dropdown estiver aberto, pausa a lógica do Smart Header.
+    // Isso impede que o header se esconda enquanto o usuário interage com um menu.
+    if (document.querySelector('.dropdown.show')) {
+        return;
+    }
 
     const openDropdown = document.querySelector('.dropdown.show');
 
@@ -560,6 +540,44 @@ function handleHeaderMouseMove(e) {
             document.body.classList.remove('header-is-visible');
         }
     }
+}
+
+/**
+ * Inicializa ou desativa o comportamento de "header inteligente" (auto-ocultar).
+ */
+export function initSmartHeader() {
+    const user = getCurrentUser();
+    const header = document.getElementById('main-header');
+    if (!user || !header) return;
+
+    const isEnabled = user.preferences?.smartHeader === true;
+
+    // Remove listeners antigos para evitar duplicação
+    document.removeEventListener('mousemove', handleHeaderMouseMove);
+
+    if (isEnabled) {
+        document.body.classList.add('smart-header-enabled');
+        document.addEventListener('mousemove', handleHeaderMouseMove);
+    } else {
+        document.body.classList.remove('smart-header-enabled');
+        header.classList.remove('show-header');
+        // Garante que a classe do indicador seja removida ao desativar a função
+        document.body.classList.remove('header-is-visible');
+    }
+}
+
+/**
+ * Desativa forçadamente o Smart Header, removendo a classe e o listener.
+ * Útil para modos como o tour guiado.
+ */
+export function disableSmartHeader() {
+    const header = document.getElementById('main-header');
+    if (!header) return;
+
+    document.body.classList.remove('smart-header-enabled');
+    header.classList.remove('show-header');
+    document.body.classList.remove('header-is-visible');
+    document.removeEventListener('mousemove', handleHeaderMouseMove);
 }
 
 /**

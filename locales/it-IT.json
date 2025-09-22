@@ -919,6 +919,8 @@
     "tour.step_profile.title": "Il tuo profilo",
     "tour.step_save_template.text": "Ti piace la struttura di una bacheca? Salvala come modello per creare nuove bacheche con la stessa configurazione in pochi secondi.",
     "tour.step_save_template.title": "Riutilizza il tuo lavoro",
+    "tour.step_archive.text": "Qui puoi gestire gli elementi che hai archiviato o spostato nel cestino, consentendoti di ripristinarli o eliminarli definitivamente.",
+    "tour.step_archive.title": "Archivio e Cestino",
     "tour.step_search.text": "Usa la ricerca avanzata per trovare schede per titolo, descrizione, assegnatario, data e altro. È uno strumento potente per gestire le tue attività.",
     "tour.step_search.title": "Trova ciò di cui hai bisogno",
     "ui.add": "Aggiungi",

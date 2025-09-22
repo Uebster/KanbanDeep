@@ -919,6 +919,8 @@
     "tour.step_profile.title": "Tu perfil",
     "tour.step_save_template.text": "¿Te gusta la estructura de un tablero? Guárdalo como plantilla para crear nuevos tableros con la misma configuración en segundos.",
     "tour.step_save_template.title": "Reutiliza tu trabajo",
+    "tour.step_archive.text": "Aquí puedes gestionar los elementos que has archivado o movido a la papelera, permitiéndote restaurarlos o eliminarlos permanentemente.",
+    "tour.step_archive.title": "Archivo y Papelera",
     "tour.step_search.text": "Usa la búsqueda avanzada para encontrar tarjetas por título, descripción, responsable, fecha y más. Es una herramienta poderosa para gestionar tus tareas.",
     "tour.step_search.title": "Encuentra lo que necesitas",
     "ui.add": "Añadir",
