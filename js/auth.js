@@ -53,7 +53,7 @@ export function registerUser(userData) {
     );
     
     if (userExists) {
-        console.warn("Tentativa de registrar usuário existente.");
+        console.warn("Attempt to register existing user.");
         return false;
     }
     
@@ -69,7 +69,6 @@ export function registerUser(userData) {
         groups: [],
         boardTemplates: [],
         tagTemplates: [],
-        preferences: {},
         ...userData // Os dados do formulário sobrescrevem os valores padrão
     };
     

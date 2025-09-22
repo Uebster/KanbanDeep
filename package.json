@@ -1,13 +1,25 @@
 {
   "name": "meus-kanbans",
   "version": "1.0.0",
+  "main": "main.js",
+  "repository": "https://github.com/Uebster/KanbanDeep",
   "scripts": {
-    "start": "live-server --port=3000 --open=pages/introduction.html"
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   },
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "@electron-forge/cli": "^7.8.3",
+    "@electron-forge/maker-deb": "^7.9.0",
+    "@electron-forge/maker-rpm": "^7.9.0",
+    "@electron-forge/maker-squirrel": "^7.9.0",
+    "@electron-forge/maker-zip": "^7.9.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.9.0",
+    "electron": "31.2.1"
   },
   "dependencies": {
-    "cheerio": "^1.1.2"
+    "cheerio": "^1.1.2",
+    "electron-log": "^5.1.5",
+    "electron-squirrel-startup": "^1.0.1"
   }
 }

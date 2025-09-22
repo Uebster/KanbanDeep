@@ -159,9 +159,8 @@ function processUserCreation() {
         }
     }
 
-
-    // Cria o novo perfil do usuário
-    const userProfile = {
+    // Cria o objeto de dados do formulário, SEM os campos de sistema
+    const formData = {
         name,
         username,
         password,
@@ -176,18 +175,12 @@ function processUserCreation() {
         language: document.getElementById('language').value,
         theme: document.getElementById('theme').value,
         avatar: document.getElementById('avatar-preview').querySelector('img')?.src || '',
-        // Adiciona campos padrão para compatibilidade com o sistema
-        id: 'user-' + Date.now(),
-        createdAt: new Date().toISOString(),
-        lastLogin: null,
-        boards: [],
-        groups: [],
         preferences: {
             primaryColor: primaryColor
         }
     };
 
-    if (registerUser(userProfile)) {
+    if (registerUser(formData)) { // Passa apenas os dados do formulário
         return { 
             success: true, 
             message: 'createUser.feedback.success',

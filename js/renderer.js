@@ -1,4 +1,4 @@
-// js/main.js - VERSÃO FINAL SIMPLIFICADA E SEGURA
+// js/renderer.js - Ponto de entrada para a lógica da interface do usuário (Renderer Process)
 
 import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme, initCustomSelects } from './ui-controls.js';
 import { getCurrentUser } from './auth.js';
@@ -48,17 +48,48 @@ async function main() { // <-- Torna a função principal assíncrona
             await initTemplatesPage();
         } else if (path.includes('list-users.html') || path.endsWith('/')) {
             await initListUsersPage();
+            initUpdateChecker();
         }
         // O cabeçalho global é configurado DEPOIS que a página e suas traduções foram carregadas
         setupGlobalHeader();
 }
 }
 
-function initUserAvatar() {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-        updateUserAvatar(currentUser);
-    }
+/**
+ * Inicializa a funcionalidade de verificação de atualizações na tela de login.
+ */
+function initUpdateChecker() {
+    const checkBtn = document.getElementById('btn-check-updates');
+    const statusText = document.getElementById('update-status-text');
+
+    if (!checkBtn || !statusText) return;
+
+    checkBtn.addEventListener('click', () => {
+        checkBtn.disabled = true;
+        statusText.textContent = t('profile.updates.checking');
+        window.ipcRenderer.send('check-for-updates');
+    });
+
+    window.ipcRenderer.on('update-status', (event, statusKey) => {
+        if (statusKey.startsWith('error:')) {
+            statusText.textContent = statusKey;
+        } else {
+            statusText.textContent = t(`profile.updates.${statusKey}`);
+        }
+        
+        if (statusKey !== 'available' && statusKey !== 'downloaded') {
+            setTimeout(() => {
+                checkBtn.disabled = false;
+                statusText.textContent = ''; // Limpa o status após um tempo
+            }, 4000);
+        }
+
+        if (statusKey === 'downloaded') {
+            showConfirmationDialog(t('profile.updates.confirmRestart'), () => {
+                window.ipcRenderer.send('restart-app');
+            }, () => {}, t('ui.yes'));
+        }
+    });
 }
 
 /**
@@ -111,7 +142,7 @@ function setupGlobalHeader() {
     if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
 
     const preferencesBtn = document.getElementById('preferences-btn');
-    if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+    if (preferencesBtn) preferencesBtn.addEventListener('click', () => document.getElementById('preferences-dialog')?.showModal());
 
     // O botão Kanban é específico do Kanban, mas pode aparecer em outras páginas.
     // Se aparecer, ele deve redirecionar para a página Kanban.
