@@ -32,12 +32,37 @@ header h1 {
     gap: 15px;
 }
 
+/* NOVO: Padroniza o tamanho dos selects no cabeçalho */
+.header-actions .custom-select {
+    min-width: 180px;
+}
+
+/* NOVO: Estilos para o container de atualização */
+.update-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#update-status-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 /* ===== AÇÕES SUPERIORES ===== */
 .actions-top {
-    display: flex;
-    justify-content: space-between;
+    display: flex; /* Mantém flexbox */
+    justify-content: space-between; /* Alinha os itens nas extremidades */
     align-items: center;
     margin-bottom: 25px;
+}
+
+/* NOVO: Estilo para a área de feedback principal */
+#feedback {
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    min-height: 24px; /* Evita que o layout "pule" quando a mensagem some */
 }
 
 /* ===== TABELA DE USUÁRIOS (VERSÃO CORRIGIDA) ===== */

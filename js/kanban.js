@@ -9,8 +9,8 @@ import { archiveBoard,
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, 
     initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, 
-    applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, 
-    showCustomColorPickerDialog, makeDraggable } from './ui-controls.js';
+    applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog, 
+    makeDraggable, initSmartHeader, disableSmartHeader } from './ui-controls.js';
 import { t, initTranslations, applyTranslations, loadLanguage } from './translations.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
@@ -125,6 +125,11 @@ export async function initKanbanPage() {
     // 3. Configuração da UI e Eventos
     setupEventListeners();
     initDraggableElements();
+    // NOVO: Impede que cliques no popover do tour fechem os menus.
+    // E também no overlay, para que o usuário não possa fechar os menus clicando fora.
+    document.getElementById('tour-overlay').addEventListener('click', e => e.stopPropagation());
+    document.getElementById('tour-popover').addEventListener('click', e => e.stopPropagation());
+
     tooltipElement = document.getElementById('card-tooltip');
     checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId)
     // 4. Renderização Inicial
@@ -335,31 +340,38 @@ function setupEventListeners() {
 // ===== LÓGICA DO TOUR GUIADO =====
 
 const tourSteps = [
-    { element: '#user-avatar-btn', title: 'tour.step1.title', text: 'tour.step1.text', position: 'right', context: null },
-    { element: '#user-profile-btn', title: 'tour.step_profile.title', text: 'tour.step_profile.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
-    { element: '#my-groups-btn', title: 'tour.step2.title', text: 'tour.step2.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
-    { element: '#friends-btn', title: 'tour.step_friends.title', text: 'tour.step_friends.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
-    { element: '#templates-btn', title: 'tour.step3.title', text: 'tour.step3.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
-    { element: '#notifications-btn', title: 'tour.step4.title', text: 'tour.step4.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
-    { element: '#preferences-btn', title: 'tour.step5.title', text: 'tour.step5.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
-    { element: '#boards-dropdown-btn', title: 'tour.step6.title', text: 'tour.step6.text', position: 'bottom', context: null },
-    { element: '#board-filter-toggle', title: 'tour.step7.title', text: 'tour.step7.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
-    { element: () => document.querySelector('#boards-dropdown .no-boards-message') || document.querySelector('#board-select + .select-selected'), title: 'tour.step_board_selector.title', text: 'tour.step_board_selector.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
-    { element: '#add-board-btn', title: 'tour.step8.title', text: 'tour.step8.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
-    { element: '#add-column-btn', title: 'tour.step9.title', text: 'tour.step9.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
-    { element: '#add-card-btn', title: 'tour.step10.title', text: 'tour.step10.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
-    { element: '#actions-dropdown-btn', title: 'tour.step11.title', text: 'tour.step11.text', position: 'bottom', context: null },
-    { element: '#search-cards-btn', title: 'tour.step_search.title', text: 'tour.step_search.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
-    { element: '#save-as-template-btn', title: 'tour.step_save_template.title', text: 'tour.step_save_template.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
-    { element: '#print-btn', title: 'tour.step13.title', text: 'tour.step13.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
-    { element: '#export-img', title: 'tour.step12.title', text: 'tour.step12.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
-    { element: '#kanban-title', title: 'tour.step14.title', text: 'tour.step14.text', position: 'bottom', preAction: createTourBoard, undoAction: undoTourBoard, context: null, isCreation: true },
-    { element: '#kanban-title', title: 'tour.step15.title', text: 'tour.step15.text', position: 'bottom', context: null, noHighlight: true },
-    { element: '#kanban-title', title: 'tour.step16.title', text: 'tour.step16.text', position: 'bottom', preAction: createTourColumn, undoAction: undoTourColumn, context: null, noHighlight: true, isCreation: true },
-    { element: '.card', title: 'tour.step17.title', text: 'tour.step17.text', position: 'bottom', preAction: createTourCard, undoAction: undoTourCard, context: null, isCreation: true },
+    // Perfil
+    { step: 1, element: '#user-avatar-btn', title: 'tour.step1.title', text: 'tour.step1.text', position: 'right', context: null, preAction: closeAllDropdowns },
+    { step: 2, element: '#user-profile-btn', title: 'tour.step2.title', text: 'tour.step2.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { step: 3, element: '#my-groups-btn', title: 'tour.step3.title', text: 'tour.step3.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { step: 4, element: '#friends-btn', title: 'tour.step4.title', text: 'tour.step4.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { step: 5, element: '#templates-btn', title: 'tour.step5.title', text: 'tour.step5.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { step: 6, element: '#archive-btn', title: 'tour.step6.title', text: 'tour.step6.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { step: 7, element: '#notifications-btn', title: 'tour.step7.title', text: 'tour.step7.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    { step: 8, element: '#preferences-btn', title: 'tour.step8.title', text: 'tour.step8.text', position: 'right', preAction: () => document.getElementById('profile-dropdown').classList.add('show'), context: 'profile-dropdown' },
+    // Quadros
+    { step: 9, element: '#boards-dropdown-btn', title: 'tour.step9.title', text: 'tour.step9.text', position: 'bottom', context: null },
+    { step: 10, element: '#board-filter-toggle', title: 'tour.step10.title', text: 'tour.step10.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { step: 11, element: () => document.querySelector('#boards-dropdown .no-boards-message') || document.querySelector('#board-select + .select-selected'), title: 'tour.step11.title', text: 'tour.step11.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { step: 12, element: '#add-board-btn', title: 'tour.step12.title', text: 'tour.step12.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { step: 13, element: '#add-column-btn', title: 'tour.step13.title', text: 'tour.step13.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    { step: 14, element: '#add-card-btn', title: 'tour.step14.title', text: 'tour.step14.text', position: 'bottom', preAction: () => document.getElementById('boards-dropdown').classList.add('show'), context: 'boards-dropdown' },
+    // Ações
+    { step: 15, element: '#actions-dropdown-btn', title: 'tour.step15.title', text: 'tour.step15.text', position: 'bottom', context: null },
+    { step: 16, element: '#save-as-template-btn', title: 'tour.step16.title', text: 'tour.step16.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    { step: 17, element: '#print-btn', title: 'tour.step17.title', text: 'tour.step17.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    { step: 18, element: '#search-cards-btn', title: 'tour.step18.title', text: 'tour.step18.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    { step: 19, element: '#export-img', title: 'tour.step19.title', text: 'tour.step19.text', position: 'left', preAction: () => document.getElementById('actions-dropdown').classList.add('show'), context: 'actions-dropdown' },
+    // Criação de Itens
+    { step: 20, element: '#kanban-title', title: 'tour.step20.title', text: 'tour.step20.text', position: 'bottom', preAction: createTourBoard, undoAction: undoTourBoard, context: null, isCreation: true },
+    { step: 21, element: '#kanban-title', title: 'tour.step21.title', text: 'tour.step21.text', position: 'bottom', context: null, noHighlight: true },
+    { step: 22, element: '#kanban-title', title: 'tour.step22.title', text: 'tour.step22.text', position: 'bottom', preAction: createTourColumn, undoAction: undoTourColumn, context: null, noHighlight: true, isCreation: true },
+    { step: 23, element: '.card', title: 'tour.step23.title', text: 'tour.step23.text', position: 'bottom', preAction: createTourCard, undoAction: undoTourCard, context: null, isCreation: true },
 ];
 
 function startTour() {
+    // Desativa o Smart Header para que ele não interfira no tour.
+    disableSmartHeader();
     isTourActive = true;
     currentTourStep = 0;
     document.getElementById('tour-overlay').classList.remove('hidden');
@@ -368,6 +380,8 @@ function startTour() {
 
 function endTour(wasSkipped = false) {
     isTourActive = false;
+    // Reativa o Smart Header, que verificará as preferências do usuário.
+    initSmartHeader();
     document.getElementById('tour-overlay').classList.add('hidden');
     document.getElementById('tour-popover').classList.add('hidden');
 
@@ -569,6 +583,8 @@ function createTourCard() {
  * Funções para DESFAZER as criações do tour.
  */
 function undoTourBoard() {
+    // CORREÇÃO: Verifica se o ID existe antes de tentar qualquer operação.
+    // Isso torna a função segura mesmo se o usuário pular o tour antes da criação.
     if (tourCreatedItems.boardId) {
         deleteBoard(tourCreatedItems.boardId);
         tourCreatedItems.boardId = null;
@@ -580,6 +596,7 @@ function undoTourBoard() {
 }
 
 function undoTourColumn() {
+    // CORREÇÃO: Verifica se o ID existe.
     if (tourCreatedItems.columnId && tourCreatedItems.boardId) {
         const board = getBoard(tourCreatedItems.boardId);
         if (board) {
@@ -594,6 +611,7 @@ function undoTourColumn() {
 }
 
 function undoTourCard() {
+    // CORREÇÃO: Verifica se o ID existe.
     if (tourCreatedItems.cardId && tourCreatedItems.columnId) {
         const column = getColumn(tourCreatedItems.columnId);
         if (column) {
