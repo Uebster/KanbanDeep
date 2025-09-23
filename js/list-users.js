@@ -164,6 +164,9 @@ function initUpdateChecker() {
         // Esconde todos os elementos e mostra apenas os necessários
         progressContainer.style.display = 'none';
         dialogActions.innerHTML = ''; // Limpa botões antigos
+        // Reseta o estilo da mensagem principal
+        dialogMessage.className = '';
+        dialogMessage.style.marginBottom = '';
 
         switch (state) {
             case 'checking':
@@ -186,6 +189,7 @@ function initUpdateChecker() {
                 dialogMessage.textContent = `${t('listUsers.updateDialog.downloading')} (${Math.round(data.percent || 0)}%)`;
                 progressContainer.style.display = 'block';
                 progressBar.style.width = `${data.percent || 0}%`;
+                dialogMessage.style.marginBottom = '15px'; // Adiciona espaço para a barra de progresso
                 dialogActions.innerHTML = `<button class="btn cancel">${t('ui.cancel')}</button>`;
                 dialogActions.querySelector('.cancel').onclick = () => updateDialog.close();
                 if (!updateDialog.open) updateDialog.showModal();
@@ -194,6 +198,7 @@ function initUpdateChecker() {
             case 'not-available':
                 dialogTitle.textContent = t('profile.updates.not-available');
                 dialogMessage.textContent = t('listUsers.updateDialog.latestVersion');
+                dialogMessage.className = 'feedback info show'; // Aplica estilo de informação
                 dialogActions.innerHTML = `<button class="btn confirm">${t('ui.ok')}</button>`;
                 dialogActions.querySelector('.confirm').onclick = () => updateDialog.close();
                 if (!updateDialog.open) updateDialog.showModal();
@@ -215,7 +220,8 @@ function initUpdateChecker() {
 
             case 'error':
                 dialogTitle.textContent = t('ui.error');
-                dialogMessage.textContent = data.message || t('listUsers.updateDialog.error');
+                dialogMessage.textContent = data.message ? data.message.replace('error: ', '') : t('listUsers.updateDialog.error');
+                dialogMessage.className = 'feedback error show'; // Aplica estilo de erro
                 dialogActions.innerHTML = `<button class="btn confirm">${t('ui.ok')}</button>`;
                 dialogActions.querySelector('.confirm').onclick = () => updateDialog.close();
                 if (!updateDialog.open) updateDialog.showModal();

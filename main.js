@@ -164,21 +164,30 @@ autoUpdater.on('update-available', (info) => {
   sendUpdateStatusToWindow('available');
 });
 autoUpdater.on('update-not-available', (info) => {
-  isUpdateCheckInProgress = false; // Libera a trava
-  if (manualCheckTimeout) clearTimeout(manualCheckTimeout); // Limpa o timeout manual se ele existir
+  if (manualCheckTimeout) {
+    clearTimeout(manualCheckTimeout);
+    manualCheckTimeout = null;
+  }
+  isUpdateCheckInProgress = false;
   // A lógica de exibir ou não a mensagem agora é tratada no lado do renderer (list-users.js),
   // que verifica se o diálogo de atualização está aberto. Isso corrige o bug onde a verificação
   // manual ficava "presa" se nenhuma atualização fosse encontrada.
   sendUpdateStatusToWindow('not-available');
 });
 autoUpdater.on('update-downloaded', (info) => {
-  isUpdateCheckInProgress = false; // Libera a trava, pois o download terminou. A instalação é outra etapa.
-  if (manualCheckTimeout) clearTimeout(manualCheckTimeout); // Limpa o timeout manual se ele existir
+  if (manualCheckTimeout) {
+    clearTimeout(manualCheckTimeout);
+    manualCheckTimeout = null;
+  }
+  isUpdateCheckInProgress = false;
   sendUpdateStatusToWindow('downloaded');
 });
 autoUpdater.on('error', (error) => {
-  isUpdateCheckInProgress = false; // Libera a trava
-  if (manualCheckTimeout) clearTimeout(manualCheckTimeout); // Limpa o timeout manual se ele existir
+  if (manualCheckTimeout) {
+    clearTimeout(manualCheckTimeout);
+    manualCheckTimeout = null;
+  }
+  isUpdateCheckInProgress = false;
   sendUpdateStatusToWindow(`error: ${error.message}`);
 });
 
