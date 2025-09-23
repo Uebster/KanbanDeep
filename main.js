@@ -1,12 +1,13 @@
-const { app, BrowserWindow, ipcMain, autoUpdater, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const log = require('electron-log');
+const fs = require('fs').promises; // Usaremos a versão baseada em Promises do 'fs'
 
-// Configuração manual do autoUpdater para apontar para o seu repositório GitHub.
-const server = 'https://update.electronjs.org';
-const repo = 'Uebster/KanbanDeep'; // Substitua pelo seu usuário/repositório
-const feed = `${server}/${repo}/${process.platform}-${process.arch}/${app.getVersion()}`;
-
-autoUpdater.setFeedURL({ url: feed });
+// Nenhuma configuração manual é necessária. O electron-builder cuida disso.
+// Opcionalmente, configure o logging para depuração.
+autoUpdater.logger = log;
+log.transports.file.level = "info";
  
 function createWindow () {
   // Cria a janela principal do navegador.
@@ -16,11 +17,11 @@ function createWindow () {
     show: false, // Cria a janela oculta para evitar um "flash" visual.
     webPreferences: {
       // O preload.js é uma ponte segura entre o backend (Node.js) e o frontend (sua página).
-      preload: path.join(__dirname, 'js', 'preload.js'),
-      // Habilitar a integração com Node.js é necessário para que seus scripts de página
-      // possam usar 'require', se necessário.
-      nodeIntegration: true,
-      contextIsolation: false
+      preload: path.join(__dirname, 'js/preload.js'),
+      // As opções abaixo são as recomendadas para segurança:
+      // - nodeIntegration: false -> Impede que o frontend acesse APIs do Node.js diretamente.
+      // - contextIsolation: true -> Garante que o preload e o frontend rodem em contextos diferentes.
+      contextIsolation: true
     }
   });
 
@@ -38,6 +39,9 @@ function createWindow () {
 }
 
 app.whenReady().then(() => {
+  log.info('--- Sessão Iniciada ---');
+  log.info(`Versão do App: ${app.getVersion()}`);
+  log.info(`Caminho dos logs: ${app.getPath('logs')}`);
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -50,42 +54,86 @@ app.on('window-all-closed', () => {
 
 // --- MANIPULAÇÃO DE ATUALIZAÇÕES ---
 
-// O renderer process chama este evento quando o usuário clica no botão.
+// O processo renderer chama este evento quando o usuário clica no botão.
 ipcMain.on('check-for-updates', () => {
-  // O `update-electron-app` já configurou o autoUpdater.
-  // Nós apenas disparamos a verificação.
   autoUpdater.checkForUpdates();
 });
 
-// Evento para reiniciar o app e instalar a atualização.
+// --- MANIPULAÇÃO DE DADOS DO USUÁRIO ---
+
+/** Retorna o caminho para a pasta 'data' dentro do diretório de dados do usuário. */
+function getDataPath() {
+  const userDataPath = app.getPath('userData');
+  const dataDir = path.join(userDataPath, 'data');
+  // Garante que o diretório 'data' exista.
+  fs.mkdir(dataDir, { recursive: true }).catch(console.error);
+  return dataDir;
+}
+
+// O renderer envia um nome de arquivo e dados para serem salvos.
+ipcMain.handle('save-file', async (event, fileName, data) => {
+  const filePath = path.join(getDataPath(), `${fileName}.json`);
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+});
+
+// O renderer solicita o conteúdo de um arquivo.
+ipcMain.handle('load-file', async (event, fileName) => {
+  const filePath = path.join(getDataPath(), `${fileName}.json`);
+  try {
+    const fileContent = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(fileContent);
+  } catch (error) {
+    // Se o arquivo não existir, retorna null (comportamento esperado).
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+});
+
+// O renderer solicita a remoção de um arquivo.
+ipcMain.handle('delete-file', async (event, fileName) => {
+  const filePath = path.join(getDataPath(), `${fileName}.json`);
+  try {
+    await fs.unlink(filePath);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return true; // Já não existe, considera sucesso.
+    console.error(`Falha ao deletar arquivo ${fileName}:`, error);
+    return false;
+  }
+});
+
+// O renderer solicita a lista de todos os arquivos de dados.
+ipcMain.handle('list-files', async () => {
+  const files = await fs.readdir(getDataPath());
+  // Retorna apenas os nomes de arquivo sem a extensão .json
+  return files.filter(f => f.endsWith('.json')).map(f => f.slice(0, -5));
+});
+
+// Evento para reiniciar o app e instalar a atualização
 ipcMain.on('restart-app', () => {
   autoUpdater.quitAndInstall();
 });
 
 // Encaminha os eventos do autoUpdater para a janela para que o usuário veja o status.
-function sendUpdateStatusToWindow(text) {
+function sendUpdateStatusToWindow(statusKey) {
   const win = BrowserWindow.getAllWindows()[0];
   if (win) {
-    win.webContents.send('update-status', text);
+    win.webContents.send('update-status', statusKey);
   }
 }
 
 autoUpdater.on('checking-for-update', () => {
   sendUpdateStatusToWindow('checking');
 });
-
-autoUpdater.on('update-available', () => {
+autoUpdater.on('update-available', (info) => {
   sendUpdateStatusToWindow('available');
 });
-
-autoUpdater.on('update-not-available', () => {
+autoUpdater.on('update-not-available', (info) => {
   sendUpdateStatusToWindow('not-available');
 });
-
-autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+autoUpdater.on('update-downloaded', (info) => {
   sendUpdateStatusToWindow('downloaded');
 });
-
 autoUpdater.on('error', (error) => {
   sendUpdateStatusToWindow(`error: ${error.message}`);
 });

@@ -28,7 +28,7 @@ async function main() { // <-- Torna a função principal assíncrona
     // Se for a página Kanban, apenas a sua inicialização específica é chamada.
     if (path.includes('kanban.html')) { // Se for a página Kanban...
         await initKanbanPage(); // ...inicializa o Kanban...
-        setupGlobalHeader(); // ...e TAMBÉM configura o cabeçalho global.
+        await setupGlobalHeader(); // ...e TAMBÉM configura o cabeçalho global.
     } else { // Para TODAS as outras páginas...
         if (path.includes('create-user.html')) {
             await initCreateUserPage();
@@ -51,7 +51,7 @@ async function main() { // <-- Torna a função principal assíncrona
             initUpdateChecker();
         }
         // O cabeçalho global é configurado DEPOIS que a página e suas traduções foram carregadas
-        setupGlobalHeader();
+        await setupGlobalHeader();
 }
 }
 
@@ -67,10 +67,10 @@ function initUpdateChecker() {
     checkBtn.addEventListener('click', () => {
         checkBtn.disabled = true;
         statusText.textContent = t('profile.updates.checking');
-        window.ipcRenderer.send('check-for-updates');
+        window.electronAPI.checkForUpdates(); // CORREÇÃO: Usar a API exposta
     });
 
-    window.ipcRenderer.on('update-status', (event, statusKey) => {
+    window.electronAPI.onUpdateStatus((statusKey) => { // CORREÇÃO: Usar a API exposta
         if (statusKey.startsWith('error:')) {
             statusText.textContent = statusKey;
         } else {
@@ -86,7 +86,7 @@ function initUpdateChecker() {
 
         if (statusKey === 'downloaded') {
             showConfirmationDialog(t('profile.updates.confirmRestart'), () => {
-                window.ipcRenderer.send('restart-app');
+                window.electronAPI.restartApp(); // CORREÇÃO: Usar a API exposta
             }, () => {}, t('ui.yes'));
         }
     });
@@ -96,11 +96,11 @@ function initUpdateChecker() {
  * Configura um cabeçalho global SIMPLES para todas as páginas, EXCETO o Kanban.
  * Ele é flexível: só adiciona funcionalidade aos botões que existem no HTML.
  */
-function setupGlobalHeader() {
+async function setupGlobalHeader() {
     const header = document.getElementById('main-header');
     if (!header) return;
 
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser && !window.location.pathname.includes('list-users.html')) {
         window.location.href = 'list-users.html';
         return;

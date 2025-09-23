@@ -1,100 +1,41 @@
 // js/storage.js (Versão Final Refatorada e Normalizada)
 
-let fs, path, app;
-
-// Verificar se estamos no Electron
-const isElectron = () => {
-  return typeof process !== 'undefined' && 
-         process.versions && 
-         process.versions.electron;
-};
-
-// Inicializar módulos do Electron se disponíveis
-if (isElectron()) {
-  try {
-    fs = require('fs');
-    path = require('path');
-    app = require('electron').app;
-  } catch (error) {
-    console.error('Erro ao carregar módulos do Electron:', error);
-  }
-}
-
-const STORAGE_PREFIX = 'kanbandeep_'; // Prefixo único para todas as chaves
-
 // ========================================================================
 // ===== FUNÇÕES DE ARMAZENAMENTO UNIVERSAL (BASE) =====
 // ========================================================================
 
-function ensureDirectoryExists(dirPath) {
-  if (!isElectron() || !fs) return true;
-  try {
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
-    return true;
-  } catch (error) { console.error('Erro ao criar diretório:', error); return false; }
+/**
+ * Este módulo agora usa a API exposta pelo preload.js para se comunicar
+ * com o processo principal, que é o único que pode acessar o sistema de arquivos.
+ * Todas as funções de I/O agora são assíncronas.
+ */
+
+/**
+ * Salva dados em um arquivo JSON no diretório de dados do aplicativo.
+ * @param {string} key - O nome do arquivo (sem extensão).
+ * @param {any} data - Os dados a serem salvos.
+ * @returns {Promise<void>}
+ */
+export async function universalSave(key, data) {
+  await window.electronAPI.saveFile(key, data);
 }
 
-function electronSave(key, data) {
-  console.log('Salvando no Electron:', key, data);
-  if (!isElectron() || !fs || !app) return false;
-  try {
-    const filePath = path.join(app.getPath('userData'), 'data', `${key}.json`);
-    ensureDirectoryExists(path.dirname(filePath));
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    return true;
-  } catch (error) { console.error(`Erro ao salvar '${key}' no Electron:`, error); return false; }
+/**
+ * Carrega dados de um arquivo JSON.
+ * @param {string} key - O nome do arquivo (sem extensão).
+ * @returns {Promise<any|null>} Os dados do arquivo ou null se não existir.
+ */
+export async function universalLoad(key) {
+  return await window.electronAPI.loadFile(key);
 }
 
-function electronLoad(key) {
-  if (!isElectron() || !fs || !app) return null;
-  try {
-    const filePath = path.join(app.getPath('userData'), 'data', `${key}.json`);
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(data);
-    }
-    return null;
-  } catch (error) { console.error(`Erro ao carregar '${key}' do Electron:`, error); return null; }
-}
-
-function browserSave(key, data) {
-  try {
-    localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(data));
-    return true;
-  } catch (error) { console.error(`Erro ao salvar '${key}' no navegador:`, error); return false; }
-}
-
-function browserLoad(key) {
-  try {
-    const data = localStorage.getItem(`${STORAGE_PREFIX}${key}`);
-    return data ? JSON.parse(data) : null;
-  } catch (error) { console.error(`Erro ao carregar '${key}' do navegador:`, error); return null; }
-}
-
-export function universalSave(key, data) {
-  return isElectron() ? electronSave(key, data) : browserSave(key, data);
-}
-
-export function universalLoad(key) {
-  return isElectron() ? electronLoad(key) : browserLoad(key);
-}
-
-export function universalRemove(key) {
-  if (isElectron()) {
-    if (!fs || !app) return false;
-    try {
-      const filePath = path.join(app.getPath('userData'), 'data', `${key}.json`);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      return true;
-    } catch (error) { console.error(`Erro ao remover '${key}' do Electron:`, error); return false; }
-  } else {
-    try {
-      localStorage.removeItem(`${STORAGE_PREFIX}${key}`);
-      return true;
-    } catch (error) { console.error(`Erro ao remover '${key}' do navegador:`, error); return false; }
-  }
+/**
+ * Remove um arquivo de dados.
+ * @param {string} key - O nome do arquivo (sem extensão).
+ * @returns {Promise<boolean>}
+ */
+export async function universalRemove(key) {
+  return await window.electronAPI.deleteFile(key);
 }
 
 // ========================================================================
@@ -106,60 +47,61 @@ function generateUniqueId(prefix) {
 }
 
 // Funções genéricas para salvar/carregar/deletar qualquer tipo de item (usuário, quadro, etc.)
-function getItem(id, prefix) { return universalLoad(`${prefix}_${id}`); }
-function saveItem(itemData, prefix) {
+async function getItem(id, prefix) { return await universalLoad(`${prefix}_${id}`); }
+async function saveItem(itemData, prefix) {
     if (!itemData.id) {
         itemData.id = generateUniqueId(prefix.slice(0, -1));
         // Garante que novos itens tenham um log de atividades
         if (prefix === 'card') itemData.activityLog = [];
     }
-    universalSave(`${prefix}_${itemData.id}`, itemData);
+    await universalSave(`${prefix}_${itemData.id}`, itemData);
     return itemData;
 }
-function deleteItem(id, prefix) { return universalRemove(`${prefix}_${id}`); }
+async function deleteItem(id, prefix) { return await universalRemove(`${prefix}_${id}`); }
 
 
 // ========================================================================
 // ===== GERENCIAMENTO DE USUÁRIOS E AUTENTICAÇÃO =====
 // ========================================================================
 
-export function getAllUsers() {
-    const userIds = universalLoad('users_list') || [];
-    return userIds.map(id => getUserProfile(id)).filter(Boolean);
+export async function getAllUsers() {
+    const userIds = await universalLoad('users_list') || [];
+    const userPromises = userIds.map(id => getUserProfile(id));
+    return (await Promise.all(userPromises)).filter(Boolean);
 }
 
-export function getUserProfile(userId) {
-    return getItem(userId, 'user');
+export async function getUserProfile(userId) {
+    return await getItem(userId, 'user');
 }
 
-export function saveUserProfile(userData) {
-    const savedUser = saveItem(userData, 'user');
-    const userIds = universalLoad('users_list') || [];
+export async function saveUserProfile(userData) {
+    const savedUser = await saveItem(userData, 'user');
+    const userIds = await universalLoad('users_list') || [];
     if (!userIds.includes(savedUser.id)) {
         userIds.push(savedUser.id);
-        universalSave('users_list', userIds);
+        await universalSave('users_list', userIds);
     }
     return savedUser;
 }
 
-export function deleteUserProfile(userId) {
-    const user = getUserProfile(userId);
+export async function deleteUserProfile(userId) {
+    const user = await getUserProfile(userId);
     if (user && user.boardIds) {
-        user.boardIds.forEach(boardId => deleteBoard(boardId));
+        await Promise.all(user.boardIds.map(boardId => deleteBoard(boardId)));
     }
     // Adicionar limpeza de grupos e templates aqui no futuro
 
-    const success = deleteItem(userId, 'user');
+    const success = await deleteItem(userId, 'user');
     if (success) {
-        let userIds = universalLoad('users_list') || [];
+        let userIds = await universalLoad('users_list') || [];
         userIds = userIds.filter(id => id !== userId);
-        universalSave('users_list', userIds);
+        await universalSave('users_list', userIds);
     }
     return success;
 }
 
-export function getCurrentUserId() { return universalLoad('currentUserId'); }
-export function setCurrentUserId(userId) { return universalSave('currentUserId', userId); }
+export async function getCurrentUserId() { return await universalLoad('currentUserId'); }
+export async function setCurrentUserId(userId) { return await universalSave('currentUserId', userId); }
 
 
 // ========================================================================
@@ -167,9 +109,9 @@ export function setCurrentUserId(userId) { return universalSave('currentUserId',
 // ========================================================================
 
 // --- Cartões ---
-export function getCard(cardId) { return getItem(cardId, 'card'); }
-export function saveCard(cardData) { return saveItem(cardData, 'card'); }
-export function deleteCard(cardId) { return deleteItem(cardId, 'card'); }
+export async function getCard(cardId) { return await getItem(cardId, 'card'); }
+export async function saveCard(cardData) { return await saveItem(cardData, 'card'); }
+export async function deleteCard(cardId) { return await deleteItem(cardId, 'card'); }
 /**
  * Arquiva um cartão, marcando-o como arquivado em vez de deletá-lo.
  * @param {string} cardId - O ID do cartão a ser arquivado.
@@ -177,8 +119,8 @@ export function deleteCard(cardId) { return deleteItem(cardId, 'card'); }
  * @param {string} reason - O motivo do arquivamento ('archived' ou 'deleted' para lixeira).
  * @param {string|null} columnId - O ID da coluna original do cartão.
  */
-export function archiveCard(cardId, userId, reason = 'archived', columnId = null) {
-    const card = getCard(cardId);
+export async function archiveCard(cardId, userId, reason = 'archived', columnId = null) {
+    const card = await getCard(cardId);
     if (!card) return null;
     card.isArchived = true;
     card.archivedAt = new Date().toISOString();
@@ -187,70 +129,70 @@ export function archiveCard(cardId, userId, reason = 'archived', columnId = null
     if (columnId) { // Armazena a coluna original para facilitar a restauração
         card.columnId = columnId;
     }
-    return saveCard(card);
+    return await saveCard(card);
 }
 
 // --- Colunas ---
-export function getColumn(columnId) { return getItem(columnId, 'column'); }
-export function saveColumn(columnData) { return saveItem(columnData, 'column'); }
-export function deleteColumn(columnId) {
-    const column = getColumn(columnId);
+export async function getColumn(columnId) { return await getItem(columnId, 'column'); }
+export async function saveColumn(columnData) { return await saveItem(columnData, 'column'); }
+export async function deleteColumn(columnId) {
+    const column = await getColumn(columnId);
     if (column && column.cardIds) {
-        column.cardIds.forEach(cardId => deleteCard(cardId));
+        await Promise.all(column.cardIds.map(cardId => deleteCard(cardId)));
     }
-    return deleteItem(columnId, 'column');
+    return await deleteItem(columnId, 'column');
 }
 
 // --- Quadros ---
-export function getBoard(boardId) { return getItem(boardId, 'board'); }
-export function saveBoard(boardData) {
-    const savedBoard = saveItem(boardData, 'board');
+export async function getBoard(boardId) { return await getItem(boardId, 'board'); }
+export async function saveBoard(boardData) {
+    const savedBoard = await saveItem(boardData, 'board');
     // Adiciona referência do quadro ao perfil do dono, se não existir
     if (savedBoard.ownerId) {
-        const owner = getUserProfile(savedBoard.ownerId);
+        const owner = await getUserProfile(savedBoard.ownerId);
         if (owner) {
             if (!owner.boardIds) owner.boardIds = [];
             if (!owner.boardIds.includes(savedBoard.id)) {
                 owner.boardIds.push(savedBoard.id);
-                saveUserProfile(owner);
+                await saveUserProfile(owner);
             }
         }
     }
     return savedBoard;
 }
-export function deleteBoard(boardId) {
-    const board = getBoard(boardId);
+export async function deleteBoard(boardId) {
+    const board = await getBoard(boardId);
     if (board && board.columnIds) {
-        board.columnIds.forEach(columnId => deleteColumn(columnId));
+        await Promise.all(board.columnIds.map(columnId => deleteColumn(columnId)));
     }
     // Remove a referência do quadro do perfil do dono
     if (board && board.ownerId) {
-        const owner = getUserProfile(board.ownerId);
+        const owner = await getUserProfile(board.ownerId);
         if (owner && owner.boardIds) {
             owner.boardIds = owner.boardIds.filter(id => id !== boardId);
-            saveUserProfile(owner);
+            await saveUserProfile(owner);
         }
     }
     // NOVO: Remove a referência do quadro do grupo, se existir
     if (board && board.groupId) {
-        const group = getGroup(board.groupId);
+        const group = await getGroup(board.groupId);
         if (group && group.boardIds) {
             group.boardIds = group.boardIds.filter(id => id !== boardId);
-            saveGroup(group);
+            await saveGroup(group);
         }
     }
-    return deleteItem(boardId, 'board');
+    return await deleteItem(boardId, 'board');
 }
 
-export function archiveBoard(boardId, userId, reason = 'archived') {
-    const board = getBoard(boardId);
+export async function archiveBoard(boardId, userId, reason = 'archived') {
+    const board = await getBoard(boardId);
     if (!board) return null;
 
     board.isArchived = true;
     board.archiveReason = reason;
     board.archivedAt = new Date().toISOString();
     board.archivedBy = userId;
-    saveBoard(board);
+    await saveBoard(board);
 
     // A lógica de mover o ID do quadro do perfil do usuário será tratada no kanban.js
     // para ter acesso ao currentUser.
@@ -263,8 +205,8 @@ export function archiveBoard(boardId, userId, reason = 'archived') {
  * @param {string} boardId O ID do quadro a ser carregado.
  * @param {boolean} [includeArchived=false] Se verdadeiro, inclui colunas e cartões arquivados.
  */
-export function getFullBoardData(boardId, includeArchived = false) {
-    const board = getBoard(boardId);
+export async function getFullBoardData(boardId, includeArchived = false) {
+    const board = await getBoard(boardId);
     if (!board) return null;
 
     // Decide quais colunas carregar com base no parâmetro
@@ -272,19 +214,20 @@ export function getFullBoardData(boardId, includeArchived = false) {
         ? [...(board.columnIds || []), ...(board.archivedColumnIds || [])]
         : (board.columnIds || []);
 
-    const hydratedColumns = columnIdsToLoad.map(columnId => {
-        const column = getColumn(columnId);
+    const hydratedColumns = (await Promise.all(columnIdsToLoad.map(async (columnId) => {
+        const column = await getColumn(columnId);
         if (!column) return null;
         
         // Pega os cartões ativos da coluna
-        const activeCards = (column.cardIds || []).map(cardId => getCard(cardId)).filter(Boolean);
+        const activeCards = (await Promise.all((column.cardIds || []).map(cardId => getCard(cardId)))).filter(Boolean);
 
         let allCardsForColumn = activeCards;
 
         // Se for para incluir arquivados, busca todos os cartões que já pertenceram a esta coluna
         if (includeArchived) {
-            const allCardKeys = Object.keys(isElectron() ? {} : localStorage).filter(k => k.startsWith(STORAGE_PREFIX + 'card_'));
-            const archivedCardsForThisColumn = allCardKeys.map(key => universalLoad(key.replace(STORAGE_PREFIX, ''))).filter(card => card && card.isArchived && card.columnId === columnId);
+            const allFileNames = await window.electronAPI.listFiles();
+            const cardKeys = allFileNames.filter(name => name.startsWith('card_'));
+            const archivedCardsForThisColumn = (await Promise.all(cardKeys.map(key => universalLoad(key)))).filter(card => card && card.isArchived && card.columnId === columnId);
             
             // Combina e remove duplicatas
             const cardMap = new Map();
@@ -294,7 +237,7 @@ export function getFullBoardData(boardId, includeArchived = false) {
 
         const hydratedCards = allCardsForColumn.filter(card => card && (includeArchived || !card.isArchived));
         return { ...column, cards: hydratedCards };
-    }).filter(Boolean);
+    }))).filter(Boolean);
 
     return { ...board, columns: hydratedColumns };
 }
@@ -302,17 +245,17 @@ export function getFullBoardData(boardId, includeArchived = false) {
 // ========================================================================
 // ===== GERENCIAMENTO DE GRUPOS =====
 // ========================================================================
-export function getAllGroups() {
-    const groupIds = universalLoad('groups_list') || [];
-    return groupIds.map(id => getGroup(id)).filter(Boolean);
+export async function getAllGroups() {
+    const groupIds = await universalLoad('groups_list') || [];
+    return (await Promise.all(groupIds.map(id => getGroup(id)))).filter(Boolean);
 }
-export function getGroup(groupId) { return getItem(groupId, 'group'); }
-export function saveGroup(groupData) {
-    const savedGroup = saveItem(groupData, 'group');
-    const groupIds = universalLoad('groups_list') || [];
+export async function getGroup(groupId) { return await getItem(groupId, 'group'); }
+export async function saveGroup(groupData) {
+    const savedGroup = await saveItem(groupData, 'group');
+    const groupIds = await universalLoad('groups_list') || [];
     if (!groupIds.includes(savedGroup.id)) {
         groupIds.push(savedGroup.id);
-        universalSave('groups_list', groupIds);
+        await universalSave('groups_list', groupIds);
     }
     return savedGroup;
 }
@@ -369,30 +312,30 @@ export function getSystemTagTemplates() {
 }
 
 // --- Templates do Usuário (Persistidos) ---
-export function getUserBoardTemplates(userId) {
-    const user = getUserProfile(userId);
+export async function getUserBoardTemplates(userId) {
+    const user = await getUserProfile(userId);
     return user ? user.boardTemplates || [] : [];
 }
 
-export function saveUserBoardTemplates(userId, templates) {
-    const user = getUserProfile(userId);
+export async function saveUserBoardTemplates(userId, templates) {
+    const user = await getUserProfile(userId);
     if (user) {
         user.boardTemplates = templates;
-        return saveUserProfile(user) !== null;
+        return await saveUserProfile(user) !== null;
     }
     return false;
 }
 
-export function getUserTagTemplates(userId) {
-    const user = getUserProfile(userId);
+export async function getUserTagTemplates(userId) {
+    const user = await getUserProfile(userId);
     return user ? user.tagTemplates || [] : [];
 }
 
-export function saveUserTagTemplates(userId, templates) {
-    const user = getUserProfile(userId);
+export async function saveUserTagTemplates(userId, templates) {
+    const user = await getUserProfile(userId);
     if (user) {
         user.tagTemplates = templates;
-        return saveUserProfile(user) !== null;
+        return await saveUserProfile(user) !== null;
     }
     return false;
 }
@@ -400,37 +343,37 @@ export function saveUserTagTemplates(userId, templates) {
 // ========================================================================
 // ===== OUTRAS FUNÇÕES (Notificações, Preferências) =====
 // ========================================================================
-export function getNotifications(userId) { return universalLoad(`user_${userId}_notifications`) || []; }
-export function saveNotifications(userId, notifications) { return universalSave(`user_${userId}_notifications`, notifications); }
+export async function getNotifications(userId) { return await universalLoad(`user_${userId}_notifications`) || []; }
+export async function saveNotifications(userId, notifications) { return await universalSave(`user_${userId}_notifications`, notifications); }
 
-export function getUserPreferences(userId) {
-    const userProfile = getUserProfile(userId);
+export async function getUserPreferences(userId) {
+    const userProfile = await getUserProfile(userId);
     return userProfile ? userProfile.preferences || {} : {};
 }
-export function saveUserPreferences(userId, preferences) {
-    const userProfile = getUserProfile(userId);
+export async function saveUserPreferences(userId, preferences) {
+    const userProfile = await getUserProfile(userId);
     if (userProfile) {
         userProfile.preferences = { ...userProfile.preferences, ...preferences };
-        return saveUserProfile(userProfile);
+        return await saveUserProfile(userProfile);
     }
     return false;
 }
 
-export function deleteGroup(groupId) {
+export async function deleteGroup(groupId) {
     // Primeiro, vamos obter o grupo para verificar se existem dados associados
-    const group = getGroup(groupId);
+    const group = await getGroup(groupId);
     if (!group) return false;
 
     // Aqui você pode adicionar lógica para limpar quaisquer recursos associados ao grupo
     // Por exemplo, se o grupo tem quadros, você pode querer deletá-los também
 
     // Deletar o grupo
-    const success = deleteItem(groupId, 'group');
+    const success = await deleteItem(groupId, 'group');
     if (success) {
         // Remover o grupo da lista de grupos
-        let groupIds = universalLoad('groups_list') || [];
+        let groupIds = await universalLoad('groups_list') || [];
         groupIds = groupIds.filter(id => id !== groupId);
-        universalSave('groups_list', groupIds);
+        await universalSave('groups_list', groupIds);
         
         // NOTA: A variável currentGroup é gerenciada no groups.js, não aqui
         // A limpeza dessa variável deve ser feita no código que chama esta função
@@ -438,9 +381,9 @@ export function deleteGroup(groupId) {
     return success;
 }
 
-export function addFriend(userId, friendId) {
-    const user = getUserProfile(userId);
-    const friend = getUserProfile(friendId);
+export async function addFriend(userId, friendId) {
+    const user = await getUserProfile(userId);
+    const friend = await getUserProfile(friendId);
     
     if (user && friend) {
         if (!user.friends) user.friends = [];
@@ -449,31 +392,31 @@ export function addFriend(userId, friendId) {
         user.friends.push(friendId);
         friend.friends.push(userId);
         
-        saveUserProfile(user);
-        saveUserProfile(friend);
+        await saveUserProfile(user);
+        await saveUserProfile(friend);
         return true;
     }
     return false;
 }
 
-export function removeFriend(userId, friendId) {
-    const user = getUserProfile(userId);
-    const friend = getUserProfile(friendId);
+export async function removeFriend(userId, friendId) {
+    const user = await getUserProfile(userId);
+    const friend = await getUserProfile(friendId);
     
     if (user && friend) {
         if (user.friends) user.friends = user.friends.filter(id => id !== friendId);
         if (friend.friends) friend.friends = friend.friends.filter(id => id !== userId);
         
-        saveUserProfile(user);
-        saveUserProfile(friend);
+        await saveUserProfile(user);
+        await saveUserProfile(friend);
         return true;
     }
     return false;
 }
 
-export function followUser(userId, targetId) {
-    const user = getUserProfile(userId);
-    const target = getUserProfile(targetId);
+export async function followUser(userId, targetId) {
+    const user = await getUserProfile(userId);
+    const target = await getUserProfile(targetId);
     
     if (user && target) {
         if (!user.following) user.following = [];
@@ -482,23 +425,23 @@ export function followUser(userId, targetId) {
         user.following.push(targetId);
         target.followers.push(userId);
         
-        saveUserProfile(user);
-        saveUserProfile(target);
+        await saveUserProfile(user);
+        await saveUserProfile(target);
         return true;
     }
     return false;
 }
 
-export function unfollowUser(userId, targetId) {
-    const user = getUserProfile(userId);
-    const target = getUserProfile(targetId);
+export async function unfollowUser(userId, targetId) {
+    const user = await getUserProfile(userId);
+    const target = await getUserProfile(targetId);
     
     if (user && target) {
         if (user.following) user.following = user.following.filter(id => id !== targetId);
         if (target.followers) target.followers = target.followers.filter(id => id !== userId);
         
-        saveUserProfile(user);
-        saveUserProfile(target);
+        await saveUserProfile(user);
+        await saveUserProfile(target);
         return true;
     }
     return false;

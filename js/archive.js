@@ -35,21 +35,22 @@ export async function initArchivePage() {
     setupEventListeners();
 }
 
-function loadAllArchivedItems() {
-    const userProfile = getUserProfile(currentUser.id);
+async function loadAllArchivedItems() {
+    const userProfile = await getUserProfile(currentUser.id);
     allArchivedItems = { cards: [], columns: [], boards: [] };
 
-    // Busca todos os quadros para encontrar itens arquivados, mesmo que o quadro em si não esteja mais na lista ativa do usuário.
-    const allBoardKeys = Object.keys(localStorage).filter(k => k.startsWith('kanbandeep_board_'));
+    // CORREÇÃO: Usa a API de arquivos para buscar todos os dados, em vez do localStorage.
+    const allFileNames = await window.electronAPI.listFiles();
+    const allBoardKeys = allFileNames.filter(name => name.startsWith('board_'));
 
-    allBoardKeys.forEach(key => {
-        const boardId = key.replace('kanbandeep_board_', '');
-        const board = getFullBoardData(boardId, true); // true to include archived items
+    for (const key of allBoardKeys) {
+        const boardId = key.replace('board_', '');
+        const board = await getFullBoardData(boardId, true); // true to include archived items
         if (!board) return;
 
         // Find archived cards
-        board.columns.forEach(column => {
-            column.cards.forEach(card => {
+        for (const column of board.columns) {
+            for (const card of column.cards) {
                 if (card.isArchived) {
                     allArchivedItems.cards.push({
                         ...card,
@@ -57,17 +58,17 @@ function loadAllArchivedItems() {
                         columnId: column.id
                     });
                 }
-            });
-        });
+            }
+        }
 
         // Find archived columns
-        const archivedColumns = (board.archivedColumnIds || []).map(colId => {
-            const col = getColumn(colId);
+        const archivedColumnPromises = (board.archivedColumnIds || []).map(async (colId) => {
+            const col = await getColumn(colId);
             return col ? { ...col, boardId: board.id } : null;
-        }).filter(Boolean);
-        
+        });
+        const archivedColumns = (await Promise.all(archivedColumnPromises)).filter(Boolean);
         allArchivedItems.columns.push(...archivedColumns);
-    });
+    }
 
     // Carrega quadros arquivados do perfil do usuário
     const archivedBoardIds = userProfile.archivedBoardIds || [];

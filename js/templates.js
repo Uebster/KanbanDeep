@@ -19,7 +19,7 @@ let untitledTagCounter = 1;
 
 export async function initTemplatesPage() {
     console.log("Iniciando página de templates...");
-    currentUser = getCurrentUser();
+    currentUser = await getCurrentUser();
     
     if (!currentUser) {
         window.location.href = 'list-users.html';
@@ -31,10 +31,10 @@ export async function initTemplatesPage() {
     setupPage();
     setupTabs();
     setupActionButtons();
-    loadAndRenderAllTemplates();
+    await loadAndRenderAllTemplates();
 
     // Listener para recarregar templates quando forem salvos pelo editor universal
-    window.addEventListener('templatesUpdated', loadAndRenderAllTemplates);
+    window.addEventListener('templatesUpdated', () => loadAndRenderAllTemplates());
 }
 
 function setupPage() {
@@ -93,25 +93,25 @@ function renderBoardTemplates(templates, gridElement, isEditable) {
     }
 }
 
-function useBoardTemplate(templateId) {
-    const userTemplates = getUserBoardTemplates(currentUser.id);
-    const allTemplates = [...getSystemBoardTemplates(), ...userTemplates];
+async function useBoardTemplate(templateId) {
+    const userTemplates = await getUserBoardTemplates(currentUser.id);
+    const allTemplates = [...(await getSystemBoardTemplates()), ...userTemplates];
     const template = allTemplates.find(t => t.id === templateId);
 
     if (!template) {
         showFloatingMessage(t('templates.feedback.templateNotFound'), 'error');
         return;
     }
-    
-    const newColumns = template.columns.map(colTemplate => {
+
+    const newColumns = await Promise.all(template.columns.map(async (colTemplate) => {
         const newColumnData = {
             title: t(colTemplate.name),
             color: colTemplate.color,
             cardIds: []
         };
-        return saveColumn(newColumnData);
-    });
-
+        return await saveColumn(newColumnData);
+    }));
+    
     const newBoardData = {
         title: `${t(template.name)} ${t('kanban.board.copySuffix')}`,
         icon: template.icon || '📋',
@@ -119,9 +119,9 @@ function useBoardTemplate(templateId) {
         visibility: 'private',
         columnIds: newColumns.map(col => col.id)
     };
-
-    const savedBoard = saveBoard(newBoardData);
-
+    
+    const savedBoard = await saveBoard(newBoardData);
+    
     localStorage.setItem(`currentBoardId_${currentUser.id}`, savedBoard.id);
     showFloatingMessage(t('templates.feedback.boardUsed', { boardTitle: savedBoard.title }), 'success');
     setTimeout(() => {
@@ -129,7 +129,7 @@ function useBoardTemplate(templateId) {
     }, 1500);
 }
 
-function renderTagTemplates(templates, gridElement, isEditable) {
+async function renderTagTemplates(templates, gridElement, isEditable) {
     if (!gridElement) return;
     gridElement.innerHTML = '';
     
@@ -137,7 +137,7 @@ function renderTagTemplates(templates, gridElement, isEditable) {
         gridElement.innerHTML = `<p class="loading-text">${t('templates.feedback.noUserTag')}</p>`;
         return;
     }
-
+    
     templates.forEach(template => {
         const card = document.createElement('div');
         card.className = 'template-card';
@@ -166,7 +166,7 @@ function renderTagTemplates(templates, gridElement, isEditable) {
             });
         }
     });
-
+    
     gridElement.querySelectorAll('.btn-use-tag').forEach(btn => btn.onclick = (e) => useTagTemplate(e.target.closest('.template-card').dataset.id));
     if (isEditable) {
         gridElement.querySelectorAll('.btn-edit-tag').forEach(btn => btn.onclick = (e) => {
@@ -176,24 +176,24 @@ function renderTagTemplates(templates, gridElement, isEditable) {
     }
 }
 
-function useTagTemplate(templateId) {
+async function useTagTemplate(templateId) {
     showConfirmationDialog(
         t('templates.confirm.setAsDefault'),
-        (dialog) => {
-            const userTemplates = getUserTagTemplates(currentUser.id);
-            const allTemplates = [...getSystemTagTemplates(), ...userTemplates];
+        async (dialog) => {
+            const userTemplates = await getUserTagTemplates(currentUser.id);
+            const allTemplates = [...(await getSystemTagTemplates()), ...userTemplates];
             const template = allTemplates.find(t => t.id === templateId);
 
             if (!template) {
                 showDialogMessage(dialog, t('templates.feedback.tagNotFound'), 'error');
                 return false;
             }
-
+            
             // Atualiza a preferência do usuário
-            const userData = getCurrentUser();
+            const userData = await getCurrentUser();
             if (userData) {
                 userData.preferences.defaultTagTemplateId = templateId;
-                if (updateUser(userData.id, userData)) {
+                if (await updateUser(userData.id, userData)) {
                     showDialogMessage(dialog, t('templates.feedback.tagUsed', { templateName: template.name }), 'success');
                     return true;
                 }
@@ -204,14 +204,14 @@ function useTagTemplate(templateId) {
     );
 }
 
-function deleteBoardTemplate(templateId) {
+async function deleteBoardTemplate(templateId) {
     showConfirmationDialog(
         t('templates.confirm.deleteBoard'),
         async (dialog) => {
-            let templates = getUserBoardTemplates(currentUser.id);
+            let templates = await getUserBoardTemplates(currentUser.id);
             templates = templates.filter(t => t.id !== templateId);
-            saveUserBoardTemplates(currentUser.id, templates);
-            loadAndRenderAllTemplates();
+            await saveUserBoardTemplates(currentUser.id, templates);
+            await loadAndRenderAllTemplates();
             showDialogMessage(dialog, t('templates.feedback.boardDeleted'), 'info');
             setTimeout(() => dialog.close(), 1500);
             return true;
@@ -219,14 +219,14 @@ function deleteBoardTemplate(templateId) {
     );
 }
 
-function deleteTagTemplate(templateId) {
+async function deleteTagTemplate(templateId) {
     showConfirmationDialog(
         t('templates.confirm.deleteTag'),
         async (dialog) => {
-            let templates = getUserTagTemplates(currentUser.id);
+            let templates = await getUserTagTemplates(currentUser.id);
             templates = templates.filter(t => t.id !== templateId);
-            saveUserTagTemplates(currentUser.id, templates);
-            loadAndRenderAllTemplates();
+            await saveUserTagTemplates(currentUser.id, templates);
+            await loadAndRenderAllTemplates();
             showDialogMessage(dialog, t('templates.feedback.tagDeleted'), 'info');
             setTimeout(() => dialog.close(), 1500);
             return true;
@@ -234,7 +234,7 @@ function deleteTagTemplate(templateId) {
     );
 }
 
-function setupTabs() {
+async function setupTabs() {
     const tabs = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     const actionsMenu = document.getElementById('actions-dropdown');
@@ -257,10 +257,10 @@ function setupTabs() {
             }
         });
     });
-    document.querySelector('.tab')?.click();
+    document.querySelector('.nav-item')?.click();
 }
 
-function setupActionButtons() {
+async function setupActionButtons() {
     document.getElementById('create-user-board-template').onclick = () => {
         showTemplateEditorDialog('board', { ownerType: 'user' });
     };
@@ -269,8 +269,8 @@ function setupActionButtons() {
     };
 }
 
-function deleteAllBoardTemplates() {
-    const userTemplates = getUserBoardTemplates(currentUser.id);
+async function deleteAllBoardTemplates() {
+    const userTemplates = await getUserBoardTemplates(currentUser.id);
     if (userTemplates.length === 0) {
         showFloatingMessage(t('templates.feedback.noBoardToDelete'), 'warning');
         return;
@@ -279,8 +279,8 @@ function deleteAllBoardTemplates() {
     showConfirmationDialog(
         t('templates.confirm.deleteAllBoard'),
         async (dialog) => {
-            saveUserBoardTemplates(currentUser.id, []);
-            loadAndRenderAllTemplates();
+            await saveUserBoardTemplates(currentUser.id, []);
+            await loadAndRenderAllTemplates();
             showDialogMessage(dialog, t('templates.feedback.allBoardDeleted'), 'info');
             setTimeout(() => dialog.close(), 1500);
             return true;
@@ -288,8 +288,8 @@ function deleteAllBoardTemplates() {
     );
 }
 
-function deleteAllTagTemplates() {
-    const userTemplates = getUserTagTemplates(currentUser.id);
+async function deleteAllTagTemplates() {
+    const userTemplates = await getUserTagTemplates(currentUser.id);
     if (userTemplates.length === 0) {
         showFloatingMessage(t('templates.feedback.noTagToDelete'), 'warning');
         return;
@@ -298,8 +298,8 @@ function deleteAllTagTemplates() {
     showConfirmationDialog(
         t('templates.confirm.deleteAllTag'),
         async (dialog) => {
-            saveUserTagTemplates(currentUser.id, []);
-            loadAndRenderAllTemplates();
+            await saveUserTagTemplates(currentUser.id, []);
+            await loadAndRenderAllTemplates();
             showDialogMessage(dialog, t('templates.feedback.allTagDeleted'), 'info');
             setTimeout(() => dialog.close(), 1500);
             return true;
@@ -307,7 +307,7 @@ function deleteAllTagTemplates() {
     );
 }
 
-function showAlertDialog(message) {
+async function showAlertDialog(message) {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
@@ -330,7 +330,7 @@ function showAlertDialog(message) {
     }, 10);
 }
 
-function showTemplateContextMenu(event, template, type) {    
+async function showTemplateContextMenu(event, template, type) {
     const menuItems = [
         { 
             label: t('ui.edit'), 
@@ -350,7 +350,7 @@ function showTemplateContextMenu(event, template, type) {
     showContextMenu(event, menuItems);
 }
 
-function showTemplateDetails(template, type) {
+async function showTemplateDetails(template, type) {
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
@@ -386,8 +386,8 @@ function showTemplateDetails(template, type) {
     };
 }
 
-function applyUserTheme() {
-    const currentUser = getCurrentUser();
+async function applyUserTheme() {
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
 
     const userTheme = currentUser.theme || 'auto';
@@ -409,8 +409,8 @@ function applyUserTheme() {
     applyUserFont();
 }
 
-function applyUserFont() {
-    const currentUser = getCurrentUser();
+async function applyUserFont() {
+    const currentUser = await getCurrentUser();
     if (!currentUser || !currentUser.preferences) return;
     
     applyFontFamily(currentUser.preferences.fontFamily || 'Segoe UI');
@@ -418,7 +418,7 @@ function applyUserFont() {
     document.documentElement.style.fontSize = sizeMap[currentUser.preferences.fontSize] || '14px';
 }
 
-function applyFontFamily(fontFamily) {
+async function applyFontFamily(fontFamily) {
     const allElements = document.querySelectorAll('*');
     for (let i = 0; i < allElements.length; i++) {
         allElements[i].style.fontFamily = fontFamily;
@@ -436,13 +436,13 @@ function applyFontFamily(fontFamily) {
     document.head.appendChild(style);
 }
 
-function loadAndRenderAllTemplates() {
-    const boardTemplates = getUserBoardTemplates(currentUser.id);
-    const tagTemplates = getUserTagTemplates(currentUser.id);
+async function loadAndRenderAllTemplates() {
+    const boardTemplates = await getUserBoardTemplates(currentUser.id);
+    const tagTemplates = await getUserTagTemplates(currentUser.id);
     // Renderiza os templates do usuário
-    renderBoardTemplates(boardTemplates, document.getElementById('user-board-templates-grid'), true);
-    renderTagTemplates(tagTemplates, document.getElementById('user-tag-templates-grid'), true);
+    await renderBoardTemplates(boardTemplates, document.getElementById('user-board-templates-grid'), true);
+    await renderTagTemplates(tagTemplates, document.getElementById('user-tag-templates-grid'), true);
     // Renderiza os templates do sistema
-    renderBoardTemplates(getSystemBoardTemplates(), document.getElementById('system-board-templates-grid'), false);
-    renderTagTemplates(getSystemTagTemplates(), document.getElementById('system-tag-templates-grid'), false);
+    await renderBoardTemplates(await getSystemBoardTemplates(), document.getElementById('system-board-templates-grid'), false);
+    await renderTagTemplates(await getSystemTagTemplates(), document.getElementById('system-tag-templates-grid'), false);
 }

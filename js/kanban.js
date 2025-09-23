@@ -81,8 +81,7 @@ function translatePreferencesDialog() {
 // A lógica de inicialização agora está DENTRO da função exportada.
 // O DOMContentLoaded foi REMOVIDO daqui.
 export async function initKanbanPage() {
-
-    currentUser = getCurrentUser();
+    currentUser = await getCurrentUser();
     if (!currentUser) {
         showFloatingMessage(t('ui.userNotLoggedIn'), 'error');
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
@@ -145,11 +144,11 @@ export async function initKanbanPage() {
  * Carrega todos os dados necessários da aplicação (quadros e usuários).
  */
 async function loadData() {
-    allUsers = getAllUsers();
-    const userProfile = getUserProfile(currentUser.id);
+    allUsers = await getAllUsers();
+    const userProfile = await getUserProfile(currentUser.id) || {};
 
     // Carrega todos os quadros de todos os grupos dos quais o usuário é membro
-    const allGroups = getAllGroups();
+    const allGroups = await getAllGroups();
     const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
     const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
 
@@ -160,10 +159,10 @@ async function loadData() {
 
     // Itera sobre todos os IDs de quadros visíveis e aplica a lógica de permissão
     for (const boardId of allVisibleBoardIds) {
-        const board = getFullBoardData(boardId);
+        const board = await getFullBoardData(boardId);
         if (!board) continue;
 
-        const owner = getUserProfile(board.ownerId);
+        const owner = await getUserProfile(board.ownerId);
         const isOwner = board.ownerId === currentUser.id;
         const isPublic = board.visibility === 'public';
         const isFriendBoard = board.visibility === 'friends' && owner?.friends?.includes(currentUser.id);
@@ -182,8 +181,8 @@ async function loadData() {
     boards = Array.from(allBoardMap.values());
 
     tagColorMap.clear();
-    const systemTags = getSystemTagTemplates();
-    const userTags = getUserTagTemplates(currentUser.id);
+    const systemTags = await getSystemTagTemplates();
+    const userTags = await getUserTagTemplates(currentUser.id);
     systemTags.forEach(t => t.tags.forEach(tag => tagColorMap.set(tag.name, tag.color)));
     userTags.forEach(t => t.tags.forEach(tag => tagColorMap.set(tag.name, tag.color)));
 }
@@ -193,27 +192,27 @@ async function loadData() {
  */
 function setupEventListeners() {
 
-    document.getElementById('add-board-btn')?.addEventListener('click', () => {
-        if (currentBoardFilter === 'group' && !hasPermission(null, 'createBoards')) {
+    document.getElementById('add-board-btn')?.addEventListener('click', async () => {
+        if (currentBoardFilter === 'group' && !await hasPermission(null, 'createBoards')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
-        showBoardDialog();
+        await showBoardDialog();
     });
     
-    document.getElementById('add-column-btn')?.addEventListener('click', () => {
+    document.getElementById('add-column-btn')?.addEventListener('click', async () => {
         if (!currentBoard) {
             showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
             return;
         }
-        if (!hasPermission(currentBoard, 'createColumns')) {
+        if (!await hasPermission(currentBoard, 'createColumns')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
-        showColumnDialog();
+        await showColumnDialog();
     });
     
-    document.getElementById('add-card-btn')?.addEventListener('click', () => {
+    document.getElementById('add-card-btn')?.addEventListener('click', async () => {
         if (!currentBoard) {
             showFloatingMessage(t('kanban.feedback.noBoardSelected'), 'error');
             return;
@@ -222,11 +221,11 @@ function setupEventListeners() {
             showFloatingMessage(t('kanban.feedback.noColumnForCard'), 'error');
             return;
         }
-        if (!hasPermission(currentBoard, 'createCards')) {
+        if (!await hasPermission(currentBoard, 'createCards')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
-        showCardDialog(null, currentBoard.columns[0].id);
+        await showCardDialog(null, currentBoard.columns[0].id);
     });
 
     document.getElementById('board-select')?.addEventListener('change', switchBoard);
@@ -235,14 +234,14 @@ function setupEventListeners() {
     document.getElementById('redo-btn')?.addEventListener('click', redoAction);
     document.getElementById('start-tour-btn')?.addEventListener('click', startTour);
     document.getElementById('export-img')?.addEventListener('click', () => handleExportImage());
-    document.getElementById('save-as-template-btn')?.addEventListener('click', saveBoardAsTemplate);
+    document.getElementById('save-as-template-btn')?.addEventListener('click', () => saveBoardAsTemplate());
     document.getElementById('search-cards-btn')?.addEventListener('click', showSearchDialog);
     document.getElementById('print-btn')?.addEventListener('click', handlePrintBoard);
     // --- Diálogos (Modais) ---
-    document.getElementById('board-save-btn')?.addEventListener('click', handleSaveBoard);
-    document.getElementById('column-save-btn')?.addEventListener('click', handleSaveColumn);
+    document.getElementById('board-save-btn')?.addEventListener('click', () => handleSaveBoard());
+    document.getElementById('column-save-btn')?.addEventListener('click', () => handleSaveColumn());
     document.getElementById('column-delete-btn')?.addEventListener('click', () => handleDeleteColumn(document.getElementById('column-dialog').dataset.editingId));
-    document.getElementById('card-save-btn')?.addEventListener('click', handleSaveCard);
+    document.getElementById('card-save-btn')?.addEventListener('click', () => handleSaveCard());
     document.querySelectorAll('dialog .btn.cancel').forEach(btn => {
         // Adiciona um listener genérico para fechar diálogos com o botão "Cancelar", mas ignora o de preferências,
         // que tem sua própria lógica customizada.
@@ -378,7 +377,7 @@ function startTour() {
     showTourStep(currentTourStep);
 }
 
-function endTour(wasSkipped = false) {
+async function endTour(wasSkipped = false) {
     isTourActive = false;
     // Reativa o Smart Header, que verificará as preferências do usuário.
     initSmartHeader();
@@ -401,7 +400,7 @@ function endTour(wasSkipped = false) {
     // Marca que o tour foi visto para não mostrar novamente
     if (!currentUser.preferences.hasSeenTour) {
         currentUser.preferences.hasSeenTour = true;
-        updateUser(currentUser.id, { preferences: currentUser.preferences });
+        await updateUser(currentUser.id, { preferences: currentUser.preferences });
     }
 }
 
@@ -522,7 +521,7 @@ function positionPopover(target, popover, position) {
     popover.style.left = `${left}px`;
 }
 
-function createTourBoard() {
+async function createTourBoard() {
     const boardData = {
         title: t('tour.item.boardTitle'),
         icon: '🚀',
@@ -531,17 +530,17 @@ function createTourBoard() {
         columnIds: [],
         columns: []
     };
-    const newBoard = saveBoard(boardData);
+    const newBoard = await saveBoard(boardData);
     tourCreatedItems.boardId = newBoard.id; // Salva o ID para o "desfazer"
     boards.push(newBoard); // Adiciona à lista em memória
     currentBoard = newBoard; // Define como quadro atual
     localStorage.setItem(`currentBoardId_${currentUser.id}`, newBoard.id);
-    renderBoardSelector();
-    renderCurrentBoard();
+    await renderBoardSelector();
+    await renderCurrentBoard();
     initCustomSelects();
 }
 
-function createTourColumn() {
+async function createTourColumn() {
     if (!currentBoard) return;
     const columnData = {
         title: t('tour.item.columnTitle'),
@@ -550,15 +549,15 @@ function createTourColumn() {
         cardIds: [],
         cards: []
     };
-    const newColumn = saveColumn(columnData);
+    const newColumn = await saveColumn(columnData);
     tourCreatedItems.columnId = newColumn.id; // Salva o ID
     currentBoard.columnIds.push(newColumn.id);
     currentBoard.columns.push(newColumn);
-    saveBoard(currentBoard);
-    renderCurrentBoard();
+    await saveBoard(currentBoard);
+    await renderCurrentBoard();
 }
 
-function createTourCard() {
+async function createTourCard() {
     if (!currentBoard || currentBoard.columns.length === 0) return;
     const targetColumn = currentBoard.columns[0];
     const cardData = {
@@ -571,61 +570,61 @@ function createTourCard() {
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Vence em 3 dias
         createdAt: new Date().toISOString()
     };
-    const newCard = saveCard(cardData);
+    const newCard = await saveCard(cardData);
     tourCreatedItems.cardId = newCard.id; // Salva o ID
     targetColumn.cardIds.push(newCard.id);
     targetColumn.cards.push(newCard);
-    saveColumn(targetColumn);
-    renderCurrentBoard();
+    await saveColumn(targetColumn);
+    await renderCurrentBoard();
 }
 
 /**
  * Funções para DESFAZER as criações do tour.
  */
-function undoTourBoard() {
+async function undoTourBoard() {
     // CORREÇÃO: Verifica se o ID existe antes de tentar qualquer operação.
     // Isso torna a função segura mesmo se o usuário pular o tour antes da criação.
     if (tourCreatedItems.boardId) {
         deleteBoard(tourCreatedItems.boardId);
         tourCreatedItems.boardId = null;
-        loadData(); // Recarrega todos os quadros
-        renderBoardSelector();
-        renderCurrentBoard();
+        await loadData(); // Recarrega todos os quadros
+        await renderBoardSelector();
+        await renderCurrentBoard();
         initCustomSelects();
     }
 }
 
-function undoTourColumn() {
+async function undoTourColumn() {
     // CORREÇÃO: Verifica se o ID existe.
     if (tourCreatedItems.columnId && tourCreatedItems.boardId) {
-        const board = getBoard(tourCreatedItems.boardId);
+        const board = await getBoard(tourCreatedItems.boardId);
         if (board) {
             board.columnIds = board.columnIds.filter(id => id !== tourCreatedItems.columnId);
-            saveBoard(board);
+            await saveBoard(board);
         }
-        deleteColumn(tourCreatedItems.columnId);
+        await deleteColumn(tourCreatedItems.columnId);
         tourCreatedItems.columnId = null;
-        currentBoard = getFullBoardData(tourCreatedItems.boardId);
-        renderCurrentBoard();
+        currentBoard = await getFullBoardData(tourCreatedItems.boardId);
+        await renderCurrentBoard();
     }
 }
 
-function undoTourCard() {
+async function undoTourCard() {
     // CORREÇÃO: Verifica se o ID existe.
     if (tourCreatedItems.cardId && tourCreatedItems.columnId) {
-        const column = getColumn(tourCreatedItems.columnId);
+        const column = await getColumn(tourCreatedItems.columnId);
         if (column) {
             column.cardIds = column.cardIds.filter(id => id !== tourCreatedItems.cardId);
-            saveColumn(column);
+            await saveColumn(column);
         }
-        deleteCard(tourCreatedItems.cardId);
+        deleteCard(tourCreatedİd);
         tourCreatedItems.cardId = null;
-        currentBoard = getFullBoardData(tourCreatedItems.boardId);
-        renderCurrentBoard();
+        currentBoard = await getFullBoardData(tourCreatedItems.boardId);
+        await renderCurrentBoard();
     }
 }
 
-function showSearchDialog() {
+async function showSearchDialog() {
     const dialog = document.getElementById('search-dialog');
     // Lógica das abas
     const tabs = dialog.querySelectorAll('.details-tab-btn');
@@ -657,13 +656,13 @@ function showSearchDialog() {
     });
 
     // Popula os filtros para AMBAS as abas
-    populateFilterOptions(dialog.querySelector('#search-filter-pane'), true); // Filtros do quadro atual
-    populateFilterOptions(dialog.querySelector('#search-global-pane'), false); // Filtros globais
+    await populateFilterOptions(dialog.querySelector('#search-filter-pane'), true); // Filtros do quadro atual
+    await populateFilterOptions(dialog.querySelector('#search-global-pane'), false); // Filtros globais
 
     // Anexa os listeners
-    resetBtn.onclick = resetSearchFilters;
+    resetBtn.onclick = await resetSearchFilters;
     dialog.querySelector('#search-cancel-btn').onclick = () => dialog.close();
-    
+
     // Reseta para a primeira aba ao abrir
     tabs[0].click();
     dialog.showModal();
@@ -674,7 +673,7 @@ function showSearchDialog() {
  * @param {HTMLElement} container - O painel (aba) que contém os selects.
  * @param {boolean} boardSpecific - Se true, popula tags apenas do quadro atual. Se false, popula com todos os usuários e tags.
  */
-function populateFilterOptions(container, boardSpecific) {
+async function populateFilterOptions(container, boardSpecific) {
     const creatorSelect = container.querySelector('select[id*="-creator"]');
     const assigneeSelect = container.querySelector('select[id*="-assignee"]');
     const tagSelect = container.querySelector('select[id*="-tags"]');
@@ -688,8 +687,8 @@ function populateFilterOptions(container, boardSpecific) {
         });
     } else if (!boardSpecific) {
         // Para busca global, pega tags de todos os quadros
-        boards.forEach(board => {
-            const fullBoard = getFullBoardData(board.id);
+        for (const board of boards) {
+            const fullBoard = await getFullBoardData(board.id);
             if (fullBoard) {
                 fullBoard.columns.forEach(col => {
                     col.cards.forEach(card => {
@@ -697,7 +696,7 @@ function populateFilterOptions(container, boardSpecific) {
                     });
                 });
             }
-        });
+        }
     }
 
     let relevantUsers = new Map();
@@ -706,13 +705,13 @@ function populateFilterOptions(container, boardSpecific) {
     if (boardSpecific && currentBoard.visibility === 'public') {
         const userProfile = getUserProfile(currentUser.id);
         if (userProfile && userProfile.friends) {
-            userProfile.friends.forEach(friendId => {
-                const friend = allUsers.find(u => u.id === friendId);
+            for (const friendId of userProfile.friends) {
+                const friend = allUsers.find(u => u.id === friendId); // allUsers is already loaded
                 if (friend) relevantUsers.set(friend.id, friend);
-            });
+            }
         } 
     } else if (boardSpecific && currentBoard.visibility === 'group' && currentBoard.groupId) {
-        const group = getGroup(currentBoard.groupId);
+        const group = await getGroup(currentBoard.groupId);
         if (group && group.memberIds) {
             group.memberIds.forEach(memberId => {
                 const member = allUsers.find(u => u.id === memberId);
@@ -839,7 +838,7 @@ function applySearchFilters() {
 /**
  * Executa uma busca global em todos os quadros visíveis e renderiza os resultados.
  */
-function executeGlobalSearch() {
+async function executeGlobalSearch() {
     const searchDialog = document.getElementById('search-dialog');
     const filters = {
         text: document.getElementById('global-search-text').value.toLowerCase(),
@@ -853,8 +852,8 @@ function executeGlobalSearch() {
     const searchResults = [];
 
     // Itera sobre todos os quadros visíveis para o usuário
-    boards.forEach(board => {
-        const fullBoard = getFullBoardData(board.id); // Garante que temos todos os dados
+    for (const board of boards) {
+        const fullBoard = await getFullBoardData(board.id); // Garante que temos todos os dados
         if (!fullBoard) return;
 
         fullBoard.columns.forEach(column => {
@@ -887,7 +886,7 @@ function executeGlobalSearch() {
                 }
             });
         });
-    });
+    }
 
     searchDialog.close(); // Fecha o diálogo de busca
     showGlobalSearchResultsDialog(searchResults); // Abre o novo diálogo com os resultados
@@ -935,7 +934,7 @@ function showGlobalSearchResultsDialog(results) {
     dialog.showModal();
 }
 
-function resetSearchFilters() {
+async function resetSearchFilters() {
     const dialog = document.getElementById('search-dialog');
     
     // Aba de Filtro
@@ -1061,8 +1060,8 @@ function renderBoardSelector() {
             }, {});
 
             const sortedGroupIds = Object.keys(boardsByGroup).sort((a, b) => {
-                const groupA = getGroup(a)?.name || '';
-                const groupB = getGroup(b)?.name || '';
+                const groupA = allGroups.find(g => g.id === a)?.name || '';
+                const groupB = allGroups.find(g => g.id === b)?.name || '';
                 return groupA.localeCompare(groupB);
             });
 
@@ -1183,8 +1182,8 @@ function createColumnElement(column) {
         });
     });
 
-    columnEl.querySelector('.add-card-btn').addEventListener('click', () => {
-        if (!hasPermission(currentBoard, 'createCards')) {
+    columnEl.querySelector('.add-card-btn').addEventListener('click', async () => {
+        if (!await hasPermission(currentBoard, 'createCards')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
@@ -1198,7 +1197,6 @@ function createColumnElement(column) {
     return columnEl;
 }
 
-// Em kanban.js
 function createCardElement(card) {
     const cardEl = document.createElement('div');
     cardEl.className = 'card';
@@ -1287,8 +1285,8 @@ function createCardElement(card) {
  * @param {string} cardId O ID do cartão.
  * @param {MouseEvent} event O evento do mouse para posicionamento.
  */
-function showTooltip(cardId, event) {
-    const { card } = findCardAndColumn(cardId);
+async function showTooltip(cardId, event) {
+    const { card } = await findCardAndColumn(cardId);
     if (!card || !tooltipElement) return;
 
     const creator = allUsers.find(u => u.id === card.creatorId);
@@ -1353,7 +1351,6 @@ function showManagerDialog() {
 
     // Abre o diálogo na primeira aba por padrão
     tabs[0].click();
-    populateManagerBoards(); // Popula a primeira aba ao abrir
 
     dialog.showModal();
 }
@@ -1368,9 +1365,9 @@ function populateManagerBoards() {
     listContainer.innerHTML = ''; // Limpa a lista
 
     // 1. Filtra os quadros que o usuário pode ver, respeitando a privacidade
-    const visibleBoards = boards.filter(board => {
-        if (!board.groupId) return true; // Quadros pessoais
-        const group = getGroup(board.groupId);
+    const visibleBoards = boards.filter(async board => {
+        if (!board.groupId) return board; // Quadros pessoais
+        const group = await getGroup(board.groupId);
         if (!group) return false;
         if (group.adminId === currentUser.id) return true; // Admin vê tudo do grupo
         // Membro vê quadros de grupo ou os privados que ele criou
@@ -1378,7 +1375,7 @@ function populateManagerBoards() {
     });
 
     // 2. Separa os quadros em pessoais e de grupo
-    const personalBoards = visibleBoards.filter(b => !b.groupId);
+    const personalBoards = visibleBoards.filter(b => b && !b.groupId);
     const groupBoards = visibleBoards.filter(b => b.groupId);
 
     if (personalBoards.length === 0 && groupBoards.length === 0) {
@@ -1468,9 +1465,9 @@ function populateManagerColumns() {
     select.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
 
     // Reutiliza a mesma lógica de filtro da aba de quadros
-    const visibleBoards = boards.filter(board => {
+    const visibleBoards = boards.filter(async board => {
         if (!board.groupId) return true;
-        const group = getGroup(board.groupId);
+        const group = await getGroup(board.groupId);
         if (!group) return false;
         if (group.adminId === currentUser.id) return true;
         return board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
@@ -1496,7 +1493,7 @@ function populateManagerColumns() {
         const optgroup = document.createElement('optgroup');
         optgroup.label = t('kanban.dialog.manager.groupBoards');
         groupBoards.forEach(board => {
-            const group = getGroup(board.groupId);
+            const group = allGroups.find(g => g.id === board.groupId);
             const groupName = group ? ` (${group.name})` : '';
             const option = document.createElement('option');
             option.value = board.id;
@@ -1693,7 +1690,7 @@ function closeAllDropdowns() {
 
 // ===== LÓGICA DE DIÁLOGOS (MODAIS) =====
 
-function showBoardDialog(boardId = null) {
+async function showBoardDialog(boardId = null) {
     const dialog = document.getElementById('board-dialog');
 
     const board = boardId ? boards.find(b => b.id === boardId) : null;
@@ -1710,8 +1707,8 @@ function showBoardDialog(boardId = null) {
     const saveBtn = dialog.querySelector('#board-save-btn');
 
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
-    const allGroups = getAllGroups();
-    const creatableInGroups = allGroups.filter(g => {
+    const allGroups = await getAllGroups();
+    const creatableInGroups = (allGroups || []).filter(g => {
         const isAdmin = g.adminId === currentUser.id;
         const canCreate = g.permissions?.createBoards && g.memberIds.includes(currentUser.id);
         return isAdmin || canCreate;
@@ -1750,7 +1747,7 @@ function showBoardDialog(boardId = null) {
         visibilitySelect.disabled = true;
         if (board.visibility === 'group' && board.groupId) {
             // Se o quadro pertence a um grupo, a visibilidade é travada e o grupo é exibido
-            groupSelect.innerHTML = `<option value="${board.groupId}">${getGroup(board.groupId)?.name || t('kanban.board.unknownGroup')}</option>`;
+            groupSelect.innerHTML = `<option value="${board.groupId}">${(await getGroup(board.groupId))?.name || t('kanban.board.unknownGroup')}</option>`;
             groupSelect.disabled = true;
         }
         iconInput.value = board.icon || '📋';
@@ -1800,8 +1797,8 @@ function showBoardDialog(boardId = null) {
         initCustomSelects();
     }, 0);
 
-    const userTemplates = getUserBoardTemplates(currentUser.id);
-    const systemTemplates = getSystemBoardTemplates();
+    const userTemplates = await getUserBoardTemplates(currentUser.id);
+    const systemTemplates = await getSystemBoardTemplates();
     
     templateSelect.innerHTML = `<option value="">${t('kanban.dialog.board.templateEmpty')}</option>`;
     if (userTemplates.length > 0) {
@@ -1821,7 +1818,7 @@ function showBoardDialog(boardId = null) {
     dialog.showModal();
 }
 
-function handleSaveBoard() {
+async function handleSaveBoard() {
     const dialog = document.getElementById('board-dialog');
     let title = document.getElementById('board-title-input').value.trim();
     const templateId = document.getElementById('board-template-select').value;
@@ -1846,7 +1843,7 @@ function handleSaveBoard() {
 
     showConfirmationDialog(
         t('kanban.confirm.saveBoard'),
-        (confirmationDialog) => {
+        async (confirmationDialog) => {
             const boardId = dialog.dataset.editingId;
             const description = document.getElementById('board-description-input').value.trim();
             const icon = document.getElementById('board-icon-input').value;
@@ -1860,12 +1857,12 @@ function handleSaveBoard() {
                 boardData.icon = icon;
                 savedBoard = saveBoard(boardData);
             } else { // Criando um novo quadro
-                const allTemplates = [...getUserBoardTemplates(currentUser.id), ...getSystemBoardTemplates()];
+                const allTemplates = [...(await getUserBoardTemplates(currentUser.id)), ...(await getSystemBoardTemplates())];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
                 if (selectedTemplate && !title) title = `${t(selectedTemplate.name)} ${t('kanban.board.copySuffix')}`;
                 
                 const visibility = document.getElementById('board-visibility').value;
-                const newColumns = selectedTemplate ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] })) : [];
+                const newColumns = selectedTemplate ? await Promise.all(selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] }))) : [];
                 const newBoardData = { 
                     title, 
                     description, 
@@ -1879,7 +1876,7 @@ function handleSaveBoard() {
                 if (isGroupContext) {
                     newBoardData.groupId = document.getElementById('board-group-select').value;
                 }
-                savedBoard = saveBoard(newBoardData);
+                savedBoard = await saveBoard(newBoardData);
 
                 // --- ATUALIZA O GRUPO COM O NOVO QUADRO ---
                 if (savedBoard.groupId) {
@@ -1887,7 +1884,7 @@ function handleSaveBoard() {
                     if (group) {
                         if (!group.boardIds) group.boardIds = [];
                         group.boardIds.push(savedBoard.id);
-                        saveGroup(group);
+                        await saveGroup(group);
                     }
                 }
             }
@@ -1903,7 +1900,7 @@ function handleSaveBoard() {
                         btn.classList.toggle('active', btn.dataset.filter === 'group');
                     });
                 }
-                showSuccessAndRefresh(dialog, savedBoard.id);
+                await showSuccessAndRefresh(dialog, savedBoard.id);
                 return true; // Fecha o diálogo de confirmação
             }
             return false; // Mantém o diálogo de confirmação aberto em caso de erro
@@ -1911,7 +1908,7 @@ function handleSaveBoard() {
     );
 }
 
-function showColumnDialog(columnId = null) {
+async function showColumnDialog(columnId = null) {
     if (!currentBoard) {
         showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
         return;
@@ -1963,7 +1960,7 @@ function showColumnDialog(columnId = null) {
 }
 
 // Em kanban.js
-function handleSaveColumn() {
+async function handleSaveColumn() {
     const dialog = document.getElementById('column-dialog');
     const title = document.getElementById('column-title-input').value.trim();
     if (!title) {
@@ -1973,7 +1970,7 @@ function handleSaveColumn() {
 
     showConfirmationDialog(
         t('kanban.confirm.saveColumn'),
-        (confirmationDialog) => {
+        async (confirmationDialog) => {
             saveState(); // Salva o estado para o Desfazer
             const columnId = dialog.dataset.editingId;
             
@@ -2023,7 +2020,7 @@ function handleSaveColumn() {
                 const boardData = getBoard(currentBoard.id);
                 if (boardData) {
                     boardData.columnIds.push(newColumn.id);
-                    saveBoard(boardData);
+                    await saveBoard(boardData);
                 }
             }
             showDialogMessage(confirmationDialog, t('kanban.feedback.columnSaved'), 'success');
@@ -2039,20 +2036,20 @@ function handleSaveColumn() {
  * @param {HTMLElement|null} dialog O diálogo a ser manipulado. Pode ser nulo se a ação não vier de um diálogo.
  * @param {string} boardToFocusId O ID do quadro que deve estar em foco após a atualização.
  */
-function showSuccessAndRefresh(dialog, boardToFocusId) {
-  const delay = dialog ? 1500 : 100; // Delay menor se não houver diálogo
+async function showSuccessAndRefresh(dialog, boardToFocusId) {
+  const delay = dialog ? 1500 : 100;
   if (dialog) {
     dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
   }
 
-  setTimeout(() => {
+  setTimeout(async () => {
     // --- LÓGICA DE ATUALIZAÇÃO SEGURA (CORRIGIDA) ---
     // Recarrega a lista de quadros (pessoais e de grupo) para garantir que temos os dados mais recentes.
-    const userProfile = getUserProfile(currentUser.id);
-    const personalBoards = (userProfile.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
-    const allGroups = getAllGroups();
-    const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
-    const groupBoards = memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+    const userProfile = await getUserProfile(currentUser.id);
+    const personalBoards = await Promise.all((userProfile.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
+    const allGroups = await getAllGroups();
+    const memberGroups = (allGroups || []).filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+    const groupBoards = await Promise.all(memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
     const allBoardMap = new Map();
     personalBoards.forEach(b => allBoardMap.set(b.id, b));
     groupBoards.forEach(b => allBoardMap.set(b.id, b));
@@ -2065,9 +2062,9 @@ function showSuccessAndRefresh(dialog, boardToFocusId) {
     }
 
     // Renderiza a tela com os dados frescos
-    renderBoardSelector();
+    renderBoardSelector(); // This one doesn't need await as it's synchronous now
     initCustomSelects(); // ATUALIZAÇÃO: Garante que o select customizado seja reconstruído.
-    renderCurrentBoard();
+    renderCurrentBoard(); // This one doesn't need await as it's synchronous now
 
     // Fecha o diálogo e reabilita os botões, se houver um diálogo
     if (dialog) {
@@ -2077,7 +2074,7 @@ function showSuccessAndRefresh(dialog, boardToFocusId) {
   }, delay);
 }
 
-function showCardDialog(cardId = null, columnId) {
+async function showCardDialog(cardId = null, columnId) {
     const dialog = document.getElementById('card-dialog');
     const result = cardId ? findCardAndColumn(cardId) : null;
     const card = result ? result.card : null;
@@ -2174,16 +2171,16 @@ function showCardDialog(cardId = null, columnId) {
 
     if (defaultTemplateId) {
         // Procura primeiro nos templates do usuário
-        activeTagTemplate = getUserTagTemplates(currentUser.id).find(t => t.id === defaultTemplateId);
+        activeTagTemplate = (await getUserTagTemplates(currentUser.id)).find(t => t.id === defaultTemplateId);
         // Se não encontrar, procura nos do sistema
         if (!activeTagTemplate) {
-            activeTagTemplate = getSystemTagTemplates().find(t => t.id === defaultTemplateId);
+            activeTagTemplate = (await getSystemTagTemplates()).find(t => t.id === defaultTemplateId);
         }
     }
 
     // Se ainda não encontrou (ou não havia ID), usa o primeiro template do sistema como fallback
     if (!activeTagTemplate) {
-        const systemTemplates = getSystemTagTemplates();
+        const systemTemplates = await getSystemTagTemplates();
         if (systemTemplates.length > 0) {
             activeTagTemplate = systemTemplates[0];
         }
@@ -2214,7 +2211,7 @@ function showCardDialog(cardId = null, columnId) {
 
     if (currentBoard.visibility === 'public') {
         // Se for público, adiciona os amigos do usuário atual
-        const userProfile = getUserProfile(currentUser.id);
+        const userProfile = await getUserProfile(currentUser.id);
         if (userProfile.friends) {
             userProfile.friends.forEach(friendId => {
                 const friend = allUsers.find(u => u.id === friendId);
@@ -2223,7 +2220,7 @@ function showCardDialog(cardId = null, columnId) {
         }
     } else if (currentBoard.visibility === 'group' && currentBoard.groupId) {
         // Se for de grupo, adiciona os membros do grupo
-        const group = getGroup(currentBoard.groupId);
+        const group = await getGroup(currentBoard.groupId);
         if (group && group.memberIds) {
             group.memberIds.forEach(memberId => {
                 const member = allUsers.find(u => u.id === memberId);
@@ -2251,14 +2248,14 @@ function showCardDialog(cardId = null, columnId) {
     dialog.showModal();
 }
 
-function handleSaveCard() {
+async function handleSaveCard() {
     const title = document.getElementById('card-title-input').value.trim();
     const dialog = document.getElementById('card-dialog');
     if (!title) { showDialogMessage(dialog, t('kanban.dialog.titleRequired'), 'error'); return; }
 
     showConfirmationDialog(
         t('kanban.confirm.saveCard'),
-        (confirmationDialog) => {
+        async (confirmationDialog) => {
             const cardId = dialog.dataset.editingId;
             const newColumnId = document.getElementById('card-column-select').value;
             const dateValue = document.getElementById('card-due-date').value;
@@ -2322,7 +2319,7 @@ function handleSaveCard() {
                     const group = getGroup(currentBoard.groupId);
                     if (group) {
                         group.taskCount = (group.taskCount || 0) + 1;
-                        saveGroup(group);
+                        await saveGroup(group);
                     }
                 }
             }
@@ -2385,7 +2382,7 @@ function handlePrintBoard() {
     // --- NOVA LÓGICA ---
     // 1. Gerar estilos customizados para as colunas
     let columnStyles = '';
-    currentBoard.columns.forEach(column => {
+    currentBoard.columns.forEach(async (column) => {
         // O seletor de atributo é mais robusto que um ID, pois o innerHTML não copia IDs únicos
         columnStyles += `
             .column[data-column-id="${column.id}"] .cards-container {
@@ -3104,7 +3101,7 @@ function handleArchiveBoard(boardId) {
 
     showConfirmationDialog(
         t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }), // Adicionar tradução
-        (dialog) => {
+        async (dialog) => {
             const archived = archiveBoard(boardId, currentUser.id, 'archived');
             if (!archived) return false;
 
@@ -3115,7 +3112,7 @@ function handleArchiveBoard(boardId) {
             if (!userProfile.archivedBoardIds.includes(boardId)) {
                 userProfile.archivedBoardIds.push(boardId);
             }
-            saveUserProfile(userProfile);
+            await saveUserProfile(userProfile);
             
             // Recarrega os dados para atualizar a lista de quadros
             loadData().then(() => {
@@ -3555,7 +3552,7 @@ function updatePasteButtons() {
  * Lida com a ação de colar via atalho de teclado (Ctrl+V).
  * Cola o item na primeira coluna do quadro atual.
  */
-function handlePaste() {
+async function handlePaste() {
     if (clipboard && clipboard.type === 'card') {
         // Cola sempre na primeira coluna do quadro ATUAL
         if (currentBoard.columns.length > 0) {
@@ -3565,7 +3562,7 @@ function handlePaste() {
             showFloatingMessage(t('kanban.feedback.createColumnToPaste'), 'warning');
         }
     } else if (clipboard && clipboard.type === 'column') {
-        handlePasteColumn();
+        await handlePasteColumn();
     }
 }
 
@@ -3575,7 +3572,6 @@ function handleEditCardFromMenu(cardId) {
     showCardDialog(cardId);
 }
 
-// Adicione esta função se ela não existir, ou substitua a antiga
 async function saveBoardAsTemplate() {
     if (!currentBoard) {
         showFloatingMessage(t('kanban.feedback.noBoardForTemplate'), 'warning');
@@ -3608,7 +3604,7 @@ async function saveBoardAsTemplate() {
     cancelBtn.addEventListener('click', () => dialog.close());
     dialog.addEventListener('close', () => dialog.remove());
 
-    confirmBtn.addEventListener('click', () => {
+    confirmBtn.addEventListener('click', async () => {
         const templateName = nameInput.value.trim();
         if (!templateName) {
             showDialogMessage(dialog, t('kanban.dialog.templateNameRequired'), 'error');
@@ -3630,7 +3626,7 @@ async function saveBoardAsTemplate() {
         };
 
         existingTemplates.push(newTemplate);
-        saveUserBoardTemplates(currentUser.id, existingTemplates);
+        await saveUserBoardTemplates(currentUser.id, existingTemplates);
 
         showDialogMessage(dialog, t('kanban.feedback.templateSaved', { templateName: newTemplate.name }), 'success');
         setTimeout(() => dialog.close(), 1500);
@@ -3646,7 +3642,7 @@ function handleEditColumnFromMenu(columnId) {
     showColumnDialog(columnId);
 }
 
-function handlePasteColumn() {
+async function handlePasteColumn() {
     if (!clipboard || clipboard.type !== 'column') {
         showFloatingMessage(t('kanban.feedback.noColumnToPaste'), 'warning');
         return;
@@ -3670,13 +3666,13 @@ function handlePasteColumn() {
             return;
         }
 
-        const movedColumn = getColumn(sourceColumnId);
-        const sourceBoard = getBoard(sourceBoardId);
+        const movedColumn = await getColumn(sourceColumnId);
+        const sourceBoard = await getBoard(sourceBoardId);
 
         // Remove a coluna do quadro de origem
         if (sourceBoard) {
             sourceBoard.columnIds = sourceBoard.columnIds.filter(id => id !== sourceColumnId);
-            saveBoard(sourceBoard);
+            await saveBoard(sourceBoard);
         }
 
         // Adiciona o log de movimentação entre quadros
@@ -3690,13 +3686,13 @@ function handlePasteColumn() {
             };
             if (!movedColumn.activityLog) movedColumn.activityLog = [];
             movedColumn.activityLog.push(logEntry);
-            saveColumn(movedColumn);
+            await saveColumn(movedColumn);
         }
 
         // Adiciona a coluna ao quadro atual
-        const targetBoard = getBoard(currentBoard.id);
+        const targetBoard = await getBoard(currentBoard.id);
         targetBoard.columnIds.push(sourceColumnId);
-        saveBoard(targetBoard);
+        await saveBoard(targetBoard);
 
         showFloatingMessage(t('kanban.feedback.columnMoved'), 'success');
 
@@ -3710,7 +3706,7 @@ function handlePasteColumn() {
         // Lógica para COPIAR a coluna
         const columnData = clipboard.data;
         // CORREÇÃO: Cria novos cartões independentes com logs de atividade
-        const newCards = columnData.cards.map(cardData => {
+        const newCards = columnData.cards.map(async cardData => {
             const newCard = {
                 ...cardData,
                 id: null, // Garante um novo ID
@@ -3721,9 +3717,9 @@ function handlePasteColumn() {
                     timestamp: new Date().toISOString()
                 }]
             };
-            return saveCard(newCard);
+            return await saveCard(newCard);
         });
-        const newColumn = saveColumn({ ...columnData, cardIds: newCards.map(c => c.id) });
+        const newColumn = await saveColumn({ ...columnData, cardIds: newCards.map(c => c.id) });
 
         // Adiciona o log de criação a partir de cópia
         newColumn.activityLog = [{
@@ -3731,17 +3727,17 @@ function handlePasteColumn() {
             userId: currentUser.id,
             timestamp: new Date().toISOString()
         }];
-        saveColumn(newColumn); // Salva novamente com o log
+        await saveColumn(newColumn); // Salva novamente com o log
 
-        const boardData = getBoard(currentBoard.id);
+        const boardData = await getBoard(currentBoard.id);
         boardData.columnIds.push(newColumn.id);
-        saveBoard(boardData);
+        await saveBoard(boardData);
         showFloatingMessage(t('kanban.feedback.columnPasted'), 'success');
     }
 
     saveState(); // Salva o estado para o Desfazer
     clipboard = null; // Limpa a área de transferência
-    showSuccessAndRefresh(null, currentBoard.id);
+    await showSuccessAndRefresh(null, currentBoard.id);
 }
 
 function handlePreferencesCancel() {
@@ -3771,9 +3767,9 @@ function handlePreferencesCancel() {
  * Se `isTour` for verdadeiro, apenas exibe o diálogo sem anexar os listeners de salvamento.
  * @param {boolean} isTour - Indica se a chamada é do tour.
  */
-function showPreferencesDialog(isTour = false) {
+async function showPreferencesDialog(isTour = false) {
     const dialog = document.getElementById('preferences-dialog');
-    const user = getCurrentUser();
+    const user = await getCurrentUser();
     const prefs = user.preferences || {};
 
     // Traduz todos os labels do diálogo
@@ -3814,7 +3810,7 @@ function showPreferencesDialog(isTour = false) {
     dialog.querySelector('#pref-enable-card-tooltip').checked = originalPreferences.enableCardTooltip; // Define o estado do novo checkbox
 
     // Popula e seleciona o template de tags
-    populateTagTemplatesSelect(originalPreferences.defaultTagTemplateId);
+    await populateTagTemplatesSelect(originalPreferences.defaultTagTemplateId);
 
     // Popula e seleciona a cor primária
     const paletteContainer = dialog.querySelector('#color-palette-container');
@@ -3837,9 +3833,7 @@ function showPreferencesDialog(isTour = false) {
     dialog.showModal();
 }
 
-
-
-function restoreKanbanOriginalSettings() {
+async function restoreKanbanOriginalSettings() {
     // 1. Restaura o objeto currentUser em memória para o estado original
     currentUser.theme = originalPreferences.theme;
     currentUser.preferences = { ...currentUser.preferences, ...originalPreferences };
@@ -3864,10 +3858,10 @@ function restoreKanbanOriginalSettings() {
     document.body.classList.toggle('smart-header-enabled', isSmartHeaderEnabled);
 
     // 3. Redesenha o quadro para aplicar as preferências de exibição de cartão/quadro
-    renderCurrentBoard();
+    await renderCurrentBoard();
 }
 
-function handleSavePreferences(preferencesDialog) {
+async function handleSavePreferences(preferencesDialog) {
     showConfirmationDialog(
         t('preferences.confirm.save'),
         (confirmationDialog) => { // onConfirm
@@ -3883,9 +3877,9 @@ function handleSavePreferences(preferencesDialog) {
     );
 }
 
-function savePreferencesData() {
+async function savePreferencesData() {
     const dialog = document.getElementById('preferences-dialog');
-    const user = getCurrentUser();
+    const user = await getCurrentUser();
     
     const activeSwatch = dialog.querySelector('#color-palette-container .color-swatch.active');
     let primaryColor = null;
@@ -3917,19 +3911,19 @@ function savePreferencesData() {
         }
     };
 
-    if (updateUser(user.id, updatedUser)) {
+    if (await updateUser(user.id, updatedUser)) {
         currentUser = updatedUser; // ATUALIZAÇÃO: Garante que a variável local seja atualizada.
         // Atualizar os valores originais
         kanbanIsSaved = true;
         applyUserTheme(); // Aplica globalmente
-        renderCurrentBoard(); // Renderiza o quadro com as novas prefs
+        await renderCurrentBoard(); // Renderiza o quadro com as novas prefs
         return true;
     } else {
         return false;
     }
 }
 
-function populateTagTemplatesSelect(selectedId = null) {
+async function populateTagTemplatesSelect(selectedId = null) {
     const select = document.getElementById('pref-default-tag-template');
     if (!select) return;
     

@@ -115,7 +115,7 @@ function setupColorPicker() {
         }
     });
 }
-function processUserCreation() {
+async function processUserCreation() {
     const name = document.getElementById('name').value.trim();
     const username = document.getElementById('username').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -136,7 +136,7 @@ function processUserCreation() {
      
     }
 
-    const existingUsers = getAllUsers();
+    const existingUsers = await getAllUsers();
     if (existingUsers.some(user => user.username === username)) {
         return { success: false, message: 'createUser.error.usernameExists' };
     }
@@ -180,7 +180,7 @@ function processUserCreation() {
         }
     };
 
-    if (registerUser(formData)) { // Passa apenas os dados do formulário
+    if (await registerUser(formData)) { // Passa apenas os dados do formulário
         return { 
             success: true, 
             message: 'createUser.feedback.success',
@@ -238,7 +238,7 @@ function applyTheme(theme) {
 function showSaveConfirmationDialog() {
     showConfirmationDialog(t('createUser.confirm.register'), // "Confirmar cadastro do novo usuário?"
         async (dialog) => {
-            const result = processUserCreation();
+            const result = await processUserCreation();
             
             if (result.success) {
                 showDialogMessage(dialog, t('createUser.feedback.success'), 'success');

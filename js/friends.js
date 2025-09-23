@@ -13,7 +13,7 @@ let receivedRequests = [];
 let sentRequests = [];
 
 export async function initFriendsPage() {
-    currentUser = getCurrentUser();
+    currentUser = await getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
         return;
@@ -21,10 +21,10 @@ export async function initFriendsPage() {
 
     await initTranslations();
 
-    allUsers = getAllUsers();
+    allUsers = await getAllUsers();
     
     setupEventListeners();
-    loadAndRenderAll();
+    await loadAndRenderAll();
 }
 
 function setupEventListeners() {
@@ -45,21 +45,20 @@ function switchTab(tabId) {
     document.getElementById(tabId).classList.add('active');
 }
 
-function loadAndRenderAll() {
-    const userProfile = getUserProfile(currentUser.id);
+async function loadAndRenderAll() {
+    const userProfile = await getUserProfile(currentUser.id);
     friends = (userProfile.friends || []).map(id => allUsers.find(u => u.id === id)).filter(Boolean);
     
-    const notifications = getNotifications(currentUser.id);
-    receivedRequests = notifications.filter(n => n.type === 'friend_request' && n.status === 'pending');
+    const notifications = await getNotifications(currentUser.id);
+    receivedRequests = (notifications || []).filter(n => n.type === 'friend_request' && n.status === 'pending');
 
     // CORREÇÃO: Para solicitações enviadas, precisamos manter o contexto de quem é o destinatário.
     const allNotificationsWithContext = [];
-    allUsers.forEach(user => {
-        const userNotifications = getNotifications(user.id);
+    for (const user of allUsers) {
+        const userNotifications = await getNotifications(user.id) || [];
         userNotifications.forEach(notification => {
             allNotificationsWithContext.push({ ...notification, receiverId: user.id }); // Adiciona o ID do destinatário
         });
-    });
     sentRequests = allNotificationsWithContext.filter(n => n.type === 'friend_request' && n.senderId === currentUser.id && n.status === 'pending');
 
     renderFriendsList();
@@ -201,10 +200,10 @@ async function handleActionClick(e) {
 
     switch (action) {
         case 'remove-friend':
-            showConfirmationDialog(t('friends.confirm.removeFriend'), (dialog) => {
-                removeFriend(currentUser.id, id);
+            showConfirmationDialog(t('friends.confirm.removeFriend'), async (dialog) => {
+                await removeFriend(currentUser.id, id);
                 showDialogMessage(dialog, t('friends.feedback.friendRemovedSuccess'), 'success');
-                loadAndRenderAll();
+                await loadAndRenderAll();
                 return true;
             });
             break;
@@ -212,15 +211,15 @@ async function handleActionClick(e) {
         case 'accept-request':
             const requestToAccept = receivedRequests.find(r => r.id === id);
             if (requestToAccept) {
-                addFriend(currentUser.id, requestToAccept.senderId);
+                await addFriend(currentUser.id, requestToAccept.senderId);
                 requestToAccept.status = 'accepted';
-                saveNotifications(currentUser.id, getNotifications(currentUser.id));
+                await saveNotifications(currentUser.id, await getNotifications(currentUser.id));
 
                 // Notifica o usuário que enviou a solicitação
-                addFriendAcceptedNotification(currentUser.name, currentUser.id, requestToAccept.senderId);
+                await addFriendAcceptedNotification(currentUser.name, currentUser.id, requestToAccept.senderId);
 
                 showFloatingMessage(t('friends.feedback.friendAdded'), 'success');
-                loadAndRenderAll();
+                await loadAndRenderAll();
             }
             break;
 
@@ -228,27 +227,27 @@ async function handleActionClick(e) {
             const requestToReject = receivedRequests.find(r => r.id === id);
             if (requestToReject) {
                 requestToReject.status = 'rejected';
-                saveNotifications(currentUser.id, getNotifications(currentUser.id));
+                await saveNotifications(currentUser.id, await getNotifications(currentUser.id));
                 showFloatingMessage(t('friends.feedback.requestRejected'), 'info');
-                loadAndRenderAll();
+                await loadAndRenderAll();
             }
             break;
 
         case 'cancel-request':
             const receiverId = button.dataset.receiverId;
-            const receiverNotifications = getNotifications(receiverId);
+            const receiverNotifications = await getNotifications(receiverId);
             const updatedReceiverNotifications = receiverNotifications.filter(n => n.id !== id);
-            saveNotifications(receiverId, updatedReceiverNotifications);
+            await saveNotifications(receiverId, updatedReceiverNotifications);
             showFloatingMessage(t('friends.feedback.requestCancelled'), 'info');
-            loadAndRenderAll();
+            await loadAndRenderAll();
             break;
 
         case 'add-friend':
             const userToAdd = allUsers.find(u => u.id === id);
             if (userToAdd) {
-                addFriendRequestNotification(currentUser.name, currentUser.id, userToAdd.id);
+                await addFriendRequestNotification(currentUser.name, currentUser.id, userToAdd.id);
                 showFloatingMessage(t('friends.feedback.requestSent', { name: userToAdd.name }), 'success');
-                loadAndRenderAll();
+                await loadAndRenderAll();
             }
             break;
 
@@ -256,4 +255,5 @@ async function handleActionClick(e) {
             window.location.href = `public-profile.html?userId=${id}`;
             break;
     }
+}
 }

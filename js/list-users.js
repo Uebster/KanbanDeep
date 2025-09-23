@@ -30,9 +30,9 @@ export async function initListUsersPage() {
 }
 
 // O restante do arquivo continua igual, com as funções sendo chamadas pela initListUsersPage
-function loadAndRenderUsers() {
+async function loadAndRenderUsers() {
     try {
-        users = getAllUsers();
+        users = await getAllUsers();
         renderUsersTable();
         if (users.length === 0) {
             showFeedback(t('listUsers.feedback.noUsers'), 'info');
@@ -119,7 +119,7 @@ function renderUsersTable() {
     tbody.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', (e) => openDeleteConfirmDialog(e.target.closest('tr').dataset.userId)));
 }
 
-function openLoginDialog(userId) {
+async function openLoginDialog(userId) {
     selectedUserIdForAction = userId;
     currentLoginAction = 'login';
     document.getElementById('login-dialog').showModal();
@@ -131,7 +131,7 @@ function openEditDialog(userId) {
     document.getElementById('login-dialog').showModal();
 }
 
-function handleLogin() {
+async function handleLogin() {
     const loginDialog = document.getElementById('login-dialog');
     const passwordInput = document.getElementById('login-password');
     const password = passwordInput.value;
@@ -153,9 +153,9 @@ function handleLogin() {
         // 3. Após um breve atraso, executa as ações e redireciona
         setTimeout(() => {
             user.lastLogin = new Date().toISOString();
-            updateUser(user.id, user); 
-            setCurrentUser(user);
-            
+            updateUser(user.id, user); // Isso agora é async, mas podemos deixar sem await aqui
+            setCurrentUser(user); // Isso agora é async, mas podemos deixar sem await aqui
+
             loginDialog.close();
             // Reabilita os botões para a próxima vez
             loginDialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
@@ -211,7 +211,7 @@ function openDeleteConfirmDialog(userId) {
         setTimeout(closeDialog, 1500);
     });
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         const password = passwordInput.value;
         if (!password) {
             showDialogMessage(dialog, t('listUsers.deleteDialog.passwordRequired'), 'error');
@@ -219,7 +219,7 @@ function openDeleteConfirmDialog(userId) {
         }
 
         if (user.password === password || validateMasterPassword(password)) {
-            deleteUser(user.id);
+            await deleteUser(user.id);
             showDialogMessage(dialog, t('listUsers.deleteDialog.success', { userName: user.name }), 'success');
             confirmBtn.disabled = true;
             cancelBtn.disabled = true;

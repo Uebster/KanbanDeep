@@ -13,24 +13,26 @@ export const MASTER_PASSWORD = "87654"; // Senha mestra
  * Obtém o usuário atual logado.
  * @returns {Object|null} Objeto do usuário ou null.
  */
-export function getCurrentUser() {
-    const userId = getCurrentUserId();
-    return userId ? getUserProfile(userId) : null;
+export async function getCurrentUser() {
+    const userId = await getCurrentUserId();
+    return userId ? await getUserProfile(userId) : null;
 }
 
 /**
  * Define o usuário atual.
  * @param {Object} user - Objeto do usuário a ser definido como logado.
  */
-export function setCurrentUser(user) {
-    return setCurrentUserId(user ? user.id : null);
+export async function setCurrentUser(user) {
+    return await setCurrentUserId(user ? user.id : null);
 }
 
 /**
  * Faz logout do usuário atual.
  */
-export function logout() {
-    return setCurrentUserId(null);
+export async function logout() {
+    // Também limpa o sessionStorage para acesso rápido
+    sessionStorage.removeItem('currentUser');
+    return await setCurrentUserId(null);
 }
 
 /**
@@ -38,16 +40,16 @@ export function logout() {
  * @returns {Array} Lista de usuários.
  */
 export function getAllUsers() {
-    return storageGetAllUsers();
+    return storageGetAllUsers(); // Esta função já é assíncrona no storage.js
 }
 
 /**
  * Registra um novo usuário.
  * @param {Object} userData - Dados do usuário a ser registrado.
- * @returns {boolean} True se o registro foi bem-sucedido, false caso contrário.
+ * @returns {Promise<boolean>} True se o registro foi bem-sucedido, false caso contrário.
  */
-export function registerUser(userData) {
-    const users = getAllUsers();
+export async function registerUser(userData) {
+    const users = await getAllUsers();
     const userExists = users.some(user => 
         user.username === userData.username || (userData.email && user.email === userData.email)
     );
@@ -72,17 +74,17 @@ export function registerUser(userData) {
         ...userData // Os dados do formulário sobrescrevem os valores padrão
     };
     
-    return saveUserProfile(newUser);
+    return await saveUserProfile(newUser);
 }
 
 /**
  * Atualiza um usuário existente.
  * @param {string} userId - ID do usuário a ser atualizado.
  * @param {Object} updatedData - Dados atualizados.
- * @returns {boolean} True se a atualização foi bem-sucedida, false caso contrário.
+ * @returns {Promise<boolean>} True se a atualização foi bem-sucedida, false caso contrário.
  */
-export function updateUser(userId, updatedData) {
-    const existingUser = getUserProfile(userId);
+export async function updateUser(userId, updatedData) {
+    const existingUser = await getUserProfile(userId);
     if (!existingUser) {
         console.error(`Usuário com ID ${userId} não encontrado para atualização.`);
         return false;
@@ -97,10 +99,10 @@ export function updateUser(userId, updatedData) {
         createdAt: existingUser.createdAt
     };
     
-    const success = saveUserProfile(updatedUser);
+    const success = await saveUserProfile(updatedUser);
     
     // Se o usuário atualizado for o que está logado, atualiza também o currentUserId
-    const currentLoggedInUser = getCurrentUser();
+    const currentLoggedInUser = await getCurrentUser();
     if (success && currentLoggedInUser && currentLoggedInUser.id === userId) {
         setCurrentUser(updatedUser);
     }
@@ -111,13 +113,13 @@ export function updateUser(userId, updatedData) {
 /**
  * Exclui um usuário.
  * @param {string} userId - ID do usuário a ser excluído.
- * @returns {boolean} True se a exclusão foi bem-sucedida, false caso contrário.
+ * @returns {Promise<boolean>} True se a exclusão foi bem-sucedida, false caso contrário.
  */
-export function deleteUser(userId) {
-    const success = deleteUserProfile(userId);
+export async function deleteUser(userId) {
+    const success = await deleteUserProfile(userId);
     
     // Se o usuário excluído for o logado, faz logout
-    const currentLoggedInUser = getCurrentUser();
+    const currentLoggedInUser = await getCurrentUser();
     if (success && currentLoggedInUser && currentLoggedInUser.id === userId) {
         logout();
     }
