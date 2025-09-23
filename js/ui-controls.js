@@ -28,6 +28,35 @@ export function initUIControls() {
 }
 
 /**
+ * Fecha todos os menus dropdown que estiverem abertos.
+ * Exportada para ser usada em outros módulos, como no tour do kanban.js.
+ */
+export function closeAllDropdowns() {
+    // Fecha apenas os menus dropdown do cabeçalho. O menu de contexto é tratado separadamente.
+    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+}
+
+/**
+ * Lógica centralizada para abrir/fechar dropdowns.
+ * Garante que apenas um menu fique aberto por vez.
+ * @param {Event} e - O evento de clique.
+ * @param {string} dropdownId - O ID do dropdown a ser controlado.
+ */
+export function toggleDropdown(e, dropdownId) {
+    e.stopPropagation();
+    // CORREÇÃO: Procura e remove qualquer menu de contexto aberto antes de prosseguir.
+    document.querySelectorAll('.context-menu').forEach(menu => menu.remove());
+
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    const isVisible = dropdown.classList.contains('show');
+    closeAllDropdowns(); // Fecha todos os outros menus
+    if (!isVisible) {
+        dropdown.classList.add('show'); // Abre o menu clicado
+    }
+}
+
+/**
  * Retorna o elemento de UI de maior prioridade que está aberto.
  * A ordem de prioridade é: Diálogos > Dropdowns.
  * @returns {HTMLElement|null} O elemento da camada superior ou null.
@@ -95,9 +124,10 @@ function setupGlobalCloseListeners() {
         if (topLayer.tagName === 'DIALOG' && e.target === topLayer) {
             closeTopLayer();
         } 
-        // Se for um dropdown, fecha se o clique for fora do seu container.
-        else if (topLayer.classList.contains('dropdown') && !e.target.closest('.menu-container')) { // Dropdowns fecham direto
-            topLayer.classList.remove('show');
+        // Se for um dropdown, fecha se o clique for fora do seu container,
+        // mas apenas se o tour não estiver ativo.
+        else if (topLayer.classList.contains('dropdown') && !e.target.closest('.menu-container') && !document.body.classList.contains('tour-active')) {
+            closeAllDropdowns();
         }
     });
 }
@@ -202,12 +232,6 @@ export function makeDraggable(element) {
     function elementDrag(e) {
         e = e || window.event;
         e.preventDefault();
-
-        //console.log("Target:", e.target);
-        //console.log("Current target:", e.currentTarget)
-
-        // Garante que só arraste se clicar na área de drag (drag-handle)
-        if (!e.target.classList.contains('drag-handle')) return;
 
         // Calcula a nova posição do cursor
         pos1 = pos3 - e.clientX;
@@ -431,15 +455,16 @@ export async function applyUserTheme() {
     if (!user) return;
 
     // 1. Aplica o tema (claro/escuro)
-    const userTheme = user.preferences?.theme || user.theme || 'auto';
-    const systemTheme = localStorage.getItem('appTheme') || 'dark-gray';
+    const userTheme = user.preferences?.theme || user.theme || 'dark-gray'; // Fallback direto para o padrão do app
 
     // Limpa todas as classes de tema para evitar conflitos
     document.body.classList.remove('light-mode', 'dark-mode', 'dark-gray-mode', 'light-gray-mode');
 
     let themeToApply = userTheme;
     if (themeToApply === 'auto') {
-        themeToApply = systemTheme;
+        // Se for 'auto', o padrão do sistema é o tema sem classes extras (dark-gray).
+        // A lógica não deve mais depender do localStorage após o login.
+        themeToApply = 'dark-gray';
     }
 
     // Aplica a classe correta com base no tema final
@@ -978,7 +1003,10 @@ export function initCustomSelects() {
  */
 export function showContextMenu(event, items) {
     event.preventDefault();
+    // Primeiro, fecha qualquer menu de contexto antigo para evitar duplicação.
     document.querySelectorAll('.context-menu').forEach(menu => menu.remove());
+    // Em seguida, fecha qualquer dropdown do cabeçalho que esteja aberto.
+    closeAllDropdowns();
 
     const menu = document.createElement('div');
     menu.className = 'context-menu';

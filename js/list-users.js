@@ -321,13 +321,18 @@ async function handleLogin() {
         loginDialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
         
         // 3. Após um breve atraso, executa as ações e redireciona
-        setTimeout(() => {
+        setTimeout(async () => {
             user.lastLogin = new Date().toISOString();
-            updateUser(user.id, user); // Isso agora é async, mas podemos deixar sem await aqui
-            setCurrentUser(user); // Isso agora é async, mas podemos deixar sem await aqui
+            await updateUser(user.id, user);
+            await setCurrentUser(user);
+
+            // --- CORREÇÃO CRÍTICA ---
+            // Limpa as preferências temporárias para que as do usuário sejam carregadas na próxima página.
+            localStorage.removeItem('appLanguage');
+            localStorage.removeItem('appTheme');
 
             loginDialog.close();
-            // Reabilita os botões para a próxima vez
+            // Reabilita os botões para a próxima vez que o diálogo for aberto
             loginDialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
             
             if (currentLoginAction === 'edit') {

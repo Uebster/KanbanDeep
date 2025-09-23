@@ -7,7 +7,7 @@ import { archiveBoard,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, 
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, closeAllDropdowns,
     initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects,
     applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog, 
     makeDraggable, initSmartHeader, disableSmartHeader } from './ui-controls.js';
@@ -360,6 +360,7 @@ function startTour() {
     // Desativa o Smart Header para que ele não interfira no tour.
     disableSmartHeader();
     isTourActive = true;
+    document.body.classList.add('tour-active'); // Adiciona a classe para desativar o fechamento de menus
     currentTourStep = 0;
     document.getElementById('tour-overlay').classList.remove('hidden');
     showTourStep(currentTourStep);
@@ -369,6 +370,7 @@ async function endTour(wasSkipped = false) {
     isTourActive = false;
     // Reativa o Smart Header, que verificará as preferências do usuário.
     initSmartHeader();
+    document.body.classList.remove('tour-active'); // Remove a classe, reativando o comportamento normal dos menus
     document.getElementById('tour-overlay').classList.add('hidden');
     document.getElementById('tour-popover').classList.add('hidden');
 
@@ -383,7 +385,9 @@ async function endTour(wasSkipped = false) {
     if (highlighted) {
         highlighted.classList.remove('tour-highlight');
     }
-    closeAllDropdowns();
+    if (typeof closeAllDropdowns === 'function') {
+        closeAllDropdowns();
+    }
 
     // Marca que o tour foi visto para não mostrar novamente
     if (!currentUser.preferences.hasSeenTour) {
@@ -403,9 +407,7 @@ async function showTourStep(index, direction = 'forward') { // Adicionado 'direc
     // Lógica aprimorada para evitar o "flash" dos menus.
     // Só fecha todos os menus se estivermos saindo de um menu para outro, ou para uma área sem menu.
     const previousStep = index > 0 ? tourSteps[index - 1] : null;
-    if (!previousStep || currentStep.context !== previousStep.context) {
-        closeAllDropdowns();
-    }
+    if ((!previousStep || currentStep.context !== previousStep.context) && typeof closeAllDropdowns === 'function') closeAllDropdowns();
 
     // Ação de pré-execução (abrir menus, criar itens)
     if (currentStep.preAction) {
@@ -662,6 +664,12 @@ async function showSearchDialog() {
  * @param {boolean} boardSpecific - Se true, popula tags apenas do quadro atual. Se false, popula com todos os usuários e tags.
  */
 async function populateFilterOptions(container, boardSpecific) {
+    // CORREÇÃO: Impede a execução se nenhum quadro estiver selecionado.
+    if (boardSpecific && !currentBoard) {
+        // Não mostra mensagem, pois o diálogo de busca já lida com isso.
+        return;
+    }
+
     const creatorSelect = container.querySelector('select[id*="-creator"]');
     const assigneeSelect = container.querySelector('select[id*="-assignee"]');
     const tagSelect = container.querySelector('select[id*="-tags"]');
@@ -1673,21 +1681,6 @@ function renderManagerCardList(board, column, listContainer) {
     });
 }
 
-function toggleDropdown(e, dropdownId) {
-    e.stopPropagation();
-    const dropdown = document.getElementById(dropdownId);
-    const isVisible = dropdown.classList.contains('show');
-    closeAllDropdowns();
-    if (!isVisible) {
-        dropdown.classList.add('show');
-    }
-}
-
-function closeAllDropdowns() {
-    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
-}
-
-
 // ===== LÓGICA DE DIÁLOGOS (MODAIS) =====
 
 async function showBoardDialog(boardId = null) {
@@ -1852,7 +1845,7 @@ async function handleSaveBoard() {
             let savedBoard = null;
 
             if (boardId && boardId !== 'null') {
-                const boardData = getBoard(boardId);
+                const boardData = await getBoard(boardId);
                 if (!boardData) return false;
                 boardData.title = title;
                 boardData.description = description;
@@ -1882,7 +1875,7 @@ async function handleSaveBoard() {
 
                 // --- ATUALIZA O GRUPO COM O NOVO QUADRO ---
                 if (savedBoard.groupId) {
-                    const group = getGroup(savedBoard.groupId);
+                    const group = await getGroup(savedBoard.groupId);
                     if (group) {
                         if (!group.boardIds) group.boardIds = [];
                         group.boardIds.push(savedBoard.id);
@@ -2280,14 +2273,14 @@ async function handleSaveCard() {
                 textColor: textColor.startsWith('var(') ? null : textColor
             };
 
-            const previousAssignee = getCard(cardId)?.assignedTo;
+            const previousAssignee = (await getCard(cardId))?.assignedTo;
             if (cardId && cardId !== 'null') {
-                const originalCard = getCard(cardId);
+                const originalCard = await getCard(cardId);
                 if (!originalCard) return false;
                 const sourceColumn = currentBoard.columns.find(c => c.cardIds.includes(cardId));
                 
                 Object.assign(originalCard, cardData);
-                saveCard(originalCard);
+                await saveCard(originalCard);
 
                 if (sourceColumn && sourceColumn.id !== newColumnId) {
                     sourceColumn.cardIds = sourceColumn.cardIds.filter(id => id !== cardId);
@@ -2319,7 +2312,7 @@ async function handleSaveCard() {
 
                 // FASE 2: Atualiza contador de tarefas do grupo
                 if (currentBoard.groupId) {
-                    const group = getGroup(currentBoard.groupId);
+                    const group = await getGroup(currentBoard.groupId);
                     if (group) {
                         group.taskCount = (group.taskCount || 0) + 1;
                         await saveGroup(group);
@@ -2351,6 +2344,11 @@ async function handleSaveCard() {
 // ===== LÓGICA DE EXPORTAÇÃO E IMPRESSÃO =====
 
 function handleExportImage() {
+    // CORREÇÃO: Impede a exportação se nenhum quadro estiver selecionado.
+    if (!currentBoard) {
+        showFloatingMessage(t('kanban.feedback.noBoardSelected'), 'error');
+        return;
+    }
     showFloatingMessage(t('kanban.feedback.preparingExport'), 'info');
     const boardArea = document.getElementById('main-area');
     
@@ -2378,6 +2376,12 @@ function handleExportImage() {
 }
 
 function handlePrintBoard() {
+    // CORREÇÃO: Impede a impressão se nenhum quadro estiver selecionado.
+    if (!currentBoard) {
+        showFloatingMessage(t('kanban.feedback.noBoardSelected'), 'error');
+        return;
+    }
+
     const boardTitle = currentBoard.title;
     const userName = currentUser.name;
     const printDate = new Date().toLocaleString('pt-BR');
@@ -3927,6 +3931,7 @@ async function savePreferencesData() {
         // Atualizar os valores originais
         kanbanIsSaved = true;
         applyUserTheme(); // Aplica globalmente
+        initSmartHeader(); // ATUALIZAÇÃO: Aplica a preferência do Smart Header
         await renderCurrentBoard(); // Renderiza o quadro com as novas prefs
         return true;
     } else {
@@ -3937,10 +3942,14 @@ async function savePreferencesData() {
 async function populateTagTemplatesSelect(selectedId = null) {
     const select = document.getElementById('pref-default-tag-template');
     if (!select) return;
+
+    // CORREÇÃO: Garante que estamos usando a versão mais atual do usuário,
+    // assim como é feito na página de perfil, para carregar os templates corretamente.
+    const user = await getCurrentUser();
     
     select.innerHTML = `<option value="">${t('preferences.tagTemplate.none')}</option>`;
     
-    const userTagTemplates = await getUserTagTemplates(currentUser.id);
+    const userTagTemplates = await getUserTagTemplates(user.id);
     const systemTagTemplates = await getSystemTagTemplates();
     
     // Adicionar templates do usuário

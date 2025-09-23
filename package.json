@@ -32,14 +32,14 @@
       "!tools/"
     ],
     "win": {
-      "icon": "assets/icons/win/icon.ico",
+      "icon": "assets/kanban-deep-logo.ico",
       "target": "nsis"
     },
     "mac": {
-      "icon": "assets/icons/mac/icon.icns"
+      "icon": "assets/kanban-deep-logo.png"
     },
     "linux": {
-      "icon": "assets/icons/png"
+      "icon": "assets/kanban-deep-logo.png"
     },
     "publish": {
       "provider": "github",

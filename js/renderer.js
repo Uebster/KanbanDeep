@@ -1,6 +1,6 @@
 // js/renderer.js - Ponto de entrada para a lógica da interface do usuário (Renderer Process)
 
-import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme, initCustomSelects } from './ui-controls.js';
+import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme, initCustomSelects, toggleDropdown } from './ui-controls.js';
 import { getCurrentUser } from './auth.js';
 import { initKanbanPage } from './kanban.js';
 import { initListUsersPage } from './list-users.js';
@@ -68,8 +68,14 @@ async function setupGlobalHeader() {
         return;
     }
 
+    const path = window.location.pathname;
+
     // Aplica o tema e a fonte do usuário em todas as páginas logadas
-    applyUserTheme();
+    // A verificação `!path.includes('list-users.html')` garante que o tema do usuário
+    // não seja aplicado na tela de login, que tem seu próprio seletor de tema temporário.
+    if (currentUser && !path.includes('list-users.html')) {
+        applyUserTheme();
+    }
 
     // Inicializa selects customizados em todas as páginas
     initCustomSelects();
@@ -81,24 +87,13 @@ async function setupGlobalHeader() {
     if (avatarBtn) {
         // CORREÇÃO: Usa a função padronizada para exibir o avatar corretamente
         if (currentUser) updateUserAvatar(currentUser);
-
-        avatarBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.getElementById('profile-dropdown')?.classList.toggle('show');
-        });
+        avatarBtn.addEventListener('click', (e) => toggleDropdown(e, 'profile-dropdown'));
     }
 
     // CORREÇÃO: Adiciona listeners para os outros botões de dropdown do header
     document.getElementById('boards-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'boards-dropdown'));
     document.getElementById('actions-dropdown-btn')?.addEventListener('click', (e) => toggleDropdown(e, 'actions-dropdown'));
-
-    // Listener global para fechar o dropdown de perfil
-    document.addEventListener('click', (e) => {
-        if (avatarBtn && !avatarBtn.contains(e.target)) {
-            document.getElementById('profile-dropdown')?.classList.remove('show');
-        }
-    });
-
+    
     // Adiciona listeners de navegação apenas aos botões que encontrar
     const profileBtn = document.getElementById('user-profile-btn');
     if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
@@ -106,9 +101,6 @@ async function setupGlobalHeader() {
     const preferencesBtn = document.getElementById('preferences-btn');
     if (preferencesBtn) preferencesBtn.addEventListener('click', () => document.getElementById('preferences-dialog')?.showModal());
 
-    // O botão Kanban é específico do Kanban, mas pode aparecer em outras páginas.
-    // Se aparecer, ele deve redirecionar para a página Kanban.
-    // A inicialização da página Kanban é feita no roteador principal.
     const kanbanBtn = document.getElementById('kanban-btn');
     if (kanbanBtn) kanbanBtn.addEventListener('click', () => window.location.href = 'kanban.html');
 
@@ -131,7 +123,7 @@ async function setupGlobalHeader() {
     if (switchUserBtn) {
         switchUserBtn.addEventListener('click', () => {
             showConfirmationDialog(
-                t('profile.nav.confirmLeave'), // "Deseja sair mesmo assim?"
+                t('profile.nav.confirmLeave'),
                 (dialog) => {
                     window.location.href = 'list-users.html';
                     return true;
@@ -153,27 +145,9 @@ async function setupGlobalHeader() {
         );
     });
 
-    // Define o título da página (pode ser sobrescrito pelo script da página)
     const pageTitle = document.getElementById('page-title');
     if (pageTitle) {
-        // Tenta pegar o título da tag <title> do HTML
         pageTitle.textContent = document.title.split('-')[0].trim(); 
-    }
-}
-
-/**
- * Lógica centralizada para abrir/fechar dropdowns.
- * @param {Event} e - O evento de clique.
- * @param {string} dropdownId - O ID do dropdown a ser controlado.
- */
-function toggleDropdown(e, dropdownId) {
-    e.stopPropagation();
-    const dropdown = document.getElementById(dropdownId);
-    const isVisible = dropdown.classList.contains('show');
-    // Fecha todos os outros dropdowns antes de abrir o novo
-    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
-    if (!isVisible) {
-        dropdown.classList.add('show');
     }
 }
 

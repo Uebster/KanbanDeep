@@ -10,5 +10,6 @@ node_modules/
 # Pastas de build/distribuição (onde os instaladores ficarão)
 /dist/
 /release/
+release-builds/
 
 out/

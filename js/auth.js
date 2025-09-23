@@ -99,7 +99,7 @@ export async function updateUser(userId, updatedData) {
         createdAt: existingUser.createdAt
     };
     
-    const success = await saveUserProfile(updatedUser);
+    const success = await saveUserProfile(updatedUser); // A função saveUserProfile já lida com o ID
     
     // Se o usuário atualizado for o que está logado, atualiza também o currentUserId
     const currentLoggedInUser = await getCurrentUser();

@@ -89,7 +89,7 @@ export function applyTranslations() {
  * Inicializa o sistema de tradução carregando o idioma do usuário.
  */
 export async function initTranslations() {
-    const user = getCurrentUser();
+    const user = await getCurrentUser();
     // 1. Prioridade: Idioma salvo no perfil do usuário logado.
     // 2. Fallback: Idioma salvo no localStorage (escolhido na tela de login por um visitante).
     // 3. Fallback final: Português do Brasil como padrão.

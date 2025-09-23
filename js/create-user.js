@@ -175,7 +175,9 @@ async function processUserCreation() {
         language: document.getElementById('language').value,
         theme: document.getElementById('theme').value,
         avatar: document.getElementById('avatar-preview').querySelector('img')?.src || '',
+        // Garante que as preferências de exibição sejam inicializadas
         preferences: {
+            ...getInitialDisplayPreferences(),
             primaryColor: primaryColor
         }
     };
@@ -195,6 +197,23 @@ async function processUserCreation() {
     }
 }
 
+/**
+ * Retorna um objeto com as preferências de exibição iniciais para um novo usuário.
+ * @returns {object}
+ */
+function getInitialDisplayPreferences() {
+    return {
+        showTags: true,
+        showDate: true,
+        showStatus: true,
+        showAssignment: true,
+        showBoardIcon: true,
+        showBoardTitle: true,
+        showCardDetails: false,
+        enableCardTooltip: true,
+        smartHeader: false
+    };
+}
 function previewAvatar() {
     const file = this.files[0];
     if (file) {
