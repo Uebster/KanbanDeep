@@ -350,8 +350,20 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
  * @param {string} type - O tipo de mensagem ('success', 'error', 'info').
  */
 export function showDialogMessage(dialog, message, type = 'info') {
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (!feedbackEl) return;
+    let feedbackEl = dialog.querySelector('.feedback');
+    // CORREÇÃO: Se o elemento de feedback não existir no diálogo, cria um dinamicamente.
+    // Isso torna a função mais robusta e evita falhas silenciosas.
+    if (!feedbackEl) {
+        feedbackEl = document.createElement('div');
+        feedbackEl.className = 'feedback';
+        // Insere o feedback antes dos botões de ação para um melhor layout.
+        const actionsContainer = dialog.querySelector('.modal-actions');
+        if (actionsContainer) {
+            dialog.insertBefore(feedbackEl, actionsContainer);
+        } else {
+            dialog.appendChild(feedbackEl);
+        }
+    }
     
     feedbackEl.textContent = message;
     feedbackEl.className = `feedback ${type} show`;

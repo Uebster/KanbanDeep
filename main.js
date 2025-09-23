@@ -32,6 +32,12 @@ function createWindow () {
   mainWindow.once('ready-to-show', () => {
     mainWindow.maximize();
     mainWindow.show();
+
+    // --- NOVA LÓGICA: Verificação silenciosa em segundo plano ---
+    // Após a janela ser exibida, espera 5 segundos e verifica por atualizações.
+    setTimeout(() => {
+      autoUpdater.checkForUpdates();
+    }, 5000);
   });
 
   // Opcional: Descomente a linha abaixo para abrir as ferramentas de desenvolvedor ao iniciar.
@@ -54,8 +60,33 @@ app.on('window-all-closed', () => {
 
 // --- MANIPULAÇÃO DE ATUALIZAÇÕES ---
 
+let updateCheckTimeout = null; // Variável para controlar o timeout da verificação manual.
+
+// Função para limpar o timeout da verificação manual.
+function clearManualCheckTimeout() {
+  if (updateCheckTimeout) {
+    clearTimeout(updateCheckTimeout);
+    updateCheckTimeout = null;
+  }
+}
+
 // O processo renderer chama este evento quando o usuário clica no botão.
 ipcMain.on('check-for-updates', () => {
+  // Limpa qualquer timeout anterior para evitar disparos múltiplos.
+  clearManualCheckTimeout();
+
+  // Define um timeout. Se nenhum evento de atualização for recebido em 20 segundos, envia um erro.
+  // Isso evita que o diálogo fique "preso" indefinidamente em caso de problemas de rede.
+  updateCheckTimeout = setTimeout(() => {
+    sendUpdateStatusToWindow('error: Timeout: A verificação de atualização demorou muito para responder.');
+  }, 20000); // 20 segundos
+
+  // Adiciona listeners que serão executados apenas UMA VEZ para limpar o timeout.
+  // Isso garante que o timeout não dispare se uma resposta (sucesso, falha ou erro) chegar.
+  autoUpdater.once('update-available', clearManualCheckTimeout);
+  autoUpdater.once('update-not-available', clearManualCheckTimeout);
+  autoUpdater.once('error', clearManualCheckTimeout);
+
   autoUpdater.checkForUpdates();
 });
 
@@ -133,11 +164,28 @@ autoUpdater.on('update-available', (info) => {
   sendUpdateStatusToWindow('available');
 });
 autoUpdater.on('update-not-available', (info) => {
+  isUpdateCheckInProgress = false; // Libera a trava
+  if (manualCheckTimeout) clearTimeout(manualCheckTimeout); // Limpa o timeout manual se ele existir
+  // A lógica de exibir ou não a mensagem agora é tratada no lado do renderer (list-users.js),
+  // que verifica se o diálogo de atualização está aberto. Isso corrige o bug onde a verificação
+  // manual ficava "presa" se nenhuma atualização fosse encontrada.
   sendUpdateStatusToWindow('not-available');
 });
 autoUpdater.on('update-downloaded', (info) => {
+  isUpdateCheckInProgress = false; // Libera a trava, pois o download terminou. A instalação é outra etapa.
+  if (manualCheckTimeout) clearTimeout(manualCheckTimeout); // Limpa o timeout manual se ele existir
   sendUpdateStatusToWindow('downloaded');
 });
 autoUpdater.on('error', (error) => {
+  isUpdateCheckInProgress = false; // Libera a trava
+  if (manualCheckTimeout) clearTimeout(manualCheckTimeout); // Limpa o timeout manual se ele existir
   sendUpdateStatusToWindow(`error: ${error.message}`);
+});
+
+// --- NOVO EVENTO: Progresso do Download ---
+autoUpdater.on('download-progress', (progressObj) => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) {
+    win.webContents.send('update-download-progress', progressObj);
+  }
 });

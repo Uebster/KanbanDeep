@@ -48,48 +48,10 @@ async function main() { // <-- Torna a função principal assíncrona
             await initTemplatesPage();
         } else if (path.includes('list-users.html') || path.endsWith('/')) {
             await initListUsersPage();
-            initUpdateChecker();
         }
         // O cabeçalho global é configurado DEPOIS que a página e suas traduções foram carregadas
         await setupGlobalHeader();
 }
-}
-
-/**
- * Inicializa a funcionalidade de verificação de atualizações na tela de login.
- */
-function initUpdateChecker() {
-    const checkBtn = document.getElementById('btn-check-updates');
-    const statusText = document.getElementById('update-status-text');
-
-    if (!checkBtn || !statusText) return;
-
-    checkBtn.addEventListener('click', () => {
-        checkBtn.disabled = true;
-        statusText.textContent = t('profile.updates.checking');
-        window.electronAPI.checkForUpdates(); // CORREÇÃO: Usar a API exposta
-    });
-
-    window.electronAPI.onUpdateStatus((statusKey) => { // CORREÇÃO: Usar a API exposta
-        if (statusKey.startsWith('error:')) {
-            statusText.textContent = statusKey;
-        } else {
-            statusText.textContent = t(`profile.updates.${statusKey}`);
-        }
-        
-        if (statusKey !== 'available' && statusKey !== 'downloaded') {
-            setTimeout(() => {
-                checkBtn.disabled = false;
-                statusText.textContent = ''; // Limpa o status após um tempo
-            }, 4000);
-        }
-
-        if (statusKey === 'downloaded') {
-            showConfirmationDialog(t('profile.updates.confirmRestart'), () => {
-                window.electronAPI.restartApp(); // CORREÇÃO: Usar a API exposta
-            }, () => {}, t('ui.yes'));
-        }
-    });
 }
 
 /**

@@ -1,6 +1,6 @@
 // js/kanban.js - VERSÃO REFATORADA E FINAL
 
-import { getCurrentUser, updateUser, getAllUsers as authGetAllUsers } from './auth.js';
+import { getCurrentUser, updateUser } from './auth.js';
 import { archiveBoard,
     getUserProfile, saveUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
     getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard,
@@ -26,19 +26,7 @@ let redoStack = [];
 let clipboard = null; // Para copiar/colar
 let originalPreferences = {}; // Para restaurar ao cancelar
 let tagColorMap = new Map();
-let originalKanbanTheme = null;
-let originalKanbanFont = null;
-let originalKanbanFontSize = null;
-let originalShowTitle = null;
-let originalShowIcon = null;
-let originalShowTags = null;
-let originalShowDate = null;
-let originalShowStatus = null;
-let originalShowAssignment = null;
-let originalShowCardDetails = null;
-let originalEnableCardTooltip = null; // Para a nova preferência
 let kanbanIsSaved = true;
-
 let tooltipElement = null;
 let tooltipTimeout = null;
 let isDragging = false;
