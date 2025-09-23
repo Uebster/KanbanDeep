@@ -1201,23 +1201,23 @@ async function renderGroups() {
 
     const adminGroups = groups.filter(g => g.adminId === currentUser.id);
     const memberGroups = groups.filter(g => g.adminId !== currentUser.id);
-
+    
     if (adminGroups.length === 0) {
         adminContainer.innerHTML = `<p class="no-groups-message">${t('groups.myGroups.noAdminGroups')}</p>`;
     } else {
-        adminGroups.forEach(async (group) => {
-            const groupCard = createGroupCard(group);
+        for (const group of adminGroups) {
+            const groupCard = await createGroupCard(group);
             adminContainer.appendChild(groupCard);
-        });
+        }
     }
-
+    
     if (memberGroups.length === 0) {
         memberContainer.innerHTML = `<p class="no-groups-message">${t('groups.myGroups.noMemberGroups')}</p>`;
     } else {
-        memberGroups.forEach(async (group) => {
-            const groupCard = createGroupCard(group);
+        for (const group of memberGroups) {
+            const groupCard = await createGroupCard(group);
             memberContainer.appendChild(groupCard);
-        });
+        }
     }
 }
 

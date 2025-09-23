@@ -33,9 +33,10 @@ document.querySelectorAll('.nav-item').forEach(tab => {
 });
 
     document.getElementById('friend-filter-input')?.addEventListener('input', (e) => renderFriendsList(e.target.value));
-    document.getElementById('user-search-input')?.addEventListener('input', debounce((e) => renderUserSearchResults(e.target.value), 300));
+    // CORREÇÃO: Passa o valor diretamente para a função dentro do debounce, em vez do evento.
+    document.getElementById('user-search-input')?.addEventListener('input', (e) => debounce(renderUserSearchResults, 300)(e.target.value));
 
-    document.querySelector('main.card').addEventListener('click', handleActionClick);
+    document.querySelector('main.card').addEventListener('click', (e) => handleActionClick(e));
 }
 
 function switchTab(tabId) {
@@ -55,7 +56,7 @@ async function loadAndRenderAll() {
     // CORREÇÃO: Para solicitações enviadas, precisamos manter o contexto de quem é o destinatário.
     const allNotificationsWithContext = [];
     for (const user of allUsers) {
-        const userNotifications = await getNotifications(user.id) || [];
+        const userNotifications = (await getNotifications(user.id)) || [];
         userNotifications.forEach(notification => {
             allNotificationsWithContext.push({ ...notification, receiverId: user.id }); // Adiciona o ID do destinatário
         });
@@ -64,6 +65,7 @@ async function loadAndRenderAll() {
     renderFriendsList();
     renderRequests();
     renderUserSearchResults();
+}
 }
 
 function renderFriendsList(filter = '') {
@@ -255,5 +257,4 @@ async function handleActionClick(e) {
             window.location.href = `public-profile.html?userId=${id}`;
             break;
     }
-}
 }

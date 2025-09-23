@@ -8,7 +8,7 @@ import { archiveBoard,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, 
-    initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects, 
+    initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects,
     applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog, 
     makeDraggable, initSmartHeader, disableSmartHeader } from './ui-controls.js';
 import { t, initTranslations, applyTranslations, loadLanguage } from './translations.js';
@@ -1707,12 +1707,14 @@ async function showBoardDialog(boardId = null) {
     const saveBtn = dialog.querySelector('#board-save-btn');
 
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
-    const allGroups = await getAllGroups();
-    const creatableInGroups = (allGroups || []).filter(g => {
+    const allGroups = await getAllGroups() || [];
+    const groupPermissions = await Promise.all(allGroups.map(async (g) => {
         const isAdmin = g.adminId === currentUser.id;
         const canCreate = g.permissions?.createBoards && g.memberIds.includes(currentUser.id);
         return isAdmin || canCreate;
-    });
+    }));
+
+    const creatableInGroups = allGroups.filter((_g, index) => groupPermissions[index]);
 
     // Lógica do Ícone e campos de texto
     const iconInput = document.getElementById('board-icon-input');
@@ -2046,9 +2048,9 @@ async function showSuccessAndRefresh(dialog, boardToFocusId) {
     // --- LÓGICA DE ATUALIZAÇÃO SEGURA (CORRIGIDA) ---
     // Recarrega a lista de quadros (pessoais e de grupo) para garantir que temos os dados mais recentes.
     const userProfile = await getUserProfile(currentUser.id);
-    const personalBoards = await Promise.all((userProfile.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
+    const personalBoards = await Promise.all((userProfile?.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
     const allGroups = await getAllGroups();
-    const memberGroups = (allGroups || []).filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+    const memberGroups = (allGroups || []).filter(g => g && g.memberIds && g.memberIds.includes(currentUser.id));
     const groupBoards = await Promise.all(memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
     const allBoardMap = new Map();
     personalBoards.forEach(b => allBoardMap.set(b.id, b));
@@ -2684,7 +2686,7 @@ function hasPermission(board, permission) {
     // Isso é chamado quando board é null (ex: botão "Adicionar Quadro" no filtro de grupos).
     if (permission === 'createBoards' && !board) {
         const allGroups = getAllGroups();
-        const creatableInGroups = allGroups.filter(g => {
+        const creatableInGroups = (allGroups || []).filter(g => {
             if (g.adminId === currentUser.id) return true; // Admin sempre pode.
             if (!g.memberIds?.includes(currentUser.id)) return false; // Precisa ser membro.
 

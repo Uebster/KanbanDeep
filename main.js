@@ -81,6 +81,10 @@ ipcMain.handle('load-file', async (event, fileName) => {
   const filePath = path.join(getDataPath(), `${fileName}.json`);
   try {
     const fileContent = await fs.readFile(filePath, 'utf8');
+        // If the file is empty, return null instead of trying to parse.
+    if (fileContent.trim() === '') {
+        return null;
+    }
     return JSON.parse(fileContent);
   } catch (error) {
     // Se o arquivo não existir, retorna null (comportamento esperado).

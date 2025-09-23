@@ -240,7 +240,8 @@ function setupEventListeners() {
     // Listeners com pré-visualização
     const previewFields = [
         { id: 'theme', action: (e) => applyThemeFromSelect(e.target.value) },
-        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) } // applyFontSize agora é async
+        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) }, // applyFontSize agora é async
+        { id: 'font-family', action: (e) => applyFontFamily(e.target.value, true) } // <-- CORREÇÃO ADICIONADA
     ];
     previewFields.forEach(field => {
         const element = document.getElementById(field.id);
@@ -799,8 +800,8 @@ async function loadUserGroups(t) { // Recebe a função de tradução como argum
     const currentUser = await getCurrentUser();
     if (!currentUser) return;
     
-    const allGroups = getAllGroups();
-    const userGroups = allGroups.filter(group => 
+    const allGroups = (await getAllGroups()) || [];
+    const userGroups = allGroups.filter(group =>
         group.memberIds && group.memberIds.includes(currentUser.id)
     );
     
