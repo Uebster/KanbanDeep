@@ -18,7 +18,7 @@ let isSaved = true;
 
 // Função de inicialização exportada
 export async function initProfilePage() {
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
         showFloatingMessage(t('ui.userNotLoggedIn'), 'error');
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
@@ -32,7 +32,7 @@ export async function initProfilePage() {
     await initTranslations();
     document.getElementById('page-title').textContent = t('profile.pageTitle');
 
-    loadUserData(t); // 1. Carrega os dados, passando a função de tradução.
+    await loadUserData(t); // 1. Carrega os dados, passando a função de tradução.
     setupEventListeners();
     setupColorPicker();
     setupPrivacyOptions();
@@ -70,12 +70,12 @@ function translateProfilePage() {
     safeSetText('legend[data-i18n="preferences.displayOnCard"]', 'preferences.displayOnCard');
     // O seletor '#privacy-settings-label' não existe em profile.html, então foi removido para evitar o erro.
 }
-function loadUserData(t) { // Recebe a função de tradução como argumento
-    const currentUser = getCurrentUser();
+async function loadUserData(t) { // Recebe a função de tradução como argumento
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
 
     try {
-        const userData = getUserProfile(currentUser.id);
+        const userData = await getUserProfile(currentUser.id);
         if (!userData) {
             showFloatingMessage(t('profile.error.loading'), 'error');
             return;
@@ -85,7 +85,7 @@ function loadUserData(t) { // Recebe a função de tradução como argumento
         translateProfilePage();
 
         // Carrega os grupos do usuário APÓS a tradução inicial estar pronta
-        loadUserGroups(t); // Passa a função 't' para a função que carrega os grupos
+        await loadUserGroups(t); // Passa a função 't' para a função que carrega os grupos
         
         // Salvar os dados originais para restauração
         originalUserData = {...userData};
@@ -107,7 +107,7 @@ function loadUserData(t) { // Recebe a função de tradução como argumento
         document.getElementById('theme').value = userData.theme || 'auto';
 
         const prefs = userData.preferences || {};
-        populateProfileTagTemplatesSelect(prefs.defaultTagTemplateId || 'system-tags-prio');
+        await populateProfileTagTemplatesSelect(prefs.defaultTagTemplateId || 'system-tags-prio');
         
         // Configuração de privacidade
         const privacyValue = userData.privacy || 'private';
@@ -240,7 +240,8 @@ function setupEventListeners() {
     // Listeners com pré-visualização
     const previewFields = [
         { id: 'theme', action: (e) => applyThemeFromSelect(e.target.value) },
-        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) }
+        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) }, // applyFontSize agora é async
+        { id: 'font-family', action: (e) => applyFontFamily(e.target.value, true) } // <-- CORREÇÃO ADICIONADA
     ];
     previewFields.forEach(field => {
         const element = document.getElementById(field.id);
@@ -304,11 +305,11 @@ function setupEventListeners() {
  * Popula o seletor de templates de etiquetas na página de perfil.
  * @param {string|null} selectedId O ID do template a ser pré-selecionado.
  */
-function populateProfileTagTemplatesSelect(selectedId = null) {
+async function populateProfileTagTemplatesSelect(selectedId = null) {
     const tagTemplateSelect = document.getElementById('default-tag-template');
     if (!tagTemplateSelect) return;
 
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
 
     const userTagTemplates = getUserTagTemplates(currentUser.id);
@@ -505,7 +506,7 @@ function setupPrivacyOptions() {
 
 // Processa a atualização do perfil
 async function processProfileUpdate() {
-    const userData = getCurrentUser();
+    const userData = await getCurrentUser();
     if (!userData) {
         return { success: false, message: 'profile.error.loading' };
     }
@@ -612,15 +613,15 @@ function updatePasswordStrength(password, strengthMeter) {
     strengthMeter.classList.add(`strength-${strength}`);
 }
 
-function completeProfileUpdate(updatedUser) {
-    const currentUser = getCurrentUser();
+async function completeProfileUpdate(updatedUser) {
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
         return { success: false, message: 'profile.error.sessionNotFound' };
     }
     
     // Combina os dados atualizados com os dados existentes
     const fullUserData = {
-        ...getUserProfile(currentUser.id), // Pega a versão mais recente do storage
+        ...(await getUserProfile(currentUser.id)), // Pega a versão mais recente do storage
         ...updatedUser,
         // Mantém campos que não são editáveis no formulário
         id: currentUser.id,
@@ -630,7 +631,7 @@ function completeProfileUpdate(updatedUser) {
         groups: currentUser.groups || []
     };
 
-    if (updateUser(currentUser.id, fullUserData)) {
+    if (await updateUser(currentUser.id, fullUserData)) {
         // Atualiza os dados originais para o próximo cancelamento
         originalUserData = {...fullUserData};
         return {
@@ -690,11 +691,11 @@ function changePassword() {
     dialog.addEventListener('close', () => dialog.remove());
 
     const confirmButton = dialog.querySelector('#confirm-change-password');
-    confirmButton.addEventListener('click', () => {
+    confirmButton.addEventListener('click', async () => {
         const currentPassword = dialog.querySelector('#current-password-input').value;
         const newPassword = dialog.querySelector('#new-password-input').value;
         const confirmPassword = dialog.querySelector('#confirm-new-password-input').value;
-        const userData = getCurrentUser();
+        const userData = await getCurrentUser();
 
         if (!currentPassword || !newPassword || !confirmPassword) {
             showDialogMessage(dialog, t('createUser.error.allFieldsRequired'), 'error');
@@ -717,7 +718,7 @@ function changePassword() {
             return;
         }
         
-        if (updateUser(userData.id, { password: newPassword })) {
+        if (await updateUser(userData.id, { password: newPassword })) {
             showDialogMessage(dialog, t('profile.changePassword.success'), 'success');
             setTimeout(() => dialog.close(), 1500);
         } else {
@@ -756,9 +757,9 @@ function confirmDeleteAccount() {
     dialog.addEventListener('close', () => dialog.remove());
 
     const confirmButton = dialog.querySelector('#confirm-delete-btn');
-    confirmButton.addEventListener('click', () => {
+    confirmButton.addEventListener('click', async () => {
         const password = dialog.querySelector('#delete-confirm-password').value;
-        const userData = getCurrentUser();
+        const userData = await getCurrentUser();
 
         if (!password) {
             showDialogMessage(dialog, t('ui.passwordRequired'), 'error');
@@ -766,7 +767,7 @@ function confirmDeleteAccount() {
         }
 
         if (password === userData.password || validateMasterPassword(password)) {
-            if (deleteUserProfile(userData.id)) {
+            if (await deleteUserProfile(userData.id)) {
                 showDialogMessage(dialog, t('profile.deleteAccount.success'), 'success');
                 dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
                 
@@ -788,7 +789,7 @@ function confirmDeleteAccount() {
 // profile.js - Adicione estas funções
 
 // Função para carregar e exibir os grupos do usuário
-function loadUserGroups(t) { // Recebe a função de tradução como argumento
+async function loadUserGroups(t) { // Recebe a função de tradução como argumento
     const groupsContainer = document.getElementById('groups-container');
     if (!groupsContainer) return;
     
@@ -796,11 +797,11 @@ function loadUserGroups(t) { // Recebe a função de tradução como argumento
     if (!noGroupsMessage) return;
     
     // Obter grupos do usuário
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
     
-    const allGroups = getAllGroups();
-    const userGroups = allGroups.filter(group => 
+    const allGroups = (await getAllGroups()) || [];
+    const userGroups = allGroups.filter(group =>
         group.memberIds && group.memberIds.includes(currentUser.id)
     );
     
@@ -897,9 +898,9 @@ function showGroupSearchDialog() {
      * e chama a função para renderizar os resultados.
      * @param {string} [query=''] - O termo de busca para filtrar os grupos.
      */
-    function searchAndDisplayGroups(query = '') {
-        const allGroups = getAllGroups() || [];
-        const currentUser = getCurrentUser();
+    async function searchAndDisplayGroups(query = '') {
+        const allGroups = await getAllGroups() || [];
+        const currentUser = await getCurrentUser();
 
         // Filtrar grupos públicos que o usuário não é membro
         const availableGroups = allGroups.filter(group => 
@@ -971,7 +972,7 @@ function showGroupSearchDialog() {
     }
     
     // Função para solicitar entrada em um grupo
-    function requestToJoinGroup(groupId, groupName) {
+    async function requestToJoinGroup(groupId, groupName) {
         const joinButton = dialog.querySelector(`.join-group-btn[data-group-id="${groupId}"]`);
         
         if (!joinButton) return;
@@ -980,8 +981,8 @@ function showGroupSearchDialog() {
         joinButton.disabled = true;
         joinButton.textContent = t('profile.groups.sendingRequest');
         
-        const currentUser = getCurrentUser();
-        const group = getGroup(groupId);
+        const currentUser = await getCurrentUser();
+        const group = await getGroup(groupId);
         
         if (!group) {
             showFeedback(dialog.querySelector('#group-search-feedback'), t('profile.groups.groupNotFound'), 'error');
@@ -1021,7 +1022,7 @@ function showGroupSearchDialog() {
 /**
  * Restaura todos os dados do formulário e o estado visual da página para os valores originais.
  */
-function restoreOriginalData() {
+async function restoreOriginalData() {
     if (!originalUserData) return;
 
     /**
@@ -1039,7 +1040,7 @@ function restoreOriginalData() {
 
     // --- 1. RESTAURA OS VALORES DOS CAMPOS DO FORMULÁRIO ---
     const prefs = originalUserData.preferences || {};
-    
+
     // Campos de texto e data
     document.getElementById('name').value = originalUserData.name || '';
     document.getElementById('username').value = originalUserData.username || '';
@@ -1082,7 +1083,7 @@ function restoreOriginalData() {
 
     // Restaura a fonte
     applyFontFamily(prefs.fontFamily || 'Segoe UI, Inter, sans-serif');
-    applyFontSize(prefs.fontSize || 'medium', true);
+    await applyFontSize(prefs.fontSize || 'medium', true);
 
     // Restaura a cor primária
     const primaryColor = prefs.primaryColor;

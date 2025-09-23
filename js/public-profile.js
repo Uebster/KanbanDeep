@@ -30,7 +30,7 @@ let relationshipStatus = {
 };
 
 export async function initPublicProfilePage() {
-    currentUser = getCurrentUser();
+    currentUser = await getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
         return;
@@ -47,22 +47,22 @@ export async function initPublicProfilePage() {
         return;
     }
 
-    viewedUser = getUserProfile(userId);
+    viewedUser = await getUserProfile(userId);
     if (!viewedUser) {
         showFloatingMessage(t('publicProfile.error.userNotFound'), 'error');
         setTimeout(() => window.location.href = 'list-users.html', 2000);
         return;
     }
 
-    loadUserData();
+    await loadUserData();
     setupEventListeners();
     initDraggableElements();
-    checkRelationshipStatus();
-    loadMutualFriends();
-    checkGroupInviteCapability();
+    await checkRelationshipStatus();
+    await loadMutualFriends();
+    await checkGroupInviteCapability();
 }
 
-function loadUserData() {
+async function loadUserData() {
     // Avatar
     document.getElementById('avatar-image').src = viewedUser.avatar || '';
     document.getElementById('avatar-text').textContent = 
@@ -94,13 +94,13 @@ function loadUserData() {
     loadContactInfo();
     
     // Grupos públicos
-    loadPublicGroups();
+    await loadPublicGroups();
 
     // Quadros públicos
-    loadPublicBoards();
+    await loadPublicBoards();
 }
 
-function loadMutualFriends() {
+async function loadMutualFriends() {
     const section = document.getElementById('mutual-friends-section');
     const container = document.getElementById('mutual-friends-container');
     if (!section || !container) return;
@@ -124,7 +124,7 @@ function loadMutualFriends() {
     section.style.display = 'block';
     container.innerHTML = ''; // Limpa conteúdo anterior
 
-    const allUsers = getAllUsers();
+    const allUsers = await getAllUsers();
 
     mutualFriendIds.forEach(friendId => {
         const friend = allUsers.find(u => u.id === friendId);
@@ -202,7 +202,7 @@ function loadContactInfo() {
     }
 }
 
-function loadPublicGroups() {
+async function loadPublicGroups() {
     const container = document.getElementById('public-groups-container');
     if (!container) return;
 
@@ -212,7 +212,7 @@ function loadPublicGroups() {
         return;
     }
 
-    const allGroups = getAllGroups();
+    const allGroups = await getAllGroups();
     const publicGroups = allGroups.filter(group => 
         group.access === 'public' && 
         group.memberIds && 
@@ -226,7 +226,7 @@ function loadPublicGroups() {
         return;
     }
 
-    publicGroups.forEach(group => {
+    for (const group of publicGroups) {
         const groupCard = document.createElement('div');
         // Reutiliza os estilos de .board-card para consistência visual
         groupCard.className = 'board-card';
@@ -235,11 +235,11 @@ function loadPublicGroups() {
 
         // Calcular estatísticas do grupo
         const memberCount = group.memberIds ? group.memberIds.length : 0;
-        const taskCount = (group.boardIds || []).reduce((total, boardId) => {
-            const board = getFullBoardData(boardId);
+        const taskCount = (await Promise.all((group.boardIds || []).map(async (boardId) => {
+            const board = await getFullBoardData(boardId);
             if (!board) return total;
             return total + board.columns.reduce((boardTotal, column) => boardTotal + column.cards.length, 0);
-        }, 0);
+        }))).reduce((a, b) => a + b, 0);
 
         groupCard.innerHTML = `
             <div class="board-icon">${group.icon || '👥'}</div>
@@ -256,10 +256,10 @@ function loadPublicGroups() {
             window.location.href = 'groups.html';
         });
         container.appendChild(groupCard);
-    });
+    }
 }
 
-function loadPublicBoards() {
+async function loadPublicBoards() {
     const container = document.getElementById('public-boards-container');
     if (!container) return;
 
@@ -268,7 +268,7 @@ function loadPublicBoards() {
         return;
     }
 
-    const userBoards = (viewedUser.boardIds || []).map(id => getFullBoardData(id)).filter(Boolean);
+    const userBoards = (await Promise.all((viewedUser.boardIds || []).map(id => getFullBoardData(id)))).filter(Boolean);
     const publicBoards = userBoards.filter(board => board.visibility === 'public');
 
     container.innerHTML = '';
@@ -339,7 +339,7 @@ function showAvatarModal() {
     modal.showModal();
 }
 
-function checkRelationshipStatus() {
+async function checkRelationshipStatus() {
     // Verificar se já são amigos
     relationshipStatus.isFriend = currentUser.friends?.includes(viewedUser.id) || false;
     
@@ -347,7 +347,7 @@ function checkRelationshipStatus() {
     relationshipStatus.isFollowing = currentUser.following?.includes(viewedUser.id) || false;
     
     // Verificar se há solicitação de amizade pendente
-    const notifications = getNotifications(viewedUser.id);
+    const notifications = await getNotifications(viewedUser.id);
     relationshipStatus.friendRequestPending = notifications.some(n => 
         n.type === 'friend_request' && 
         n.senderId === currentUser.id && 
@@ -468,19 +468,19 @@ function cancelFriendRequest() {
     }, 2000);
 }
 
-function toggleFollow() {
+async function toggleFollow() {
     if (relationshipStatus.isFollowing) {
         showConfirmationDialog(
             t('publicProfile.confirm.unfollow', { name: viewedUser.name }),
-            (dialog) => {
+            async (dialog) => {
                 if (currentUser.following && currentUser.following.includes(viewedUser.id)) {
                     currentUser.following = currentUser.following.filter(id => id !== viewedUser.id);
                 }
                 if (viewedUser.followers && viewedUser.followers.includes(currentUser.id)) {
                     viewedUser.followers = viewedUser.followers.filter(id => id !== currentUser.id);
                 }
-                updateUser(currentUser.id, currentUser);
-                updateUser(viewedUser.id, viewedUser);
+                await updateUser(currentUser.id, currentUser);
+                await updateUser(viewedUser.id, viewedUser);
                 relationshipStatus.isFollowing = false;
                 document.getElementById('stats-followers').textContent = viewedUser.followers ? viewedUser.followers.length : 0;
                 updateRelationshipButtons();
@@ -503,8 +503,8 @@ function toggleFollow() {
         
         // Enviar notificação de seguimento
         addFollowNotification(currentUser.name, currentUser.id, viewedUser.id);
-        updateUser(currentUser.id, currentUser);
-        updateUser(viewedUser.id, viewedUser);
+        await updateUser(currentUser.id, currentUser);
+        await updateUser(viewedUser.id, viewedUser);
         relationshipStatus.isFollowing = true;
         document.getElementById('stats-followers').textContent = viewedUser.followers ? viewedUser.followers.length : 0;
         updateRelationshipButtons();
@@ -531,16 +531,16 @@ function sendMessage() {
     });
 }
 
-function unfriendUser() {
+async function unfriendUser() {
     showConfirmationDialog(
         t('publicProfile.confirm.unfriend', { name: viewedUser.name }),
-        (dialog) => {
+        async (dialog) => {
             // Remover da lista de amigos
             currentUser.friends = currentUser.friends.filter(id => id !== viewedUser.id);
             viewedUser.friends = viewedUser.friends.filter(id => id !== currentUser.id);
             
-            updateUser(currentUser.id, currentUser);
-            updateUser(viewedUser.id, viewedUser);
+            await updateUser(currentUser.id, currentUser);
+            await updateUser(viewedUser.id, viewedUser);
             
             relationshipStatus.isFriend = false;
             updateRelationshipButtons();
@@ -565,7 +565,7 @@ function reportUser() {
     );
 }
 
-function checkGroupInviteCapability() {
+async function checkGroupInviteCapability() {
     // Verificar se o usuário atual é admin de algum grupo
     const userGroups = currentUser.groups || [];
     const hasAdminGroups = userGroups.some(group => group.role === 'admin');
@@ -576,9 +576,9 @@ function checkGroupInviteCapability() {
     }
 }
 
-function showGroupInviteDialog() {
+async function showGroupInviteDialog() {
     // Implementar diálogo para selecionar grupo e enviar convite
-    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+    const adminGroups = (await getAllGroups()).filter(g => g.adminId === currentUser.id);
 
     if (adminGroups.length === 0) {
         showFloatingMessage(t('publicProfile.feedback.noAdminGroups'), 'warning');
@@ -618,7 +618,7 @@ function showGroupInviteDialog() {
 
     cancelBtn.addEventListener('click', closeDialog);
 
-    confirmBtn.addEventListener('click', () => {
+    confirmBtn.addEventListener('click', async () => {
         const groupId = groupSelect.value;
         const group = adminGroups.find(g => g.id === groupId);
 

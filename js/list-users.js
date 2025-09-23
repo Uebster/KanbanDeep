@@ -13,6 +13,7 @@ import { loadLanguage, applyTranslations, t } from './translations.js';
 // ===== ESTADO GLOBAL E FUNÇÕES =====
 let users = [];
 let selectedUserIdForAction = null;
+let updateState = 'idle'; // 'idle', 'downloaded'
 let currentLoginAction = 'login'; // 'login' ou 'edit'
 
 // A lógica de inicialização agora está dentro de uma função exportada
@@ -25,14 +26,16 @@ export async function initListUsersPage() {
     loadAndRenderUsers();
     setupEventListeners();
     initDraggableElements();
+    injectUpdateAnimationStyles(); // Adiciona os estilos da animação de "loading"
+    initUpdateChecker(); // <-- A inicialização do updater agora é feita aqui
     document.getElementById('language-selector').value = lang;
     initCustomSelects();
 }
 
 // O restante do arquivo continua igual, com as funções sendo chamadas pela initListUsersPage
-function loadAndRenderUsers() {
+async function loadAndRenderUsers() {
     try {
-        users = getAllUsers();
+        users = await getAllUsers();
         renderUsersTable();
         if (users.length === 0) {
             showFeedback(t('listUsers.feedback.noUsers'), 'info');
@@ -119,7 +122,168 @@ function renderUsersTable() {
     tbody.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', (e) => openDeleteConfirmDialog(e.target.closest('tr').dataset.userId)));
 }
 
-function openLoginDialog(userId) {
+/**
+ * Injeta os estilos CSS para a animação de "pontos pulsantes" no cabeçalho do documento.
+ * Isso evita a necessidade de modificar o arquivo CSS diretamente.
+ */
+function injectUpdateAnimationStyles() {
+    const styleId = 'update-animation-styles';
+    if (document.getElementById(styleId)) return; // Evita adicionar os estilos múltiplas vezes
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.innerHTML = `
+        .loading-dots .dot {
+            animation: dot-pulse 1.4s infinite;
+            animation-delay: 0s;
+        }
+        .loading-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dot-pulse {
+            0%, 80%, 100% { opacity: 0; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
+ * Gerencia todo o fluxo de verificação e instalação de atualizações.
+ */
+function initUpdateChecker() {
+    const checkBtn = document.getElementById('btn-check-updates');
+    const updateDialog = document.getElementById('update-dialog');
+    const dialogTitle = updateDialog.querySelector('h3');
+    const dialogMessage = updateDialog.querySelector('p');
+    const progressBar = updateDialog.querySelector('.progress-bar-fill');
+    const progressContainer = updateDialog.querySelector('.progress-bar-container');
+    const dialogActions = updateDialog.querySelector('.modal-actions');
+
+    // Função para atualizar a UI do diálogo
+    const showUpdateState = (state, data = {}) => {
+        // Esconde todos os elementos e mostra apenas os necessários
+        progressContainer.style.display = 'none';
+        dialogActions.innerHTML = ''; // Limpa botões antigos
+
+        switch (state) {
+            case 'checking':
+                dialogTitle.textContent = t('profile.updates.checking');
+                // Adiciona a animação de pontos pulsantes
+                dialogMessage.innerHTML = `
+                    ${t('listUsers.updateDialog.wait')}
+                    <span class="loading-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+                `;
+                dialogActions.innerHTML = `<button class="btn cancel">${t('ui.cancel')}</button>`;
+                dialogActions.querySelector('.cancel').onclick = () => {
+                    showDialogMessage(updateDialog, t('listUsers.updateDialog.cancelled'), 'info');
+                    setTimeout(() => updateDialog.close(), 1500);
+                };
+                updateDialog.showModal();
+                break;
+
+            case 'downloading':
+                dialogTitle.textContent = t('profile.updates.available');
+                dialogMessage.textContent = `${t('listUsers.updateDialog.downloading')} (${Math.round(data.percent || 0)}%)`;
+                progressContainer.style.display = 'block';
+                progressBar.style.width = `${data.percent || 0}%`;
+                dialogActions.innerHTML = `<button class="btn cancel">${t('ui.cancel')}</button>`;
+                dialogActions.querySelector('.cancel').onclick = () => updateDialog.close();
+                if (!updateDialog.open) updateDialog.showModal();
+                break;
+
+            case 'not-available':
+                dialogTitle.textContent = t('profile.updates.not-available');
+                dialogMessage.textContent = t('listUsers.updateDialog.latestVersion');
+                dialogActions.innerHTML = `<button class="btn confirm">${t('ui.ok')}</button>`;
+                dialogActions.querySelector('.confirm').onclick = () => updateDialog.close();
+                if (!updateDialog.open) updateDialog.showModal();
+                break;
+
+            case 'downloaded':
+                updateState = 'downloaded';
+                updateCheckButtonState();
+                dialogTitle.textContent = t('profile.updates.downloaded');
+                dialogMessage.textContent = t('listUsers.updateDialog.readyToInstall');
+                dialogActions.innerHTML = `
+                    <button class="btn cancel">${t('listUsers.updateDialog.later')}</button>
+                    <button class="btn confirm">${t('listUsers.updateDialog.installNow')}</button>
+                `;
+                dialogActions.querySelector('.cancel').onclick = () => updateDialog.close();
+                dialogActions.querySelector('.confirm').onclick = () => window.electronAPI.restartApp();
+                if (!updateDialog.open) updateDialog.showModal();
+                break;
+
+            case 'error':
+                dialogTitle.textContent = t('ui.error');
+                dialogMessage.textContent = data.message || t('listUsers.updateDialog.error');
+                dialogActions.innerHTML = `<button class="btn confirm">${t('ui.ok')}</button>`;
+                dialogActions.querySelector('.confirm').onclick = () => updateDialog.close();
+                if (!updateDialog.open) updateDialog.showModal();
+                break;
+        }
+    };
+
+    // Função para atualizar o botão principal
+    const updateCheckButtonState = () => {
+        if (updateState === 'downloaded') {
+            checkBtn.textContent = t('listUsers.updateDialog.installUpdate');
+            checkBtn.classList.add('confirm');
+        } else {
+            checkBtn.textContent = t('profile.updates.checkButton');
+            checkBtn.classList.remove('confirm');
+        }
+    };
+
+    // Listener do botão principal
+    checkBtn.addEventListener('click', () => {
+        if (updateState === 'downloaded') {
+            // Se o download já foi feito, o botão agora abre o diálogo de instalação
+            showUpdateState('downloaded');
+        } else {
+            // Caso contrário, inicia a verificação manual
+            showUpdateState('checking');
+            window.electronAPI.checkForUpdates();
+        }
+    });
+
+    // Listeners para os eventos do processo principal
+    window.electronAPI.onUpdateStatus((statusKey, data) => {
+        if (statusKey.startsWith('error:')) {
+            // Se a verificação foi manual (diálogo aberto), mostra o erro no diálogo.
+            if (updateDialog.open) {
+                showUpdateState('error', { message: statusKey });
+            }
+        } else if (statusKey === 'available') {
+            // Não faz nada aqui, o estado 'downloading' será acionado pelo progresso.
+        } else if (statusKey === 'downloaded') {
+            updateState = 'downloaded';
+            // Se o diálogo estiver aberto, mostra o estado 'downloaded'.
+            // Se não, mostra uma notificação flutuante.
+            if (updateDialog.open) {
+                showUpdateState('downloaded');
+            } else {
+                showFloatingMessage(t('listUsers.updateDialog.downloadedFloating'), 'success', 8000);
+                updateCheckButtonState();
+            }
+        } else {
+            // Para 'not-available' e outros status que só aparecem em verificação manual.
+            if (updateDialog.open) {
+                showUpdateState(statusKey);
+            }
+        }
+    });
+
+    window.electronAPI.onUpdateProgress((progressObj) => {
+        // Apenas mostra o progresso do download se o diálogo já estiver aberto,
+        // o que significa que a verificação foi iniciada manualmente pelo usuário.
+        // Isso torna o download em segundo plano totalmente silencioso.
+        if (updateDialog.open) {
+            showUpdateState('downloading', progressObj);
+        }
+    });
+}
+
+async function openLoginDialog(userId) {
     selectedUserIdForAction = userId;
     currentLoginAction = 'login';
     document.getElementById('login-dialog').showModal();
@@ -131,7 +295,7 @@ function openEditDialog(userId) {
     document.getElementById('login-dialog').showModal();
 }
 
-function handleLogin() {
+async function handleLogin() {
     const loginDialog = document.getElementById('login-dialog');
     const passwordInput = document.getElementById('login-password');
     const password = passwordInput.value;
@@ -153,9 +317,9 @@ function handleLogin() {
         // 3. Após um breve atraso, executa as ações e redireciona
         setTimeout(() => {
             user.lastLogin = new Date().toISOString();
-            updateUser(user.id, user); 
-            setCurrentUser(user);
-            
+            updateUser(user.id, user); // Isso agora é async, mas podemos deixar sem await aqui
+            setCurrentUser(user); // Isso agora é async, mas podemos deixar sem await aqui
+
             loginDialog.close();
             // Reabilita os botões para a próxima vez
             loginDialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
@@ -211,7 +375,7 @@ function openDeleteConfirmDialog(userId) {
         setTimeout(closeDialog, 1500);
     });
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         const password = passwordInput.value;
         if (!password) {
             showDialogMessage(dialog, t('listUsers.deleteDialog.passwordRequired'), 'error');
@@ -219,7 +383,7 @@ function openDeleteConfirmDialog(userId) {
         }
 
         if (user.password === password || validateMasterPassword(password)) {
-            deleteUser(user.id);
+            await deleteUser(user.id);
             showDialogMessage(dialog, t('listUsers.deleteDialog.success', { userName: user.name }), 'success');
             confirmBtn.disabled = true;
             cancelBtn.disabled = true;

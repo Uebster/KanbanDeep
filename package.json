@@ -1,13 +1,50 @@
 {
-  "name": "meus-kanbans",
+  "name": "kanbandeep",
   "version": "1.0.0",
+  "description": "Um sistema de gerenciamento de projetos e tarefas inspirado no Kanban.",
+  "main": "main.js",
   "scripts": {
-    "start": "live-server --port=3000 --open=pages/introduction.html"
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "Uebster",
+  "license": "MIT",
+  "dependencies": {
+    "electron-log": "^5.1.5",
+    "electron-updater": "^6.2.1"
   },
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3"
   },
-  "dependencies": {
-    "cheerio": "^1.1.2"
+  "build": {
+    "appId": "com.uebster.kanbandeep",
+    "productName": "KanbanDeep",
+    "copyright": "Copyright © 2024 ${author}",
+    "directories": {
+      "output": "release-builds"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*",
+      "!release-builds/",
+      "!tools/"
+    ],
+    "win": {
+      "icon": "assets/icons/win/icon.ico",
+      "target": "nsis"
+    },
+    "mac": {
+      "icon": "assets/icons/mac/icon.icns"
+    },
+    "linux": {
+      "icon": "assets/icons/png"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Uebster",
+      "repo": "KanbanDeep"
+    }
   }
 }

@@ -21,7 +21,7 @@ let allUsers = [];
 let allArchivedItems = { cards: [], columns: [], boards: [] };
 
 export async function initArchivePage() {
-    currentUser = getCurrentUser();
+    currentUser = await getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
         return;
@@ -29,27 +29,34 @@ export async function initArchivePage() {
 
     await initTranslations();
 
-    allUsers = getAllUsers();
+    allUsers = await getAllUsers();
     loadAllArchivedItems();
     renderAllLists();
     setupEventListeners();
 }
 
-function loadAllArchivedItems() {
-    const userProfile = getUserProfile(currentUser.id);
+async function loadAllArchivedItems() {
+    const userProfile = await getUserProfile(currentUser.id);    
     allArchivedItems = { cards: [], columns: [], boards: [] };
 
-    // Busca todos os quadros para encontrar itens arquivados, mesmo que o quadro em si não esteja mais na lista ativa do usuário.
-    const allBoardKeys = Object.keys(localStorage).filter(k => k.startsWith('kanbandeep_board_'));
+    if (!userProfile) {
+        console.error("Could not load user profile for archive page.");
+        renderAllLists(); // Render empty lists to avoid a blank page
+        return;
+    }
 
-    allBoardKeys.forEach(key => {
-        const boardId = key.replace('kanbandeep_board_', '');
-        const board = getFullBoardData(boardId, true); // true to include archived items
+    // CORREÇÃO: Usa a API de arquivos para buscar todos os dados, em vez do localStorage.
+    const allFileNames = await window.electronAPI.listFiles();
+    const allBoardKeys = allFileNames.filter(name => name.startsWith('board_'));
+
+    for (const key of allBoardKeys) {
+        const boardId = key.replace('board_', '');
+        const board = await getFullBoardData(boardId, true); // true to include archived items
         if (!board) return;
 
         // Find archived cards
-        board.columns.forEach(column => {
-            column.cards.forEach(card => {
+        for (const column of board.columns) {
+            for (const card of column.cards) {
                 if (card.isArchived) {
                     allArchivedItems.cards.push({
                         ...card,
@@ -57,25 +64,25 @@ function loadAllArchivedItems() {
                         columnId: column.id
                     });
                 }
-            });
-        });
+            }
+        }
 
         // Find archived columns
-        const archivedColumns = (board.archivedColumnIds || []).map(colId => {
-            const col = getColumn(colId);
+        const archivedColumnPromises = (board.archivedColumnIds || []).map(async (colId) => {
+            const col = await getColumn(colId);
             return col ? { ...col, boardId: board.id } : null;
-        }).filter(Boolean);
-        
+        });
+        const archivedColumns = (await Promise.all(archivedColumnPromises)).filter(Boolean);
         allArchivedItems.columns.push(...archivedColumns);
-    });
+    }
 
     // Carrega quadros arquivados do perfil do usuário
     const archivedBoardIds = userProfile.archivedBoardIds || [];
-    const archivedBoards = archivedBoardIds.map(id => getBoard(id)).filter(b => b && b.isArchived);
+    const archivedBoards = (await Promise.all(archivedBoardIds.map(id => getBoard(id)))).filter(b => b && b.isArchived);
     allArchivedItems.boards.push(...archivedBoards);
 }
 
-function renderAllLists() {
+async function renderAllLists() {
     // Archived Tab
     const archivedBoardsList = document.getElementById('archived-boards-list');
     const archivedCardsList = document.getElementById('archived-cards-list');
@@ -102,11 +109,11 @@ function renderAllLists() {
     const trashColumns = allArchivedItems.columns.filter(c => c.archiveReason === 'deleted'); // Nova lista
 
     // Renderiza cada seção com agrupamento
-    archivedBoards.forEach(board => archivedBoardsList.appendChild(createItemElement(board, 'board')));
+    for (const board of archivedBoards) { archivedBoardsList.appendChild(await createItemElement(board, 'board')); }
     groupAndRenderItems(archivedCards, archivedCardsList, 'card');
     groupAndRenderItems(archivedColumns, archivedColumnsList, 'column');
     
-    trashBoards.forEach(board => trashBoardsList.appendChild(createItemElement(board, 'board')));
+    for (const board of trashBoards) { trashBoardsList.appendChild(await createItemElement(board, 'board')); }
     groupAndRenderItems(trashCards, trashCardsList, 'card');
     groupAndRenderItems(trashColumns, trashColumnsList, 'column');
 }
@@ -115,7 +122,7 @@ function groupAndRenderItems(items, container, type) {
     if (items.length === 0) return;
 
     const groupedByBoard = items.reduce((acc, item) => {
-        const board = getBoard(item.boardId);
+        const board = allArchivedItems.boards.find(b => b.id === item.boardId); // Busca nos dados já carregados
         const boardName = board ? board.title : t('archive.unknownBoard');
         if (!acc[boardName]) acc[boardName] = [];
         acc[boardName].push(item);
@@ -128,24 +135,24 @@ function groupAndRenderItems(items, container, type) {
         groupHeader.textContent = boardName;
         container.appendChild(groupHeader);
 
-        groupedByBoard[boardName].forEach(item => {
-            container.appendChild(createItemElement(item, type));
+        groupedByBoard[boardName].forEach(async item => {
+            container.appendChild(await createItemElement(item, type));
         });
     });
 }
 
-function createItemElement(item, type) {
+async function createItemElement(item, type) {
     const itemEl = document.createElement('div');
     itemEl.className = 'archive-item';
     itemEl.dataset.itemId = item.id;
 
     const archivedAt = new Date(item.archivedAt || Date.now()).toLocaleString();
-    const archivedBy = allUsers.find(u => u.id === item.archivedBy)?.name || 'Unknown';
+    const archivedBy = (allUsers.find(u => u.id === item.archivedBy) || { name: 'Unknown' }).name;
     
     let metaText = '';
     if (type === 'card') {
-        const boardName = getBoard(item.boardId)?.title || '?';
-        const columnName = getColumn(item.columnId)?.title || '?';
+        const boardName = (await getBoard(item.boardId))?.title || '?';
+        const columnName = (await getColumn(item.columnId))?.title || '?';
         metaText = t('archive.meta.card', { 
             boardName: boardName, 
             columnName: columnName, 
@@ -153,7 +160,7 @@ function createItemElement(item, type) {
             user: archivedBy 
         });
     } else if (type === 'column') {
-        const boardName = getBoard(item.boardId)?.title || '?';
+        const boardName = (await getBoard(item.boardId))?.title || '?';
         metaText = t('archive.meta.column', { boardName: boardName, date: archivedAt, user: archivedBy });
     } else if (type === 'board') {
         metaText = t('archive.meta.board', { date: archivedAt, user: archivedBy });
@@ -197,27 +204,27 @@ function createItemElement(item, type) {
     return itemEl;
 }
 
-function handleMoveToTrash(itemId, type) {
+async function handleMoveToTrash(itemId, type) {
     let item;
-    if (type === 'card') item = getCard(itemId);
-    else if (type === 'column') item = getColumn(itemId);
-    else if (type === 'board') item = getBoard(itemId);
+    if (type === 'card') item = await getCard(itemId);
+    else if (type === 'column') item = await getColumn(itemId);
+    else if (type === 'board') item = await getBoard(itemId);
 
     if (!item) return;
 
     item.archiveReason = 'deleted';
-    if (type === 'card') saveCard(item);
-    if (type === 'column') saveColumn(item);
-    else if (type === 'board') saveBoard(item);
+    if (type === 'card') await saveCard(item);
+    if (type === 'column') await saveColumn(item);
+    else if (type === 'board') await saveBoard(item);
 
     showFloatingMessage(t('archive.feedback.movedToTrash'), 'info'); // Adicionar tradução
-    loadAllArchivedItems();
+    await loadAllArchivedItems();
     renderAllLists();
 }
 
-function handleRestoreCard(cardId) {
-    showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
-        const card = getCard(cardId);
+async function handleRestoreCard(cardId) {
+    showConfirmationDialog(t('archive.confirm.restore'), async (dialog) => {
+        const card = await getCard(cardId);
         if (!card) {
             showDialogMessage(dialog, t('kanban.feedback.cardNotFound'), 'error'); // Reutilizando chave
             return false;
@@ -235,14 +242,14 @@ function handleRestoreCard(cardId) {
             if (!card.activityLog) card.activityLog = [];
             card.activityLog.push(logEntry);
             delete card.archiveReason;
-            saveCard(card);
+            await saveCard(card);
         } else {
             // Se estiver em "Arquivados", a restauração o move de volta para o quadro.
             if (!card.columnId) {
                 showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnNotFound'), 'error');
                 return false;
             }
-            const column = getColumn(card.columnId);
+            const column = await getColumn(card.columnId);
             if (!column) {
                 showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnDeleted'), 'error');
                 return false;
@@ -251,7 +258,7 @@ function handleRestoreCard(cardId) {
             // Re-insere o card na sua coluna original
             if (!column.cardIds.includes(cardId)) {
                 column.cardIds.push(cardId);
-                saveColumn(column);
+                await saveColumn(column);
             }
             
             // Adiciona o log de restauração do arquivo
@@ -267,19 +274,19 @@ function handleRestoreCard(cardId) {
             card.isArchived = false;
             delete card.archivedAt;
             delete card.archivedBy;
-            saveCard(card);
+            await saveCard(card);
         }
 
         showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
-        loadAllArchivedItems();
+        await loadAllArchivedItems();
         renderAllLists();
         return true;
     });
 }
 
-function handleRestoreColumn(columnId) {
-    showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
-        const column = getColumn(columnId); // A função getColumn já existe no storage.js
+async function handleRestoreColumn(columnId) {
+    showConfirmationDialog(t('archive.confirm.restore'), async (dialog) => {
+        const column = await getColumn(columnId); // A função getColumn já existe no storage.js
         if (!column) {
             // MELHORIA: Mostra um erro claro e não congela o diálogo.
             showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnNotFound'), 'error');
@@ -293,7 +300,7 @@ function handleRestoreColumn(columnId) {
         if (column.archiveReason === 'deleted') {
             delete column.archiveReason;
         } else {
-            const board = getBoard(column.boardId); // A função getBoard já existe no storage.js
+            const board = await getBoard(column.boardId); // A função getBoard já existe no storage.js
             if (!board) {
                 // MELHORIA: Lida com o caso de quadro não encontrado.
                 showDialogMessage(dialog, t('archive.feedback.cannotRestoreColumnNotFound'), 'error');
@@ -304,7 +311,7 @@ function handleRestoreColumn(columnId) {
                 board.columnIds.push(columnId);
             }
             board.archivedColumnIds = (board.archivedColumnIds || []).filter(id => id !== columnId);
-            saveBoard(board);
+            await saveBoard(board);
         }
 
         // Adiciona a entrada de log
@@ -320,18 +327,18 @@ function handleRestoreColumn(columnId) {
         // A propriedade isArchived só deve ser alterada após o log e antes de salvar.
         column.isArchived = false;
 
-        saveColumn(column);
+        await saveColumn(column);
         showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
-        loadAllArchivedItems();
+        await loadAllArchivedItems();
         renderAllLists(); // A função renderAllLists já existe
         return true;
     });
 }
 
-function handleRestoreBoard(boardId) {
-    showConfirmationDialog(t('archive.confirm.restore'), (dialog) => {
-        const board = getBoard(boardId);
-        const userProfile = getUserProfile(currentUser.id);
+async function handleRestoreBoard(boardId) {
+    showConfirmationDialog(t('archive.confirm.restore'), async (dialog) => {
+        const board = await getBoard(boardId);
+        const userProfile = await getUserProfile(currentUser.id);
         if (!board || !userProfile) return false;
 
         if (board.archiveReason === 'deleted') {
@@ -340,21 +347,21 @@ function handleRestoreBoard(boardId) {
             board.isArchived = false;
             userProfile.boardIds.push(boardId);
             userProfile.archivedBoardIds = (userProfile.archivedBoardIds || []).filter(id => id !== boardId);
-            saveUserProfile(userProfile);
+            await saveUserProfile(userProfile);
         }
 
-        saveBoard(board);
+        await saveBoard(board);
         showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
-        loadAllArchivedItems();
+        await loadAllArchivedItems();
         renderAllLists();
         return true;
     });
 }
 
-function handleDeleteCard(cardId) {
-    showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
+async function handleDeleteCard(cardId) {
+    showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // Antes de deletar, adicionamos um último log.
-        const card = getCard(cardId);
+        const card = await getCard(cardId);
         if (card) {
             const logEntry = { // Corrigido
                 action: 'deleted',
@@ -364,12 +371,12 @@ function handleDeleteCard(cardId) {
             if (!card.activityLog) card.activityLog = [];
             card.activityLog.push(logEntry);
             // Salvamos o cartão uma última vez com o log de exclusão.
-            saveCard(card);
+            await saveCard(card);
         }
 
-        if (deleteCard(cardId)) {
+        if (await deleteCard(cardId)) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
-            loadAllArchivedItems();
+            await loadAllArchivedItems();
             renderAllLists();
             return true;
         }
@@ -377,10 +384,10 @@ function handleDeleteCard(cardId) {
     }, null, t('ui.yesDelete'));
 }
 
-function handleDeleteColumn(columnId) {
-    showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
+async function handleDeleteColumn(columnId) {
+    showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // Adiciona o log de exclusão antes de deletar
-        const column = getColumn(columnId);
+        const column = await getColumn(columnId);
         if (column) {
             const logEntry = { // Corrigido
                 action: 'deleted',
@@ -389,12 +396,12 @@ function handleDeleteColumn(columnId) {
             };
             if (!column.activityLog) column.activityLog = [];
             column.activityLog.push(logEntry);
-            saveColumn(column);
+            await saveColumn(column);
         }
 
-        if (deleteColumn(columnId)) {
+        if (await deleteColumn(columnId)) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
-            loadAllArchivedItems();
+            await loadAllArchivedItems();
             renderAllLists();
             return true;
         }
@@ -402,11 +409,11 @@ function handleDeleteColumn(columnId) {
     }, null, t('ui.yesDelete'));
 }
 
-function handleDeleteBoard(boardId) {
-    showConfirmationDialog(t('archive.confirm.delete'), (dialog) => {
-        if (deleteBoard(boardId)) { // Usa a função de exclusão permanente do storage
+async function handleDeleteBoard(boardId) {
+    showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
+        if (await deleteBoard(boardId)) { // Usa a função de exclusão permanente do storage
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
-            loadAllArchivedItems();
+            await loadAllArchivedItems();
             renderAllLists();
         }
         return true;
@@ -426,7 +433,7 @@ function setupEventListeners() {
     document.getElementById('empty-trash-btn')?.addEventListener('click', handleEmptyTrash);
 }
 
-function handleEmptyTrash() {
+async function handleEmptyTrash() {
     const trashCards = allArchivedItems.cards.filter(c => c.archiveReason === 'deleted');
     const trashColumns = allArchivedItems.columns.filter(c => c.archiveReason === 'deleted');
     const trashBoards = allArchivedItems.boards.filter(b => b.archiveReason === 'deleted');
@@ -438,13 +445,13 @@ function handleEmptyTrash() {
     }
     showConfirmationDialog(
         t('archive.confirm.emptyTrash', { count: totalItems }),
-        (dialog) => {
-            trashCards.forEach(card => deleteCard(card.id));
-            trashColumns.forEach(col => deleteColumn(col.id));
-            trashBoards.forEach(board => deleteBoard(board.id));
+        async (dialog) => {
+            await Promise.all(trashCards.map(card => deleteCard(card.id)));
+            await Promise.all(trashColumns.map(col => deleteColumn(col.id)));
+            await Promise.all(trashBoards.map(board => deleteBoard(board.id)));
 
             showDialogMessage(dialog, t('archive.feedback.trashEmptied'), 'success');
-            loadAllArchivedItems();
+            await loadAllArchivedItems();
             renderAllLists();
             return true;
         },

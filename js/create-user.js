@@ -115,7 +115,7 @@ function setupColorPicker() {
         }
     });
 }
-function processUserCreation() {
+async function processUserCreation() {
     const name = document.getElementById('name').value.trim();
     const username = document.getElementById('username').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -136,7 +136,7 @@ function processUserCreation() {
      
     }
 
-    const existingUsers = getAllUsers();
+    const existingUsers = await getAllUsers();
     if (existingUsers.some(user => user.username === username)) {
         return { success: false, message: 'createUser.error.usernameExists' };
     }
@@ -159,9 +159,8 @@ function processUserCreation() {
         }
     }
 
-
-    // Cria o novo perfil do usuário
-    const userProfile = {
+    // Cria o objeto de dados do formulário, SEM os campos de sistema
+    const formData = {
         name,
         username,
         password,
@@ -176,18 +175,12 @@ function processUserCreation() {
         language: document.getElementById('language').value,
         theme: document.getElementById('theme').value,
         avatar: document.getElementById('avatar-preview').querySelector('img')?.src || '',
-        // Adiciona campos padrão para compatibilidade com o sistema
-        id: 'user-' + Date.now(),
-        createdAt: new Date().toISOString(),
-        lastLogin: null,
-        boards: [],
-        groups: [],
         preferences: {
             primaryColor: primaryColor
         }
     };
 
-    if (registerUser(userProfile)) {
+    if (await registerUser(formData)) { // Passa apenas os dados do formulário
         return { 
             success: true, 
             message: 'createUser.feedback.success',
@@ -245,7 +238,7 @@ function applyTheme(theme) {
 function showSaveConfirmationDialog() {
     showConfirmationDialog(t('createUser.confirm.register'), // "Confirmar cadastro do novo usuário?"
         async (dialog) => {
-            const result = processUserCreation();
+            const result = await processUserCreation();
             
             if (result.success) {
                 showDialogMessage(dialog, t('createUser.feedback.success'), 'success');

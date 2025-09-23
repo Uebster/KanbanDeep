@@ -39,7 +39,11 @@
 
     <!-- Área de ações -->
     <div class="actions-top">
-      <button id="btn-new-user" class="btn confirm" data-i18n="listUsers.button.newUser"><span>+</span></button>
+      <button id="btn-new-user" class="btn confirm" data-i18n="listUsers.button.newUser"><span>+</span></button>      
+      <div class="update-container">
+        <span id="update-status-text"></span>
+        <button id="btn-check-updates" class="btn alternative1" data-i18n="profile.updates.checkButton"></button>
+      </div>
     </div>
 
     <!-- Tabela de usuários -->
@@ -84,6 +88,16 @@
       </div>
     </dialog>
   </div>
-<script type="module" src="../js/main.js"></script>
+  <dialog id="update-dialog" class="draggable">
+    <h3 class="drag-handle">Verificando Atualizações</h3>
+    <p>Aguarde um momento...</p>
+    <div class="progress-bar-container" style="display: none;">
+        <div class="progress-bar-fill"></div>
+    </div>
+    <div class="modal-actions">
+        <!-- Botões serão inseridos dinamicamente aqui -->
+    </div>
+</dialog>
+<script type="module" src="../js/renderer.js"></script>
 </body>
 </html>

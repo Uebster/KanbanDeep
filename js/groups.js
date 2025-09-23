@@ -52,13 +52,13 @@ let isGroupSaved = true; // Flag para rastrear alterações no diálogo de ediç
 export async function initGroupsPage() {
     await initTranslations();
 
-    currentUser = getCurrentUser();
+    currentUser = await getCurrentUser();
     if (!currentUser) {
         showFloatingMessage(t('ui.userNotLoggedIn'), 'error');
         setTimeout(() => { window.location.href = 'list-users.html'; }, 2000);
         return;
     }
-    allUsers = getAllUsers();
+    allUsers = await getAllUsers();
     
     // Carrega os grupos ANTES de qualquer outra lógica para que a variável 'groups' esteja disponível.
     loadGroups();
@@ -107,8 +107,8 @@ export async function initGroupsPage() {
     }
 }
 
-function loadGroups() {
-    const allGroupsData = getAllGroups();
+async function loadGroups() {
+    const allGroupsData = await getAllGroups();
     
     // Filtra apenas os grupos dos quais o usuário atual é membro
     groups = allGroupsData.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
@@ -301,7 +301,7 @@ document.getElementById('confirm-add-participant')?.addEventListener('click', ()
     });
 }
 
-function switchTab(tabId, options = {}) {
+async function switchTab(tabId, options = {}) {
     const tabs = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     
@@ -313,11 +313,11 @@ function switchTab(tabId, options = {}) {
     
     // Carregar dados específicos da aba
     if (tabId === 'create-group') {
-        loadUsersForSelection(); // This function populates a select, no hardcoded text.
-        loadTagTemplatesForGroup();
+        await loadUsersForSelection(); // This function populates a select, no hardcoded text.
+        await loadTagTemplatesForGroup();
         initCustomSelects();
     } else if (tabId === 'group-templates') {
-        loadGroupTemplates();
+        await loadGroupTemplates();
         initCustomSelects();
     } else if (tabId === 'statistics') {
         const groupSelect = document.getElementById('stats-group-select');
@@ -328,12 +328,12 @@ function switchTab(tabId, options = {}) {
             if (groupIdToLoad) {
                 // Garante que o select mostre o grupo correto
                 groupSelect.value = groupIdToLoad;
-                loadAndRenderStatistics(groupIdToLoad);
+                await loadAndRenderStatistics(groupIdToLoad);
             }
             initCustomSelects();
         }
     } else if (tabId === 'meetings') {
-        loadAndRenderMeetings(); // This function populates a list, no hardcoded text.
+        await loadAndRenderMeetings(); // This function populates a list, no hardcoded text.
     } else if (tabId === 'reports') {
         populateGroupSelectorForReports();
         initCustomSelects();
@@ -341,7 +341,7 @@ function switchTab(tabId, options = {}) {
     }
 }
 
-function handleSaveGroup() {
+async function handleSaveGroup() {
     const name = document.getElementById('group-name').value.trim();
     const permissions = {
         createBoards: document.getElementById('perm-create-boards').checked,
@@ -356,7 +356,7 @@ function handleSaveGroup() {
         return;
     }
 
-    showConfirmationDialog(t('groups.confirm.create'), (dialog) => {
+    showConfirmationDialog(t('groups.confirm.create'), async (dialog) => {
         // Pega a lista de usuários a serem convidados
         const invitedUserIds = Array.from(document.getElementById('group-members').selectedOptions).map(opt => opt.value);
 
@@ -379,7 +379,7 @@ function handleSaveGroup() {
         };
 
         // 2. Salva o grupo para gerar seu ID.
-        const savedGroup = saveGroup(newGroupData);
+        const savedGroup = await saveGroup(newGroupData);
         if (!savedGroup) {
             showDialogMessage(dialog, t('groups.edit.saveError'), 'error');
             return false;
@@ -412,14 +412,14 @@ function handleSaveGroup() {
         // 3. Agora, cria os quadros iniciais, associando-os ao ID do grupo recém-criado.
         const createdBoardIds = [];
         const boardItems = document.querySelectorAll('#group-boards-container .group-board-item');
-        boardItems.forEach(item => {
+        for (const item of boardItems) {
             const templateId = item.dataset.templateId;
-            const allTemplates = getSystemBoardTemplates();
+            const allTemplates = await getSystemBoardTemplates();
             const selectedTemplate = allTemplates.find(t => t.id === templateId);
 
             // Cria as colunas se um template foi usado.
             const newColumns = selectedTemplate 
-                ? selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] })) 
+                ? await Promise.all(selectedTemplate.columns.map(colTmpl => saveColumn({ title: t(colTmpl.name), color: colTmpl.color, cardIds: [] }))) 
                 : [];
 
             const boardData = {
@@ -431,13 +431,13 @@ function handleSaveGroup() {
                 groupId: savedGroup.id, // <-- A CORREÇÃO PRINCIPAL ESTÁ AQUI
                 columnIds: newColumns.map(c => c.id)
             };
-            const savedBoard = saveBoard(boardData);
+            const savedBoard = await saveBoard(boardData);
             createdBoardIds.push(savedBoard.id);
-        });
+        }
 
         // 4. Atualiza o grupo com os IDs dos quadros criados e salva novamente.
         savedGroup.boardIds = createdBoardIds;
-        saveGroup(savedGroup);
+        await saveGroup(savedGroup);
 
         showDialogMessage(dialog, t('groups.feedback.createSuccess'), 'success');
         setTimeout(() => { dialog.close(); loadGroups(); switchTab('my-groups'); }, 1500);
@@ -458,12 +458,12 @@ function handleReportFrequencyChange(e) {
     if (monthContainer) monthContainer.classList.toggle('hidden', frequency !== 'monthly');
 }
 
-function loadAndRenderMeetings() {
+async function loadAndRenderMeetings() {
     const meetingsListContainer = document.getElementById('meetings-list');
     const scheduleBtn = document.getElementById('btn-schedule-meeting');
     if (!meetingsListContainer || !scheduleBtn) return;
 
-    const userGroups = getAllGroups().filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
+    const userGroups = (await getAllGroups()).filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
     const isAdminOfAnyGroup = userGroups.some(g => g.adminId === currentUser.id);
 
     // Mostra o botão de agendar apenas para administradores
@@ -509,13 +509,13 @@ function loadAndRenderMeetings() {
     });
 }
 
-function showMeetingDialog() {
+async function showMeetingDialog() {
     const dialog = document.getElementById('meeting-dialog');
     const groupSelect = document.getElementById('meeting-group-select');
 
     
     groupSelect.innerHTML = '';
-    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+    const adminGroups = (await getAllGroups()).filter(g => g.adminId === currentUser.id);
     adminGroups.forEach(group => {
         groupSelect.innerHTML += `<option value="${group.id}">${group.name}</option>`;
     });
@@ -548,7 +548,7 @@ function showMeetingDialog() {
     dialog.showModal();
 }
 
-function saveMeeting() {
+async function saveMeeting() {
     const dialog = document.getElementById('meeting-dialog');
     const groupId = document.getElementById('meeting-group-select').value;
     const title = document.getElementById('meeting-title').value.trim();
@@ -560,7 +560,7 @@ function saveMeeting() {
         return;
     }
 
-    const group = getGroup(groupId);
+    const group = await getGroup(groupId);
     if (!group) return;
 
     if (!group.meetings) group.meetings = [];
@@ -573,7 +573,7 @@ function saveMeeting() {
     };
 
     group.meetings.push(newMeeting);
-    saveGroup(group);
+    await saveGroup(group);
 
     
     group.memberIds.forEach(memberId => {
@@ -590,14 +590,14 @@ function saveMeeting() {
     }, 1500);
 }
 
-function addBoardToGroup(name, templateId, description) {
+async function addBoardToGroup(name, templateId, description) {
     const container = document.getElementById('group-boards-container');
     const boardId = 'board-' + Date.now();
     
     
     let templateName = "";
     if (templateId) {
-        const allTemplates = getSystemBoardTemplates();
+        const allTemplates = await getSystemBoardTemplates();
         const foundTemplate = allTemplates.find(t => t.id === templateId);
         if (foundTemplate) templateName = foundTemplate.name;
     }
@@ -622,7 +622,7 @@ function addBoardToGroup(name, templateId, description) {
     container.appendChild(boardElement);
 }
 
-function showAddBoardToGroupDialog() {
+async function showAddBoardToGroupDialog() {
     const dialog = document.getElementById('add-board-to-group-dialog');
     const templateSelect = dialog.querySelector('#add-board-template-select');
     const titleInput = dialog.querySelector('#add-board-title-input');
@@ -631,7 +631,7 @@ function showAddBoardToGroupDialog() {
 
     
     templateSelect.innerHTML = `<option value="">${t('kanban.dialog.board.templateEmpty')}</option>`;
-    const systemTemplates = getSystemBoardTemplates();
+    const systemTemplates = await getSystemBoardTemplates();
     if (systemTemplates.length > 0) {
         templateSelect.innerHTML += `<optgroup label="${t('kanban.dialog.board.systemTemplates')}">`;
         systemTemplates.forEach(template => templateSelect.innerHTML += `<option value="${template.id}">${t(template.name)}</option>`);
@@ -684,7 +684,7 @@ function showAddBoardToGroupDialog() {
     dialog.showModal();
 }
 
-function loadTagTemplatesForGroup() {
+async function loadTagTemplatesForGroup() {
     const templateSelect = document.getElementById('group-tag-template');
     if (!templateSelect) return;
 
@@ -698,7 +698,7 @@ function loadTagTemplatesForGroup() {
     templateSelect.appendChild(defaultOption);
 
     
-    const systemTemplates = getSystemTagTemplates();
+    const systemTemplates = await getSystemTagTemplates();
     if (systemTemplates.length > 0) {
         const optgroupSystem = document.createElement('optgroup');
         optgroupSystem.label = t('groups.tags.useSystemTemplate');
@@ -714,10 +714,10 @@ function loadTagTemplatesForGroup() {
 
 // js/groups.js - PART 2/4 - REFACTORED VERSION
 
-function loadGroupTemplates() {
+async function loadGroupTemplates() {
     const boardContainer = document.getElementById('group-board-templates-grid');
     const tagContainer = document.getElementById('group-tag-templates-grid');
-    const adminGroups = getAllGroups().filter(g => g.adminId === currentUser.id);
+    const adminGroups = (await getAllGroups()).filter(g => g.adminId === currentUser.id);
 
     if (adminGroups.length === 0) {
         boardContainer.innerHTML = `<p class="no-templates">${t('groups.templates.noAdminGroups')}</p>`;
@@ -736,7 +736,7 @@ function loadGroupTemplates() {
     renderGroupTagTemplates(tagTemplates);
 }
 
-function renderGroupBoardTemplates(templates) {
+async function renderGroupBoardTemplates(templates) {
     const container = document.getElementById('group-board-templates-grid');
     if (!container) return;
     
@@ -796,7 +796,7 @@ function renderGroupBoardTemplates(templates) {
     });
 }
 
-function renderGroupTagTemplates(templates) {
+async function renderGroupTagTemplates(templates) {
     const container = document.getElementById('group-tag-templates-grid');
     if (!container) return;
     
@@ -856,8 +856,8 @@ function renderGroupTagTemplates(templates) {
     });
 }
 
-function useBoardTemplate(templateId, groupId) {
-    const group = getGroup(groupId);
+async function useBoardTemplate(templateId, groupId) {
+    const group = await getGroup(groupId);
     if (!group) return;
 
     const template = (group.boardTemplates || []).find(t => t.id === templateId);
@@ -866,9 +866,9 @@ function useBoardTemplate(templateId, groupId) {
         return;
     }
 
-    const newColumns = template.columns.map(colTemplate => {
-        return saveColumn({ title: colTemplate.name, color: colTemplate.color, cardIds: [] });
-    });
+    const newColumns = await Promise.all(template.columns.map(async colTemplate => {
+        return await saveColumn({ title: colTemplate.name, color: colTemplate.color, cardIds: [] });
+    }));
 
     const newBoardData = {
         title: `${template.name} ${t('kanban.board.copySuffix')}`,
@@ -879,7 +879,7 @@ function useBoardTemplate(templateId, groupId) {
         columnIds: newColumns.map(col => col.id)
     };
 
-    const savedBoard = saveBoard(newBoardData);
+    const savedBoard = await saveBoard(newBoardData);
 
     localStorage.setItem(`currentBoardId_${currentUser.id}`, savedBoard.id);
     showFloatingMessage(t('templates.feedback.boardUsed', { boardTitle: savedBoard.title }), 'success');
@@ -906,7 +906,7 @@ function deleteGroupBoardTemplate(templateId, groupId) {
 }
 
 function deleteGroupTagTemplate(templateId, groupId) {
-    showConfirmationDialog(t('templates.confirm.deleteTag'), (dialog) => {
+    showConfirmationDialog(t('templates.confirm.deleteTag'), async (dialog) => {
         const group = getGroup(groupId);
         if (!group || !group.tagTemplates) return false;
 
@@ -926,9 +926,9 @@ function deleteGroupTagTemplate(templateId, groupId) {
             }
         }
 
-        if (saveGroup(group)) {
+        if (await saveGroup(group)) {
             showDialogMessage(dialog, t('templates.feedback.tagDeleted'), 'success');
-            loadGroupTemplates(); // Recarrega os templates da aba
+            await loadGroupTemplates(); // Recarrega os templates da aba
             loadGroups(); // Recarrega os grupos para atualizar o alerta
             return true;
         }
@@ -940,13 +940,13 @@ function deleteGroupTagTemplate(templateId, groupId) {
 
 // ===== FUNÇÕES DE SERVIDORES =====
 
-function loadServers() {
-    servers = universalLoad('servers') || [];
+async function loadServers() {
+    servers = await universalLoad('servers') || [];
     renderServers();
 }
 
-function saveServers() {
-    universalSave('servers', servers);
+async function saveServers() {
+    await universalSave('servers', servers);
 }
 
 function renderServers() {
@@ -1006,7 +1006,7 @@ function showCreateServerDialog() {
     dialog.showModal();
 }
 
-function createServer() {
+async function createServer() {
     const dialog = document.getElementById('server-dialog');
     const serverName = document.getElementById('server-name').value.trim();
     
@@ -1017,7 +1017,7 @@ function createServer() {
 
     showConfirmationDialog(
         t('groups.servers.confirmCreate', { serverName: serverName }),
-        (confirmDialog) => {
+        async (confirmDialog) => {
             const newServer = {
                 id: 'server-' + Date.now(),
                 name: serverName,
@@ -1026,7 +1026,7 @@ function createServer() {
             };
             
             servers.push(newServer);
-            saveServers();
+            await saveServers();
             renderServers();
             
             showDialogMessage(confirmDialog, t('groups.servers.createSuccess'), 'success');
@@ -1087,13 +1087,13 @@ function copyServerUrl() {
     }
 }
 
-function confirmDeleteServer(serverId) {
+async function confirmDeleteServer(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
     
     showConfirmationDialog(
         t('groups.servers.confirmDelete', { serverName: server.name }),
-        (dialog) => {
+        async (dialog) => {
             servers = servers.filter(s => s.id !== serverId);
             saveServers();
             renderServers();
@@ -1164,7 +1164,7 @@ async function addServer() {
     
     showConfirmationDialog(
         t('groups.servers.confirmAdd', { hostname: new URL(serverUrl).hostname }),
-        (confirmDialog) => {
+        async (confirmDialog) => {
             const newServer = {
                 id: 'server-' + Date.now(),
                 url: serverUrl,
@@ -1175,7 +1175,7 @@ async function addServer() {
             };
             
             servers.push(newServer);
-            saveServers();
+            await saveServers();
             renderServers();
             
             showDialogMessage(confirmDialog, t('groups.servers.addSuccess'), 'success');
@@ -1191,7 +1191,7 @@ async function addServer() {
 }
 
 // ===== FUNÇÕES DE GRUPOS (ATUALIZADAS) =====
-function renderGroups() {
+async function renderGroups() {
     const adminContainer = document.getElementById('admin-groups-grid');
     const memberContainer = document.getElementById('member-groups-grid');
     if (!adminContainer || !memberContainer) return;
@@ -1201,28 +1201,28 @@ function renderGroups() {
 
     const adminGroups = groups.filter(g => g.adminId === currentUser.id);
     const memberGroups = groups.filter(g => g.adminId !== currentUser.id);
-
+    
     if (adminGroups.length === 0) {
         adminContainer.innerHTML = `<p class="no-groups-message">${t('groups.myGroups.noAdminGroups')}</p>`;
     } else {
-        adminGroups.forEach(group => {
-            const groupCard = createGroupCard(group);
+        for (const group of adminGroups) {
+            const groupCard = await createGroupCard(group);
             adminContainer.appendChild(groupCard);
-        });
+        }
     }
-
+    
     if (memberGroups.length === 0) {
         memberContainer.innerHTML = `<p class="no-groups-message">${t('groups.myGroups.noMemberGroups')}</p>`;
     } else {
-        memberGroups.forEach(group => {
-            const groupCard = createGroupCard(group);
+        for (const group of memberGroups) {
+            const groupCard = await createGroupCard(group);
             memberContainer.appendChild(groupCard);
-        });
+        }
     }
 }
 
 // Ela contém o HTML do seu card, mas corrigido para a nova estrutura de dados.
-function createGroupCard(group) {
+async function createGroupCard(group) {
     const groupCard = document.createElement('div');
     groupCard.className = 'group-card';
     groupCard.dataset.groupId = group.id;
@@ -1260,13 +1260,13 @@ function createGroupCard(group) {
     return groupCard;
 }
 
-function loadUsersForSelection() {
+async function loadUsersForSelection() {
     const membersSelect = document.getElementById('group-members');
     if (!membersSelect) return;
     
     membersSelect.innerHTML = '';
-    const users = getAllUsers();
-    const currentUser = getCurrentUser();
+    const users = await getAllUsers();
+    const currentUser = await getCurrentUser();
     
     users.forEach(user => {
         if (user.id !== currentUser.id) {
@@ -1296,7 +1296,7 @@ function cancelGroupCreation() {
     );
 }
 
-function addLogToGroup(group, logData) {
+async function addLogToGroup(group, logData) {
     if (!group) return;
 
     const logEntry = {
@@ -1308,10 +1308,10 @@ function addLogToGroup(group, logData) {
         group.activityLog = [];
     }
     group.activityLog.push(logEntry);
-    saveGroup(group); // Salva o grupo com o novo log
+    await saveGroup(group); // Salva o grupo com o novo log
 }
 
-function viewGroup(group) {
+async function viewGroup(group) {
     // Alternar para a aba de estatísticas
     switchTab('statistics');
     
@@ -1322,10 +1322,10 @@ function viewGroup(group) {
     }
 
     // Carrega as estatísticas para o grupo específico que foi clicado.
-    loadAndRenderStatistics(group.id);
+    await loadAndRenderStatistics(group.id);
 }
 
-function editGroup(group) {
+async function editGroup(group) {
     const dialog = document.getElementById('edit-group-dialog');
     document.getElementById('edit-group-name').value = group.name;
     const iconInput = document.getElementById('edit-group-icon');
@@ -1373,7 +1373,7 @@ function editGroup(group) {
     }
 
     
-    const systemTemplates = getSystemTagTemplates();
+    const systemTemplates = await getSystemTagTemplates();
     if (systemTemplates.length > 0) {
         const optgroupSystem = document.createElement('optgroup');
         optgroupSystem.label = t('groups.tags.useSystemTemplate');
@@ -1443,7 +1443,7 @@ function editGroup(group) {
     dialog.showModal();
 }
 
-function saveGroupChanges() {
+async function saveGroupChanges() {
     
     const dialog = document.getElementById('edit-group-dialog');
     const feedbackEl = dialog.querySelector('.feedback');
@@ -1468,7 +1468,7 @@ function saveGroupChanges() {
     
     showConfirmationDialog(
         t('groups.edit.confirmSave'),
-        (confirmationDialog) => {
+        async (confirmationDialog) => {
             const oldGroup = { ...currentGroup }; // Clona o estado antigo para comparação
 
             currentGroup.name = name;
@@ -1505,7 +1505,7 @@ function saveGroupChanges() {
             }
             
             
-            if (saveGroup(currentGroup)) {
+            if (await saveGroup(currentGroup)) {
                 showDialogMessage(confirmationDialog, t('groups.edit.saveSuccess'), 'success');
                 
                 
@@ -1527,7 +1527,7 @@ function saveGroupChanges() {
     );
 }
 
-function logGroupChanges(oldGroup, newGroup) {
+async function logGroupChanges(oldGroup, newGroup) {
     const changes = [];
     const fieldsToCompare = {
         name: 'Nome',
@@ -1574,7 +1574,7 @@ function logGroupChanges(oldGroup, newGroup) {
     changes.forEach(logData => addLogToGroup(newGroup, logData));
 }
 
-function deleteGroup() {
+async function deleteGroup() {
     if (!currentGroup || currentGroup.adminId !== currentUser.id) {
         showFloatingMessage(t('groups.delete.adminOnly'), 'error');
         return;
@@ -1582,7 +1582,7 @@ function deleteGroup() {
     
     showConfirmationDialog(
         t('groups.delete.confirm', { groupName: currentGroup.name }),
-        async (confirmationDialog) => {
+        (confirmationDialog) => {
             
             confirmationDialog.close();
             
@@ -1628,11 +1628,11 @@ function deleteGroup() {
                     cancelBtn.disabled = true;
                     
                     
-                    if (deleteGroupStorage(currentGroup.id)) {
+                    if (await deleteGroupStorage(currentGroup.id)) {
                         
                         const groupMemberIds = currentGroup.memberIds || [];
-                        groupMemberIds.forEach(memberId => {
-                            const userProfile = getUserProfile(memberId);
+                        groupMemberIds.forEach(async (memberId) => {
+                            const userProfile = await getUserProfile(memberId);
                             if (userProfile && userProfile.groupIds) {
                                 userProfile.groupIds = userProfile.groupIds.filter(id => id !== currentGroup.id);
                                 saveUserProfile(userProfile);
@@ -1677,7 +1677,7 @@ function deleteGroup() {
 
 // js/groups.js - PART 4/4 - REFACTORED VERSION
 
-function leaveGroup() {
+async function leaveGroup() {
     if (!currentGroup) {
         showFloatingMessage(t('groups.edit.noGroupSelected'), 'error');
         return;
@@ -1689,7 +1689,7 @@ function leaveGroup() {
 
     showConfirmationDialog(
         t('groups.leave.confirm', { groupName: currentGroup.name }),
-        (dialog) => {
+        async (dialog) => {
             
             dialog.close();
             
@@ -1726,12 +1726,12 @@ function leaveGroup() {
                 
                 if (password === currentUser.password || validateMasterPassword(password)) {
                     
-                    const groupData = getGroup(currentGroup.id);
-                    const userProfile = getUserProfile(currentUser.id);
+                    const groupData = await getGroup(currentGroup.id);
+                    const userProfile = await getUserProfile(currentUser.id);
 
                     if (groupData && groupData.memberIds) {
                         groupData.memberIds = groupData.memberIds.filter(id => id !== currentUser.id);
-                        saveGroup(groupData);
+                        await saveGroup(groupData);
                         
                         
                         addGroupLeaveNotification(groupData.name, currentUser.name, groupData.adminId);
@@ -1739,7 +1739,7 @@ function leaveGroup() {
 
                     if (userProfile && userProfile.groupIds) {
                         userProfile.groupIds = userProfile.groupIds.filter(id => id !== currentGroup.id);
-                        saveUserProfile(userProfile);
+                        await saveUserProfile(userProfile);
                     }
 
                     showDialogMessage(passwordDialog, t('groups.leave.success', { groupName: currentGroup.name }), 'success');
@@ -1774,7 +1774,7 @@ function leaveGroup() {
 
 let statusChartInstance = null; // Variável global para a instância do gráfico
 
-function populateGroupSelectorForStats(selectElement) {
+async function populateGroupSelectorForStats(selectElement) {
     if (!selectElement) return;
     selectElement.innerHTML = '';
 
@@ -1800,8 +1800,8 @@ function populateGroupSelectorForStats(selectElement) {
     document.getElementById('chart-type').onchange = () => loadAndRenderStatistics(selectElement.value);
 }
 
-function loadAndRenderStatistics(groupId) {
-    const group = getGroup(groupId);
+async function loadAndRenderStatistics(groupId) {
+    const group = await getGroup(groupId);
     if (!group) {
         document.querySelector('#statistics .stats-sections').innerHTML = `<p class="no-templates">${t('groups.stats.groupNotFound')}</p>`;
         return;
@@ -1810,8 +1810,8 @@ function loadAndRenderStatistics(groupId) {
     const timeFilter = document.getElementById('time-filter').value;
     const chartType = document.getElementById('chart-type').value;
 
-    const allCardsInGroup = (group.boardIds || []).flatMap(boardId => {
-        const board = getFullBoardData(boardId, true);
+    const allCardsInGroup = (await Promise.all((group.boardIds || []).map(async (boardId) => {
+        const board = await getFullBoardData(boardId, true);
         if (!board) return [];
 
         // PRIVACY CHECK: Apenas quadros com visibilidade 'group' devem contar para as estatísticas do grupo.
@@ -1820,7 +1820,7 @@ function loadAndRenderStatistics(groupId) {
             return board.columns.flatMap(col => col.cards);
         }
         return []; // Não inclui cartões de quadros privados de outros membros.
-    });
+    }))).flat();
 
     const now = new Date();
     let startDate = new Date(0); // Início da época para 'all'
@@ -1908,11 +1908,11 @@ function loadAndRenderStatistics(groupId) {
     } else if (chartType === 'line') {
         renderLineChart(cardsCreatedInPeriod, timeFilter, startDate, group);
     } else if (chartType === 'burndown') {
-        renderBurndownChart(cardsCreatedInPeriod, timeFilter, startDate, group);
+        await renderBurndownChart(cardsCreatedInPeriod, timeFilter, startDate, group);
     }
 }
 
-function renderSummary(total, completed, active, overdue) { // overdue is a new parameter
+async function renderSummary(total, completed, active, overdue) { // overdue is a new parameter
     // Atualizar estatísticas resumidas
     // CORREÇÃO: Verifica se os elementos existem antes de tentar atualizá-los.
     const totalEl = document.getElementById('total-cards');
@@ -1925,7 +1925,7 @@ function renderSummary(total, completed, active, overdue) { // overdue is a new 
     if (overdueEl) overdueEl.textContent = overdue;
 }
 
-function renderParticipantsTable(tasksByMember, memberIds) {
+async function renderParticipantsTable(tasksByMember, memberIds) {
     const tableBody = document.getElementById('participants-table-body');
     tableBody.innerHTML = '';
     
@@ -1949,7 +1949,7 @@ function renderParticipantsTable(tasksByMember, memberIds) {
     });
 }
 
-function renderPieChart(data) {
+async function renderPieChart(data) {
     const ctx = document.getElementById('status-chart')?.getContext('2d');
     if (!ctx) return;
 
@@ -1998,7 +1998,7 @@ function renderPieChart(data) {
     });
 }
 
-function renderBarChart(data) {
+async function renderBarChart(data) {
     const ctx = document.getElementById('status-chart')?.getContext('2d');
     if (!ctx) return;
 
@@ -2057,7 +2057,7 @@ function renderBarChart(data) {
     });
 }
 
-function renderLineChart(cardsCreatedInPeriod, timeFilter, startDate, group) {
+async function renderLineChart(cardsCreatedInPeriod, timeFilter, startDate, group) {
     const ctx = document.getElementById('status-chart')?.getContext('2d');
     if (!ctx) return;
 
@@ -2163,7 +2163,7 @@ function renderLineChart(cardsCreatedInPeriod, timeFilter, startDate, group) {
     });
 }
 
-function renderBurndownChart(createdCards, timeFilter, startDate, group) {
+async function renderBurndownChart(createdCards, timeFilter, startDate, group) {
     const ctx = document.getElementById('status-chart')?.getContext('2d');
     if (!ctx) return;
 
@@ -2252,7 +2252,7 @@ function renderBurndownChart(createdCards, timeFilter, startDate, group) {
     });
 }
 
-function populateGroupSelectorForReports() {
+async function populateGroupSelectorForReports() {
     const selectElement = document.getElementById('report-group-select');
     if (!selectElement) return;
     selectElement.innerHTML = '';
@@ -2273,7 +2273,7 @@ function populateGroupSelectorForReports() {
     });
 }
 
-function generateAndRenderReport() {
+async function generateAndRenderReport() {
     const groupId = document.getElementById('report-group-select').value;
     const period = document.getElementById('report-period-select').value;
     const container = document.getElementById('report-container');
@@ -2285,7 +2285,7 @@ function generateAndRenderReport() {
         return;
     }
 
-    const group = getGroup(groupId);
+    const group = await getGroup(groupId);
     if (!group) {
         container.innerHTML = `<p class="no-templates">${t('groups.feedback.groupNotFound')}</p>`;
         exportBtn.classList.add('hidden');
@@ -2315,8 +2315,8 @@ function generateAndRenderReport() {
     }
 
     // A lógica de busca de cartões já inclui os arquivados (getFullBoardData(..., true))
-    const allCardsInGroup = (group.boardIds || []).flatMap(boardId => {
-        const board = getFullBoardData(boardId, true); // Inclui cartões arquivados para o relatório
+    const allCardsInGroup = (await Promise.all((group.boardIds || []).map(async (boardId) => {
+        const board = await getFullBoardData(boardId, true); // Inclui cartões arquivados para o relatório
         if (!board) return [];
 
         // PRIVACY CHECK: Apenas quadros com visibilidade 'group' devem contar para os relatórios do grupo.
@@ -2325,7 +2325,7 @@ function generateAndRenderReport() {
             return board.columns.flatMap(col => col.cards);
         }
         return []; // Não inclui cartões de quadros privados de outros membros.
-    });
+    }))).flat();
 
     // Se não houver nenhum cartão no grupo, exibe a mensagem e para.
     if (allCardsInGroup.length === 0) {
@@ -2459,7 +2459,7 @@ function generateAndRenderReport() {
     exportBtn.classList.remove('hidden');
 }
 
-function exportReportToCSV() {
+async function exportReportToCSV() {
     const groupId = document.getElementById('report-group-select').value;
     const group = getGroup(groupId);
     if (!group) return;
@@ -2559,14 +2559,14 @@ async function testServerConnection(serverUrl) {
     }
 }
 
-function removeMemberFromGroup(group, memberId) {
-    const users = getAllUsers(); // A variável allUsers já está disponível globalmente
+async function removeMemberFromGroup(group, memberId) {
+    const users = await getAllUsers(); // A variável allUsers já está disponível globalmente
     const member = users.find(u => u.id === memberId);
     if (!member) return;
     
     showConfirmationDialog(
         t('groups.edit.confirmRemoveMember', { name: member.name }),
-        (dialog) => {
+        async (dialog) => {
             // Remover o membro do grupo (em memória)
             currentGroup.memberIds = currentGroup.memberIds.filter(id => id !== memberId);
             
@@ -2599,12 +2599,12 @@ function removeMemberFromGroup(group, memberId) {
  * Verifica todos os grupos e envia relatórios automáticos se necessário.
  * 
  */
-export function checkAndSendReports() {
-    const allGroups = getAllGroups();
+export async function checkAndSendReports() {
+    const allGroups = await getAllGroups();
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
 
-    allGroups.forEach(group => {
+    allGroups.forEach(async group => {
         const settings = group.reportSettings;
         if (!settings || settings.frequency === 'none') {
             return; // Pula se não houver relatórios configurados
@@ -2636,12 +2636,12 @@ export function checkAndSendReports() {
             });
             // Atualiza a data do último envio e salva o grupo
             group.lastReportSent = new Date().toISOString();
-            saveGroup(group);
+            await saveGroup(group);
         }
     });
 }
 
-function sendMessageToMember(memberId) {
+async function sendMessageToMember(memberId) {
     const member = allUsers.find(u => u.id === memberId);
     if (!member) {
         showFloatingMessage(t('groups.message.memberNotFound'), 'error');
@@ -2684,8 +2684,8 @@ function sendMessageToMember(memberId) {
 }
 
 
-function sendGroupInvitation(groupId, userId, inviter) {
-    const group = getGroup(groupId);
+async function sendGroupInvitation(groupId, userId, inviter) {
+    const group = await getGroup(groupId);
     if (!group) return;
     
     
@@ -2698,17 +2698,17 @@ function sendGroupInvitation(groupId, userId, inviter) {
     );
 }
 
-function notifyGroupRemoval(groupName, userId) {
-    const currentUser = getCurrentUser();
+async function notifyGroupRemoval(groupName, userId) {
+    const currentUser = await getCurrentUser();
     addGroupRemovalNotification(groupName, currentUser.name, userId);
 }
 
-function loadGroupMembers(group) {
+async function loadGroupMembers(group) {
     const membersList = document.getElementById('group-members-list');
     membersList.innerHTML = '';
     
     
-    const users = getAllUsers();
+    const users = await getAllUsers();
     
     group.memberIds.forEach(memberId => {
         const user = users.find(u => u.id === memberId);
@@ -2772,7 +2772,7 @@ function loadGroupMembers(group) {
  * Exibe o diálogo para adicionar um novo participante ao grupo atual.
  * 
  */
-function showAddParticipantDialog() {
+async function showAddParticipantDialog() {
     const dialog = document.getElementById('add-participant-dialog');
     if (!dialog) {
         console.error('Diálogo de adicionar participante não encontrado');
@@ -2815,19 +2815,19 @@ function showAddParticipantDialog() {
  * 
  * @returns {number} O número de tarefas atrasadas.
  */
-function getOverdueTaskCount(groupId) {
-    const group = getGroup(groupId);
+async function getOverdueTaskCount(groupId) {
+    const group = await getGroup(groupId);
     if (!group || !group.boardIds) return 0;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
 
-    return group.boardIds.reduce((total, boardId) => {
-        const board = getFullBoardData(boardId);
+    return (await Promise.all(group.boardIds.map(async (boardId) => {
+        const board = await getFullBoardData(boardId);
         if (!board) return total;
         return total + board.columns.reduce((boardTotal, column) => 
             boardTotal + column.cards.filter(card => !card.isComplete && card.dueDate && new Date(card.dueDate) < today).length, 0);
-    }, 0);
+    }))).reduce((a, b) => a + b, 0);
 }
 
 /**
@@ -2835,7 +2835,7 @@ function getOverdueTaskCount(groupId) {
  * @param {object} group - O objeto do grupo.
  * @param {string} memberId - O ID do membro.
  */
-function showMemberPermissionsDialog(group, memberId) {
+async function showMemberPermissionsDialog(group, memberId) {
     const member = allUsers.find(u => u.id === memberId);
     if (!member) return;
 
@@ -2919,7 +2919,7 @@ function showMemberPermissionsDialog(group, memberId) {
  * @param {object} group - O objeto do grupo.
  * @param {HTMLElement} container - O elemento onde o log será renderizado.
  */
-function renderGroupActivityLog(group, container) {
+async function renderGroupActivityLog(group, container) {
     const log = group.activityLog || [];
     if (log.length === 0) {
         container.innerHTML = `<p class="activity-log-empty">${t('activityLog.empty')}</p>`;

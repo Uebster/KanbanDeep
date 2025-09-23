@@ -100,6 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Redirecionar após animação completa
     setTimeout(() => {
-        window.location.href = 'list-users.html';
+        window.location.href = './list-users.html';
     }, 7000); // Tempo ajustado para 7 segundos
 });

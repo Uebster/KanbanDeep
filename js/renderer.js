@@ -1,4 +1,4 @@
-// js/main.js - VERSÃO FINAL SIMPLIFICADA E SEGURA
+// js/renderer.js - Ponto de entrada para a lógica da interface do usuário (Renderer Process)
 
 import { initUIControls, initDraggableElements, showConfirmationDialog, showDialogMessage, applyUserTheme, initCustomSelects } from './ui-controls.js';
 import { getCurrentUser } from './auth.js';
@@ -28,7 +28,7 @@ async function main() { // <-- Torna a função principal assíncrona
     // Se for a página Kanban, apenas a sua inicialização específica é chamada.
     if (path.includes('kanban.html')) { // Se for a página Kanban...
         await initKanbanPage(); // ...inicializa o Kanban...
-        setupGlobalHeader(); // ...e TAMBÉM configura o cabeçalho global.
+        await setupGlobalHeader(); // ...e TAMBÉM configura o cabeçalho global.
     } else { // Para TODAS as outras páginas...
         if (path.includes('create-user.html')) {
             await initCreateUserPage();
@@ -50,26 +50,19 @@ async function main() { // <-- Torna a função principal assíncrona
             await initListUsersPage();
         }
         // O cabeçalho global é configurado DEPOIS que a página e suas traduções foram carregadas
-        setupGlobalHeader();
+        await setupGlobalHeader();
 }
-}
-
-function initUserAvatar() {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-        updateUserAvatar(currentUser);
-    }
 }
 
 /**
  * Configura um cabeçalho global SIMPLES para todas as páginas, EXCETO o Kanban.
  * Ele é flexível: só adiciona funcionalidade aos botões que existem no HTML.
  */
-function setupGlobalHeader() {
+async function setupGlobalHeader() {
     const header = document.getElementById('main-header');
     if (!header) return;
 
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser && !window.location.pathname.includes('list-users.html')) {
         window.location.href = 'list-users.html';
         return;
@@ -111,7 +104,7 @@ function setupGlobalHeader() {
     if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
 
     const preferencesBtn = document.getElementById('preferences-btn');
-    if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+    if (preferencesBtn) preferencesBtn.addEventListener('click', () => document.getElementById('preferences-dialog')?.showModal());
 
     // O botão Kanban é específico do Kanban, mas pode aparecer em outras páginas.
     // Se aparecer, ele deve redirecionar para a página Kanban.

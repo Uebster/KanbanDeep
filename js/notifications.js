@@ -25,7 +25,7 @@ let currentTimeFilter = 'all';
 
 // Função de inicialização exportada
 export async function initNotificationsPage() {
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
         window.location.href = 'list-users.html';
         return;
@@ -38,9 +38,9 @@ export async function initNotificationsPage() {
     await initTranslations();
 
     setupEventListeners();
-    loadNotifications();
-    renderNotifications();
-    updateNotificationBadge();
+    await loadNotifications();
+    await renderNotifications();
+    await updateNotificationBadge();
     initCustomSelects();
 }
 
@@ -80,7 +80,7 @@ function setupEventListeners() {
     });
 }
 
-function switchTab(tabId) {
+async function switchTab(tabId) {
     const tabs = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
 
@@ -98,17 +98,17 @@ function switchTab(tabId) {
     } else if (tabId === 'friends-requests') {
         renderFriendRequests();
     } else if (tabId === 'group-requests') {
-        renderGroupRequests();
+        await renderGroupRequests();
     } else {
         filterNotifications();
     }
 }
 
-function loadNotifications() {
-    const currentUser = getCurrentUser();
+async function loadNotifications() {
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
     
-    notifications = getNotifications(currentUser.id) || [];
+    notifications = await getNotifications(currentUser.id) || [];
 }
 
 function renderNotifications() {
@@ -222,13 +222,13 @@ function filterNotifications() {
     renderNotifications();
 }
 
-function handleTimeFilterChange() {
+async function handleTimeFilterChange() {
     const filter = document.getElementById('timeFilter').value;
     currentTimeFilter = filter;
-    renderNotifications();
+    await renderNotifications();
 }
 
-function filterNotificationsByType(notificationsList, filter) {
+async function filterNotificationsByType(notificationsList, filter) {
     if (filter === 'all') return notificationsList;
     return notificationsList.filter(notification => notification.type === filter);
 }
@@ -323,7 +323,7 @@ function filterMeetingNotifications() {
     });
 }
 
-function renderFriendRequests() {
+async function renderFriendRequests() {
     const requestsList = document.querySelector('#friends-requests .requests-list');
     if (!requestsList) return;
     
@@ -359,7 +359,7 @@ function renderFriendRequests() {
     });
 }
 
-function renderGroupRequests() {
+async function renderGroupRequests() {
     const requestsList = document.querySelector('#group-requests .requests-list');
     if (!requestsList) return;
     
@@ -401,15 +401,15 @@ function renderGroupRequests() {
     });
 }
 
-function markAllAsRead() {
-    const currentUser = getCurrentUser();
+async function markAllAsRead() {
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
     
     notifications.forEach(notification => {
         notification.read = true;
     });
     
-    saveNotifications(currentUser.id, notifications);
+    await saveNotifications(currentUser.id, notifications);
     renderNotifications();
     updateNotificationBadge();
     
@@ -425,14 +425,14 @@ function deleteAllReadNotifications() {
 
     showConfirmationDialog(
         t('notifications.confirm.deleteAllRead', { count: readNotifications.length }),
-        (dialog) => {
-            const currentUser = getCurrentUser();
+        async (dialog) => {
+            const currentUser = await getCurrentUser();
             if (!currentUser) return false;
 
             // Filtra para manter apenas as não lidas
             notifications = notifications.filter(n => !n.read);
             
-            saveNotifications(currentUser.id, notifications);
+            await saveNotifications(currentUser.id, notifications);
             renderNotifications();
             updateNotificationBadge();
 
@@ -444,7 +444,7 @@ function deleteAllReadNotifications() {
     );
 }
 
-function handleNotificationAction(e) {
+async function handleNotificationAction(e) {
     if (e.target.classList.contains('accept-btn')) {
         const notificationId = e.target.dataset.id;
         acceptNotification(notificationId);
@@ -457,11 +457,11 @@ function handleNotificationAction(e) {
     }
 }
 
-function acceptNotification(notificationId) {
+async function acceptNotification(notificationId) {
     const notification = notifications.find(n => n.id === notificationId);
     if (!notification) return;
     
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
     
     showConfirmationDialog(
@@ -479,18 +479,18 @@ function acceptNotification(notificationId) {
                     showDialogMessage(dialog, t('notifications.feedback.friendRequestAccepted'), 'success');
                 } else if (notification.type === 'group_request') {
                     // Adicionar o solicitante (não o admin) ao grupo
-                    const group = getGroup(notification.data.groupId);
-                    const userToAdd = getUserProfile(notification.data.userId);
+                    const group = await getGroup(notification.data.groupId);
+                    const userToAdd = await getUserProfile(notification.data.userId);
 
                     if (group && userToAdd) {
                         if (!group.memberIds.includes(userToAdd.id)) {
                             group.memberIds.push(userToAdd.id);
-                            saveGroup(group);
+                            await saveGroup(group);
                             
                             if (!userToAdd.groupIds) userToAdd.groupIds = [];
                             if (!userToAdd.groupIds.includes(group.id)) {
                                 userToAdd.groupIds.push(group.id);
-                                saveUserProfile(userToAdd);
+                                await saveUserProfile(userToAdd);
                             }
                             showDialogMessage(dialog, t('notifications.feedback.userAddedToGroup', { name: userToAdd.name }), 'success');
                         }
@@ -499,17 +499,17 @@ function acceptNotification(notificationId) {
                     }
                 } else if (notification.type === 'group_invitation') {
                     // Lógica para convites de grupo
-                    const group = getGroup(notification.data.groupId);
+                    const group = await getGroup(notification.data.groupId);
                     if (group && !group.memberIds.includes(currentUser.id)) {
                         group.memberIds.push(currentUser.id);
-                        saveGroup(group);
+                        await saveGroup(group);
                         
                         // Adicionar grupo ao perfil do usuário
-                        const userProfile = getUserProfile(currentUser.id);
+                        const userProfile = await getUserProfile(currentUser.id);
                         if (userProfile) {
                             if (!userProfile.groupIds) userProfile.groupIds = [];
                             userProfile.groupIds.push(group.id);
-                            saveUserProfile(userProfile);
+                            await saveUserProfile(userProfile);
                         }
                         
                         // PASSO 2: Adiciona log de entrada no grupo
@@ -517,17 +517,17 @@ function acceptNotification(notificationId) {
                         group.activityLog.push({
                             action: 'member_joined', userId: currentUser.id, timestamp: new Date().toISOString(), memberName: currentUser.name
                         });
-                        saveGroup(group);
+                        await saveGroup(group);
 
                         showDialogMessage(dialog, t('notifications.feedback.groupInviteAccepted'), 'success');
                     }
                 }
                 
-                saveNotifications(currentUser.id, notifications);
-                renderNotifications();
-                renderFriendRequests();
-                renderGroupRequests(); // ATUALIZAÇÃO: Renderiza também a lista de grupos
-                updateNotificationBadge();
+                await saveNotifications(currentUser.id, notifications);
+                await renderNotifications();
+                await renderFriendRequests();
+                await renderGroupRequests(); // ATUALIZAÇÃO: Renderiza também a lista de grupos
+                await updateNotificationBadge();
 
                 return true;
             } catch (error) {
@@ -539,21 +539,21 @@ function acceptNotification(notificationId) {
     );
 }
 
-function rejectNotification(notificationId) {
+async function rejectNotification(notificationId) {
     const notification = notifications.find(n => n.id === notificationId);
     if (!notification) return;
     
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) return;
     
     showConfirmationDialog(
         t('notifications.confirm.reject'),
-        (dialog) => {
+        async (dialog) => {
             // Marcar como lida e processar recusa
             notification.read = true;
             notification.status = 'rejected';
             
-            saveNotifications(currentUser.id, notifications);
+            await saveNotifications(currentUser.id, notifications);
             renderNotifications();
             renderFriendRequests();
             renderGroupRequests(); // ATUALIZAÇÃO: Renderiza também a lista de grupos
@@ -565,7 +565,7 @@ function rejectNotification(notificationId) {
     );
 }
 
-function viewNotification(notificationId) {
+async function viewNotification(notificationId) {
     const notification = notifications.find(n => n.id === notificationId);
     if (!notification) return;
     
@@ -576,11 +576,11 @@ function viewNotification(notificationId) {
     
     // Marcar como lida
     notification.read = true;
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (currentUser) {
-        saveNotifications(currentUser.id, notifications);
-        renderNotifications();
-        updateNotificationBadge();
+        await saveNotifications(currentUser.id, notifications);
+        await renderNotifications();
+        await updateNotificationBadge();
     }
     
     // Preencher conteúdo do diálogo
@@ -616,7 +616,7 @@ function viewNotification(notificationId) {
     dialog.showModal();
 }
 
-function handleNotificationDialogAction() {
+async function handleNotificationDialogAction() {
     const dialog = document.getElementById('notification-details-dialog');
     const notificationId = dialog.dataset.notificationId;
     if (!notificationId) return;
@@ -638,7 +638,7 @@ function handleNotificationDialogAction() {
 
     } else if (notification.type === 'report' && notification.data.groupName) {
         // CORREÇÃO: Redireciona para a aba de relatórios e pré-seleciona os filtros
-        const group = getAllGroups().find(g => g.name === notification.data.groupName); // Idealmente, seria por ID
+        const group = (await getAllGroups()).find(g => g.name === notification.data.groupName); // Idealmente, seria por ID
         if (group) {
             localStorage.setItem('openTab', 'reports');
             localStorage.setItem('groupId', group.id);
@@ -650,7 +650,7 @@ function handleNotificationDialogAction() {
     dialog.close();
 }
 
-function updateNotificationBadge() {
+async function updateNotificationBadge() {
     const unreadCount = notifications.filter(n => !n.read).length;
     const badge = document.querySelector('#notificationsBtn .badge');
     
@@ -661,16 +661,16 @@ function updateNotificationBadge() {
 }
 
 // Função para adicionar uma nova notificação
-function addNotificationToUser(userId, notification) {
-    const userNotifications = getNotifications(userId) || [];
+async function addNotificationToUser(userId, notification) {
+    const userNotifications = await getNotifications(userId) || [];
     userNotifications.unshift(notification);
-    saveNotifications(userId, userNotifications);
+    await saveNotifications(userId, userNotifications);
     
     // Se for o usuário atual, atualiza a interface
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (currentUser && currentUser.id === userId) {
         if (window.location.pathname.includes('notifications.html')) {
-            renderNotifications();
+            await renderNotifications();
         }
         updateNotificationBadge();
     }
@@ -684,7 +684,7 @@ function addNotificationToUser(userId, notification) {
 }
 
 // Funções para adicionar tipos específicos de notificações
-export function addFriendRequestNotification(senderName, senderId, receiverId) {
+export async function addFriendRequestNotification(senderName, senderId, receiverId) {
     const notification = {
         id: 'friend-request-' + Date.now() + '-' + receiverId,
         type: 'friend_request',
@@ -698,11 +698,11 @@ export function addFriendRequestNotification(senderName, senderId, receiverId) {
         actions: ['accept', 'reject']
     };
     
-    addNotificationToUser(receiverId, notification);
+    await addNotificationToUser(receiverId, notification);
     return notification;
 }
 
-export function addFriendAcceptedNotification(accepterName, accepterId, originalSenderId) {
+export async function addFriendAcceptedNotification(accepterName, accepterId, originalSenderId) {
     const notification = {
         id: 'friend-accepted-' + Date.now() + '-' + originalSenderId,
         type: 'friend_accepted',
@@ -716,11 +716,11 @@ export function addFriendAcceptedNotification(accepterName, accepterId, original
         actions: ['view']
     };
     
-    addNotificationToUser(originalSenderId, notification);
+    await addNotificationToUser(originalSenderId, notification);
     return notification;
 }
 
-export function addFollowNotification(senderName, senderId, receiverId) {
+export async function addFollowNotification(senderName, senderId, receiverId) {
     const notification = {
         id: 'follow-' + Date.now() + '-' + receiverId,
         type: 'follow',
@@ -733,14 +733,14 @@ export function addFollowNotification(senderName, senderId, receiverId) {
         status: 'unread'
     };
     
-    addNotificationToUser(receiverId, notification);
+    await addNotificationToUser(receiverId, notification);
     return notification;
 }
 
 
 
 // Substituir a função existente por:
-export function addGroupInvitationNotification(groupName, groupId, adminName, adminId, userId) {
+export async function addGroupInvitationNotification(groupName, groupId, adminName, adminId, userId) {
     const notification = {
         id: 'group-invite-' + Date.now() + '-' + userId,
         type: 'group_invitation',
@@ -757,11 +757,11 @@ export function addGroupInvitationNotification(groupName, groupId, adminName, ad
         }
     };
     
-    addNotificationToUser(userId, notification);
+    await addNotificationToUser(userId, notification);
     return notification;
 }
 
-export function addGroupLeaveNotification(groupName, leaverName, adminId) {
+export async function addGroupLeaveNotification(groupName, leaverName, adminId) {
     const notification = {
         id: 'group-leave-' + Date.now() + '-' + adminId,
         type: 'group_leave',
@@ -772,11 +772,11 @@ export function addGroupLeaveNotification(groupName, leaverName, adminId) {
         status: 'unread'
     };
     
-    addNotificationToUser(adminId, notification);
+    await addNotificationToUser(adminId, notification);
     return notification;
 }
 
-export function addGroupRemovalNotification(groupName, adminName, userId) {
+export async function addGroupRemovalNotification(groupName, adminName, userId) {
     const notification = {
         id: 'group-removal-' + Date.now() + '-' + userId,
         type: 'group_removal',
@@ -787,11 +787,11 @@ export function addGroupRemovalNotification(groupName, adminName, userId) {
         status: 'unread'
     };
     
-    addNotificationToUser(userId, notification);
+    await addNotificationToUser(userId, notification);
     return notification;
 }
 
-export function addMessageNotification(senderName, senderId, receiverId, messagePreview) {
+export async function addMessageNotification(senderName, senderId, receiverId, messagePreview) {
     const notification = {
         id: 'message-' + Date.now() + '-' + receiverId,
         type: 'message',
@@ -805,11 +805,11 @@ export function addMessageNotification(senderName, senderId, receiverId, message
         actions: ['view']
     };
     
-    addNotificationToUser(receiverId, notification);
+    await addNotificationToUser(receiverId, notification);
     return notification;
 }
 
-export function addCardAssignmentNotification(assignerName, assigneeId, cardTitle, boardTitle) {
+export async function addCardAssignmentNotification(assignerName, assigneeId, cardTitle, boardTitle) {
     const notification = {
         id: 'card-assign-' + Date.now() + '-' + assigneeId,
         type: 'card_assignment',
@@ -825,11 +825,11 @@ export function addCardAssignmentNotification(assignerName, assigneeId, cardTitl
         }
     };
     
-    addNotificationToUser(assigneeId, notification);
+    await addNotificationToUser(assigneeId, notification);
     return notification;
 }
 
-export function addCardDueNotification(userId, cardTitle, boardName, cardId, dueDate) {
+export async function addCardDueNotification(userId, cardTitle, boardName, cardId, dueDate) {
     const today = new Date();
     const due = new Date(dueDate);
     const diffTime = due - today;
@@ -858,18 +858,18 @@ export function addCardDueNotification(userId, cardTitle, boardName, cardId, due
         read: false,
         data: { boardName, cardId, dueDate }
     };
-    addNotificationToUser(userId, notification);
+    await addNotificationToUser(userId, notification);
 }
 
-export function addMeetingNotification(meetingTitle, groupName, meetingDate) {
-    addNotificationToUser(currentUser.id, { // Notifica o usuário atual
+export async function addMeetingNotification(meetingTitle, groupName, meetingDate) {
+    await addNotificationToUser(currentUser.id, { // Notifica o usuário atual
         type: 'meeting', title: t('notifications.types.meeting.title'), message: t('notifications.types.meeting.message', { title: meetingTitle, groupName: groupName }),
         group: groupName,
         meetingDate: meetingDate
     });
 }
 
-export function addReportNotification(userId, period, groupName) {
+export async function addReportNotification(userId, period, groupName) {
     const periodNames = {
         daily: t('ui.daily'),
         weekly: t('ui.weekly'),
@@ -885,10 +885,10 @@ export function addReportNotification(userId, period, groupName) {
         read: false,
         data: { groupName, period }
     };
-    addNotificationToUser(userId, notification);
+    await addNotificationToUser(userId, notification);
 }
 
-export function addGroupRequestNotification(groupName, groupId, userName, userId, adminId) {
+export async function addGroupRequestNotification(groupName, groupId, userName, userId, adminId) {
     const notification = {
         id: 'group-request-' + Date.now(),
         type: 'group_request',
@@ -906,5 +906,5 @@ export function addGroupRequestNotification(groupName, groupId, userName, userId
             groupName: groupName
         }
     };
-    addNotificationToUser(adminId, notification);
+    await addNotificationToUser(adminId, notification);
 }

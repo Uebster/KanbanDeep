@@ -350,8 +350,20 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
  * @param {string} type - O tipo de mensagem ('success', 'error', 'info').
  */
 export function showDialogMessage(dialog, message, type = 'info') {
-    const feedbackEl = dialog.querySelector('.feedback');
-    if (!feedbackEl) return;
+    let feedbackEl = dialog.querySelector('.feedback');
+    // CORREÇÃO: Se o elemento de feedback não existir no diálogo, cria um dinamicamente.
+    // Isso torna a função mais robusta e evita falhas silenciosas.
+    if (!feedbackEl) {
+        feedbackEl = document.createElement('div');
+        feedbackEl.className = 'feedback';
+        // Insere o feedback antes dos botões de ação para um melhor layout.
+        const actionsContainer = dialog.querySelector('.modal-actions');
+        if (actionsContainer) {
+            dialog.insertBefore(feedbackEl, actionsContainer);
+        } else {
+            dialog.appendChild(feedbackEl);
+        }
+    }
     
     feedbackEl.textContent = message;
     feedbackEl.className = `feedback ${type} show`;
@@ -380,14 +392,18 @@ export function updateUserAvatar(user) {
         avatarImg.src = user.avatar;
         avatarImg.alt = `Avatar de ${user.name}`;
     } else {
+        // CORREÇÃO: Garante que user.name e user.id existam antes de usá-los.
+        const userName = user.name || ' ';
+        const userId = user.id || 'temp-id';
+
         // Avatar padrão baseado nas iniciais
-        const initials = user.name.split(' ')
+        const initials = userName.split(' ')
             .map(n => n[0])
             .join('')
             .toUpperCase();
         
         // Cor de fundo baseada no ID do usuário (para consistência)
-        const hue = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+        const hue = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
         const backgroundColor = `hsl(${hue}, 65%, 65%)`;
         
         // Criar avatar com iniciais (usando SVG para evitar dependências externas)
@@ -397,11 +413,11 @@ export function updateUserAvatar(user) {
         </svg>`;
         
         avatarImg.src = 'data:image/svg+xml;base64,' + btoa(svgString);
-        avatarImg.alt = `Avatar de ${user.name} (${initials})`;
+        avatarImg.alt = `Avatar de ${userName} (${initials})`;
     }
     
     // Adicionar tooltip com nome do usuário
-    avatarBtn.title = t('ui.loggedInAs', { name: user.name });
+    avatarBtn.title = t('ui.loggedInAs', { name: user.name || '' });
 }
 
 // ===== FUNÇÕES DE TEMA E FONTE UNIVERSAIS =====
@@ -410,8 +426,8 @@ export function updateUserAvatar(user) {
  * Aplica o tema (claro/escuro) e a fonte com base nas preferências do usuário.
  * Esta função deve ser chamada em todas as páginas após o login.
  */
-export function applyUserTheme() {
-    const user = getCurrentUser();
+export async function applyUserTheme() {
+    const user = await getCurrentUser();
     if (!user) return;
 
     // 1. Aplica o tema (claro/escuro)
@@ -467,8 +483,8 @@ function applyPrimaryColor(colorData) {
     }
 }
 
-function applyUserFont() {
-    const user = getCurrentUser();
+async function applyUserFont() {
+    const user = await getCurrentUser();
     if (!user || !user.preferences) return;
     
     applyFontFamily(user.preferences.fontFamily || 'Segoe UI');
@@ -480,10 +496,22 @@ function applyFontFamily(fontFamily) {
     document.documentElement.style.setProperty('--app-font-family', fontFamily);
 }
 
-function applyFontSize(size) {
+async function applyFontSize(size, isPreview = false) {
     const sizeMap = { small: '0.75rem', medium: '1rem', large: '1.3rem', 'x-large': '1.6rem' };
     const fontSizeValue = sizeMap[size] || '1rem'; // Padrão para 1rem (medium)
     document.documentElement.style.fontSize = fontSizeValue;
+
+    if (!isPreview) {
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+            await updateUser(currentUser.id, { 
+                preferences: {
+                    ...(currentUser.preferences || {}),
+                    fontSize: size
+                }
+            });
+        }
+    }
 }
 
 let hideHeaderTimeout; // Variável para controlar o delay de fechamento
@@ -545,8 +573,8 @@ function handleHeaderMouseMove(e) {
 /**
  * Inicializa ou desativa o comportamento de "header inteligente" (auto-ocultar).
  */
-export function initSmartHeader() {
-    const user = getCurrentUser();
+export async function initSmartHeader() {
+    const user = await getCurrentUser();
     const header = document.getElementById('main-header');
     if (!user || !header) return;
 
@@ -627,7 +655,7 @@ export function showIconPickerDialog(callback) {
  * @param {string} currentColor - A cor atual em formato hexadecimal ou rgba.
  * @param {function(string): void} callback - Função chamada com a nova cor (formato rgba) ao confirmar.
  */
-export function showCustomColorPickerDialog(currentColor, callback) {
+export async function showCustomColorPickerDialog(currentColor, callback) {
     let dialog = document.getElementById('custom-color-picker-dialog');
     if (!dialog) {
         dialog = document.createElement('dialog');
@@ -685,13 +713,13 @@ export function showCustomColorPickerDialog(currentColor, callback) {
     const alphaSlider = dialog.querySelector('.alpha-slider');
     const alphaHandle = alphaSlider.querySelector('.slider-handle');
     const alphaInput = dialog.querySelector('.alpha-input');
-
+    
     const addColorBtn = dialog.querySelector('.btn-add-color');
     const paletteGrid = dialog.querySelector('.custom-palette-grid');
 
     const MAX_SAVED_COLORS = 16;
     let h = 0, s = 1, v = 1, a = 1;
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     const storageKey = `customColors_${currentUser.id}`;
 
     // Funções auxiliares para a paleta customizada
@@ -817,12 +845,15 @@ function rgbToHex(r, g, b, a) { const toHex = (c) => ('0' + Math.round(c).toStri
 function parseColor(colorString) { if (colorString.startsWith('#')) { let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])([a-f\d])?$/i; colorString = colorString.replace(shorthandRegex, (m, r, g, b, a) => r + r + g + g + b + b + (a ? a + a : '')); let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})?$/i.exec(colorString); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16), a: result[4] !== undefined ? (parseInt(result[4], 16) / 255) : 1 } : null; } let match = colorString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/); if (match) { return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]), a: match[4] !== undefined ? parseFloat(match[4]) : 1 }; } return { r: 255, g: 0, b: 0, a: 1 }; }
 
 export function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => { clearTimeout(timeout); func(...args); };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
     };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 /**
@@ -990,7 +1021,8 @@ export function showContextMenu(event, items) {
  * @param {object} context - O contexto de salvamento. Ex: { ownerType: 'user' } ou { ownerType: 'group', ownerId: '...' }.
  * @param {string|null} templateId - O ID do template para editar, ou null para criar um novo.
  */
-export function showTemplateEditorDialog(type, context, templateId = null) {
+export async function showTemplateEditorDialog(type, context, templateId = null) {
+    const currentUser = await getCurrentUser();
     const isBoard = type === 'board';
     const dialogId = isBoard ? 'board-template-dialog' : 'tag-template-dialog';
 
@@ -1021,7 +1053,8 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
     if (context.ownerType === 'group') {
         groupSelectorContainer.style.display = 'block';
         const groupSelect = groupSelectorContainer.querySelector('select');
-        const adminGroups = getAllGroups().filter(g => g.adminId === getCurrentUser().id);
+        const allGroups = (await getAllGroups()) || [];
+        const adminGroups = allGroups.filter(g => g.adminId === currentUser.id);
 
         groupSelect.innerHTML = `<option value="">${t('templateEditor.selectGroup')}</option>`;
         adminGroups.forEach(g => {
@@ -1044,12 +1077,12 @@ export function showTemplateEditorDialog(type, context, templateId = null) {
 
     // Lógica para preencher os dados se estiver editando
     let template = null;
-    if (templateId) {
+    if (templateId) { // Esta parte precisa ser assíncrona
         if (context.ownerType === 'user') {
-            const templates = isBoard ? getUserBoardTemplates(getCurrentUser().id) : getUserTagTemplates(getCurrentUser().id);
+            const templates = isBoard ? await getUserBoardTemplates(currentUser.id) : await getUserTagTemplates(currentUser.id);
             template = templates.find(t => t.id === templateId);
         } else if (context.ownerType === 'group') {
-            const group = getGroup(context.ownerId);
+            const group = await getGroup(context.ownerId);
             const templates = isBoard ? group?.boardTemplates : group?.tagTemplates;
             template = (templates || []).find(t => t.id === templateId);
         }
@@ -1227,7 +1260,7 @@ function saveTemplateFromEditor(dialog, type) {
     // Validação para templates de grupo
     if (context.ownerType === 'group') {
         const groupId = dialog.querySelector('.template-group-select').value;
-        if (!groupId) {
+        if (!groupId && !templateId) { // Permite salvar se estiver editando (grupo desabilitado)
             showDialogMessage(dialog, t('templateEditor.groupRequired'), 'error');
             return;
         }
@@ -1253,26 +1286,26 @@ function saveTemplateFromEditor(dialog, type) {
     if (type === 'board') newTemplateData.columns = items;
     else newTemplateData.tags = items;
 
-    showConfirmationDialog(t('templateEditor.confirmSave'), (confirmDialog) => {
+    showConfirmationDialog(t('templateEditor.confirmSave'), async (confirmDialog) => {
         let success = false;
         if (context.ownerType === 'user') {
-            const userId = getCurrentUser().id;
+            const userId = (await getCurrentUser()).id;
             const getFunc = type === 'board' ? getUserBoardTemplates : getUserTagTemplates;
             const saveFunc = type === 'board' ? saveUserBoardTemplates : saveUserTagTemplates;
-            let templates = getFunc(userId);
+            let templates = await getFunc(userId);
             const index = templates.findIndex(t => t.id === templateId);
             if (index !== -1) templates[index] = newTemplateData;
             else templates.push(newTemplateData);
-            success = saveFunc(userId, templates);
+            success = await saveFunc(userId, templates);
         } else if (context.ownerType === 'group') {
-            const group = getGroup(context.ownerId);
+            const group = await getGroup(context.ownerId);
             if (group) {
                 const templateKey = type === 'board' ? 'boardTemplates' : 'tagTemplates';
                 if (!group[templateKey]) group[templateKey] = [];
                 const index = group[templateKey].findIndex(t => t.id === templateId);
                 if (index !== -1) group[templateKey][index] = newTemplateData;
                 else group[templateKey].push(newTemplateData);
-                success = saveGroup(group);
+                success = await saveGroup(group);
             }
         }
 
