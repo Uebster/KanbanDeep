@@ -3634,7 +3634,7 @@ async function saveBoardAsTemplate() {
             return;
         }
 
-        const existingTemplates = getUserBoardTemplates(currentUser.id);
+        const existingTemplates = await getUserBoardTemplates(currentUser.id);
         if (existingTemplates.some(t => t.name.toLowerCase() === templateName.toLowerCase())) {
             showDialogMessage(dialog, t('kanban.feedback.templateNameExists'), 'error');
             return;
