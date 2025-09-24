@@ -138,27 +138,29 @@ function setupGlobalCloseListeners() {
  * - Submissão de diálogos com ENTER.
  */
 function setupKeyboardShortcuts() {
+    // Tab navigation must be on keydown to prevent default focus change.
     document.addEventListener("keydown", (e) => {
-        // Navegação por TAB dentro de modais
         if (e.key === "Tab") {
             handleTabNavigation(e);
         }
+    });
 
-        // --- LÓGICA DE ENTER APRIMORADA E CENTRALIZADA ---
-        // Se a tecla "Enter" for pressionada em um campo que não seja uma área de texto...
+    // Enter key logic is on keyup to prevent event re-triggering on new dialogs.
+    document.addEventListener("keyup", (e) => {
         if (e.key === "Enter" && !e.shiftKey && e.target.tagName !== "TEXTAREA") {
-            // ...e houver um diálogo (<dialog>) aberto na tela...
             const openDialog = document.querySelector('dialog[open]');
             if (openDialog) {
-                // ...procuramos pelo botão de ação principal.
-                // A nova convenção é '.btn.confirm', mas mantemos '.btn-primary' para compatibilidade.
-                // O seletor agora busca por um botão que tenha a classe 'confirm' OU a classe 'btn-primary'.
                 const primaryButton = openDialog.querySelector('.btn.confirm, .btn-primary');
                 
-                // Se o botão existir e não estiver desabilitado...
+                // If Enter is pressed on the button itself, let the browser handle the click.
+                // This prevents a double-fire event.
+                if (primaryButton && e.target === primaryButton) {
+                    return;
+                }
+
+                // If Enter is pressed elsewhere (e.g., input field), trigger the click programmatically.
                 if (primaryButton && !primaryButton.disabled) {
-                    e.preventDefault(); // Previne o comportamento padrão do Enter (ex: submeter um formulário)
-                    primaryButton.click(); // Simula o clique no botão "Salvar" ou "Confirmar".
+                    primaryButton.click();
                 }
             }
         }
@@ -359,10 +361,10 @@ export function showConfirmationDialog(message, onConfirm, onCancel = null, conf
         if (success) {
             setTimeout(closeAndCleanup, 1500);
         } else {
-            // Se a operação falhou (retornou false), a função onConfirm já mostrou a mensagem de erro.
-            // Esperamos um pouco para que a mensagem seja lida e então fechamos o diálogo.
-            // Isso permite que o usuário corrija o formulário.
-            setTimeout(closeAndCleanup, 2000);
+            // Se a operação falhou, reabilita os botões para que o usuário possa tentar novamente ou cancelar.
+            // A mensagem de erro já deve ter sido exibida pela função onConfirm.
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
         }
     });
 }
@@ -521,22 +523,10 @@ function applyFontFamily(fontFamily) {
     document.documentElement.style.setProperty('--app-font-family', fontFamily);
 }
 
-async function applyFontSize(size, isPreview = false) {
+function applyFontSize(size, isPreview = false) {
     const sizeMap = { small: '0.75rem', medium: '1rem', large: '1.3rem', 'x-large': '1.6rem' };
     const fontSizeValue = sizeMap[size] || '1rem'; // Padrão para 1rem (medium)
     document.documentElement.style.fontSize = fontSizeValue;
-
-    if (!isPreview) {
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-            await updateUser(currentUser.id, { 
-                preferences: {
-                    ...(currentUser.preferences || {}),
-                    fontSize: size
-                }
-            });
-        }
-    }
 }
 
 let hideHeaderTimeout; // Variável para controlar o delay de fechamento

@@ -120,7 +120,6 @@ export async function initKanbanPage() {
     tooltipElement = document.getElementById('card-tooltip');
     checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId)
     // 4. Renderização Inicial
-    initUIControls();
     renderBoardSelector();
     renderCurrentBoard();
     initCustomSelects(); // Aplica o estilo customizado ao select principal de quadros
@@ -1790,12 +1789,6 @@ async function showBoardDialog(boardId = null) {
         }
     }
 
-    // Inicializa os selects customizados APÓS popular todos os dados.
-    // Isso evita a dessincronização e o erro reportado.
-    setTimeout(() => {
-        initCustomSelects();
-    }, 0);
-
     const userTemplates = await getUserBoardTemplates(currentUser.id);
     const systemTemplates = await getSystemBoardTemplates();
     
@@ -1814,6 +1807,12 @@ async function showBoardDialog(boardId = null) {
     // Esconde o select de template se estiver editando um quadro existente
     templateSelect.parentElement.style.display = boardId ? 'none' : 'block';
     
+    // Inicializa os selects customizados APÓS popular todos os dados.
+    // Isso evita a dessincronização e o erro reportado.
+    setTimeout(() => {
+        initCustomSelects();
+    }, 0);
+
     dialog.showModal();
 }
 
@@ -1902,6 +1901,7 @@ async function handleSaveBoard() {
                 await showSuccessAndRefresh(dialog, savedBoard.id);
                 return true; // Fecha o diálogo de confirmação
             }
+            showDialogMessage(confirmationDialog, t('kanban.feedback.boardSaveFailed'), 'error');
             return false; // Mantém o diálogo de confirmação aberto em caso de erro
         }
     );
