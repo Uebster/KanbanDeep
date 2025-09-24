@@ -620,6 +620,27 @@ export async function initSmartHeader() {
 }
 
 /**
+ * Aplica o estado do Smart Header visualmente para pré-visualização.
+ * @param {boolean} isEnabled - Se o header inteligente deve ser ativado.
+ */
+export function applySmartHeaderState(isEnabled) {
+    const header = document.getElementById('main-header');
+    if (!header) return;
+
+    // Remove listeners antigos para evitar duplicação
+    document.removeEventListener('mousemove', handleHeaderMouseMove);
+
+    if (isEnabled) {
+        document.body.classList.add('smart-header-enabled');
+        document.addEventListener('mousemove', handleHeaderMouseMove);
+    } else {
+        document.body.classList.remove('smart-header-enabled');
+        // Garante que o header fique visível ao desativar
+        header.classList.remove('show-header'); 
+    }
+}
+
+/**
  * Desativa forçadamente o Smart Header, removendo a classe e o listener.
  * Útil para modos como o tour guiado.
  */

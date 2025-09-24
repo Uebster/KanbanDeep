@@ -61,10 +61,14 @@ function createWindow () {
   });
 
   // Opcional: Descomente a linha abaixo para abrir as ferramentas de desenvolvedor ao iniciar.
-  // mainWindow.webContents.openDevTools();
-
-  // --- OCULTA O MENU PADRÃO ---
-  mainWindow.setMenu(null);
+  // Se a aplicação não estiver empacotada (ou seja, em modo de desenvolvimento),
+  // não oculta o menu e abre o DevTools. Isso facilita a depuração.
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  } else {
+    // Em produção (aplicação empacotada), oculta o menu.
+    mainWindow.setMenu(null);
+  }
 }
 
 app.whenReady().then(() => {

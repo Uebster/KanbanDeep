@@ -3,14 +3,14 @@
 import { getCurrentUser, updateUser } from './auth.js';
 import { archiveBoard,
     getUserProfile, saveUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
-    getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard,
+    getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard, deleteGroup,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
     getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, closeAllDropdowns,
     initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects,
     applyUserTheme, showIconPickerDialog, ICON_LIBRARY, showContextMenu, showCustomColorPickerDialog, 
-    makeDraggable, initSmartHeader, disableSmartHeader } from './ui-controls.js';
+    makeDraggable, initSmartHeader, disableSmartHeader, applySmartHeaderState } from './ui-controls.js';
 import { t, initTranslations, applyTranslations, loadLanguage } from './translations.js';
 import { addCardAssignmentNotification, addCardDueNotification } from './notifications.js';
 
@@ -309,9 +309,9 @@ function setupEventListeners() {
             { id: 'pref-card-show-details', action: applyCardPreview },
             { id: 'pref-enable-card-tooltip', action: applyCardPreview },
             { id: 'pref-card-show-assignment', action: applyCardPreview },
-            { id: 'pref-board-show-title', action: applyTitlePreview },
+            { id: 'pref-board-show-title', action: applyTitlePreview }, // Corrigido
             { id: 'pref-board-show-icon', action: applyTitlePreview },
-            { id: 'pref-smart-header', action: null }
+            { id: 'pref-smart-header', action: (e) => applySmartHeaderState(e.target.checked) }
         ];
 
         fieldsToTrack.forEach(field => {
@@ -3873,8 +3873,7 @@ async function restoreKanbanOriginalSettings() {
     }
 
     // Restaura o header inteligente
-    const isSmartHeaderEnabled = originalPreferences.smartHeader === true;
-    document.body.classList.toggle('smart-header-enabled', isSmartHeaderEnabled);
+    applySmartHeaderState(originalPreferences.smartHeader);
 
     // 3. Redesenha o quadro para aplicar as preferências de exibição de cartão/quadro
     await renderCurrentBoard();
