@@ -99,6 +99,20 @@ async function setupGlobalHeader() {
         applyUserTheme();
     }
 
+    // --- LÓGICA DA COR DA WINDOW-BAR ---
+    const windowBar = document.querySelector('.window-bar');
+    if (windowBar && currentUser) {
+        const primaryColor = currentUser.preferences?.primaryColor;
+        if (primaryColor && primaryColor.hex && primaryColor.hex !== 'none') {
+            // A função shadeColor não está disponível aqui, então vamos apenas clarear um pouco
+            // a cor para o hover dos botões de forma genérica.
+            const darkerColor = shadeColor(primaryColor.hex, -20);
+            windowBar.style.backgroundColor = darkerColor;
+        }
+        // Se não houver cor primária, ele manterá a cor padrão do CSS.
+    }
+
+
     // Inicializa selects customizados em todas as páginas
     initCustomSelects();
 
@@ -171,6 +185,27 @@ async function setupGlobalHeader() {
     if (pageTitle) {
         pageTitle.textContent = document.title.split('-')[0].trim(); 
     }
+}
+
+/**
+ * Escurece ou clareia uma cor hexadecimal.
+ * Função auxiliar movida para cá para ser acessível globalmente.
+ * @param {string} color - A cor em formato hex (ex: #RRGGBB).
+ * @param {number} percent - A porcentagem para clarear (positivo) ou escurecer (negativo).
+ * @returns {string} A nova cor em formato hex.
+ */
+function shadeColor(color, percent) {
+    let R = parseInt(color.substring(1, 3), 16);
+    let G = parseInt(color.substring(3, 5), 16);
+    let B = parseInt(color.substring(5, 7), 16);
+
+    R = parseInt(R * (100 + percent) / 100);
+    G = parseInt(G * (100 + percent) / 100);
+    B = parseInt(B * (100 + percent) / 100);
+
+    R = (R < 255) ? R : 255; G = (G < 255) ? G : 255; B = (B < 255) ? B : 255;
+
+    return `#${(R.toString(16).padStart(2, '0'))}${(G.toString(16).padStart(2, '0'))}${(B.toString(16).padStart(2, '0'))}`;
 }
 
 document.addEventListener('DOMContentLoaded', main);

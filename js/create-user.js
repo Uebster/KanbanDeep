@@ -116,6 +116,7 @@ function setupColorPicker() {
             // --- LÓGICA DE PRÉ-VISUALIZAÇÃO DA WINDOW-BAR ---
             const darkerColor = shadeColor(hex, -20); // Escurece a cor em 20%
             document.querySelector('.window-bar')?.style.setProperty('background-color', darkerColor);
+
         }
     });
 }
@@ -257,6 +258,24 @@ function applyTheme(theme) {
         case 'light-gray': document.body.classList.add('light-gray-mode'); break;
     }
 }
+
+function showSaveConfirmationDialog() {
+    showConfirmationDialog(t('createUser.confirm.register'), // "Confirmar cadastro do novo usuário?"
+        async (dialog) => {
+            const result = await processUserCreation();
+            
+            if (result.success) {
+                showDialogMessage(dialog, t('createUser.feedback.success'), 'success');
+                setTimeout(() => window.location.href = 'list-users.html', 1500);
+                return true; // Sinaliza para fechar o diálogo
+            } else {
+                showDialogMessage(dialog, t(result.message), 'error');
+                return false; // Mantém o diálogo aberto para correção
+            }
+        }
+    );
+}
+
 /**
  * Escurece ou clareia uma cor hexadecimal.
  * @param {string} color - A cor em formato hex (ex: #RRGGBB).
@@ -275,21 +294,4 @@ function shadeColor(color, percent) {
     R = (R < 255) ? R : 255; G = (G < 255) ? G : 255; B = (B < 255) ? B : 255;
 
     return `#${(R.toString(16).padStart(2, '0'))}${(G.toString(16).padStart(2, '0'))}${(B.toString(16).padStart(2, '0'))}`;
-}
-
-function showSaveConfirmationDialog() {
-    showConfirmationDialog(t('createUser.confirm.register'), // "Confirmar cadastro do novo usuário?"
-        async (dialog) => {
-            const result = await processUserCreation();
-            
-            if (result.success) {
-                showDialogMessage(dialog, t('createUser.feedback.success'), 'success');
-                setTimeout(() => window.location.href = 'list-users.html', 1500);
-                return true; // Sinaliza para fechar o diálogo
-            } else {
-                showDialogMessage(dialog, t(result.message), 'error');
-                return false; // Mantém o diálogo aberto para correção
-            }
-        }
-    );
 }
