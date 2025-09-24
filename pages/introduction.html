@@ -5,9 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bem-vindo - KanbanDeep</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+    <!-- Adiciona o CSS universal que contém os estilos da nova barra de título -->
+    <link rel="stylesheet" href="../static/universal.css">
     <link rel="stylesheet" href="../static/introduction.css">
 </head>
 <body>
+    <!-- Adiciona a estrutura HTML da barra de título customizada -->
+    <div class="window-bar">
+        <div class="window-brand">
+            <img id="window-icon" src="../assets/kanban-deep-logo.png" alt="Ícone do App">
+            <div id="window-title">KanbanDeep</div>
+        </div>
+        <div class="window-controls">
+            <button id="window-minimize-btn" class="window-btn" title="Minimizar">—</button>
+            <button id="window-maximize-btn" class="window-btn" title="Maximizar">□</button>
+            <button id="window-close-btn" class="window-btn" title="Fechar">✕</button>
+        </div>
+    </div>
+
     <div class="intro-container">
         <div class="logo-animation">
             <div class="logo-text">
@@ -59,6 +74,9 @@
         </div>
     </div>
 
+    <!-- O script da página de introdução continua aqui -->
     <script src="../js/introduction.js"></script>
+    <!-- Adiciona o renderer.js, que controla a funcionalidade dos botões da janela -->
+    <script type="module" src="../js/renderer.js"></script>
 </body>
 </html>

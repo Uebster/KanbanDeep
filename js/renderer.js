@@ -20,6 +20,8 @@ import { t } from './translations.js';
  */
 async function main() { // <-- Torna a função principal assíncrona
     initUIControls(); // <-- CHAMA A NOVA FUNÇÃO
+    setupWindowControls(); // <-- NOVA FUNÇÃO PARA OS BOTÕES DA JANELA
+
     checkAndSendReports(); // Verifica e envia relatórios agendados
 
     const path = window.location.pathname;
@@ -54,6 +56,26 @@ async function main() { // <-- Torna a função principal assíncrona
 }
 }
 
+/**
+ * Configura os listeners para os botões customizados da janela.
+ * Esta função é chamada em todas as páginas.
+ */
+function setupWindowControls() {
+    const minimizeBtn = document.getElementById('window-minimize-btn');
+    const maximizeBtn = document.getElementById('window-maximize-btn');
+    const closeBtn = document.getElementById('window-close-btn');
+
+    if (minimizeBtn) minimizeBtn.addEventListener('click', () => window.electronAPI.minimizeWindow());
+    if (maximizeBtn) maximizeBtn.addEventListener('click', () => window.electronAPI.maximizeWindow());
+    if (closeBtn) closeBtn.addEventListener('click', () => window.electronAPI.closeWindow());
+
+    // Ouve o status de maximização para trocar o ícone do botão
+    window.electronAPI.onWindowMaximizedStatus((isMaximized) => {
+        if (maximizeBtn) {
+            maximizeBtn.textContent = isMaximized ? '⧉' : '□';
+        }
+    });
+}
 /**
  * Configura um cabeçalho global SIMPLES para todas as páginas, EXCETO o Kanban.
  * Ele é flexível: só adiciona funcionalidade aos botões que existem no HTML.

@@ -14,6 +14,7 @@ function createWindow () {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    frame: false, // <-- REMOVE A BARRA DE TÍTULO PADRÃO
     show: false, // Cria a janela oculta para evitar um "flash" visual.
     webPreferences: {
       // O preload.js é uma ponte segura entre o backend (Node.js) e o frontend (sua página).
@@ -23,6 +24,25 @@ function createWindow () {
       // - contextIsolation: true -> Garante que o preload e o frontend rodem em contextos diferentes.
       contextIsolation: true
     }
+  });
+
+  // --- CONTROLES DE JANELA CUSTOMIZADOS ---
+  // Ouve os eventos de maximizar/desmaximizar e notifica a interface
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window-maximized-status', true));
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window-maximized-status', false));
+
+  ipcMain.on('minimize-window', () => {
+    mainWindow.minimize();
+  });
+  ipcMain.on('maximize-window', () => {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  });
+  ipcMain.on('close-window', () => {
+    mainWindow.close();
   });
 
   // Carrega o arquivo HTML inicial da sua aplicação.
@@ -42,6 +62,9 @@ function createWindow () {
 
   // Opcional: Descomente a linha abaixo para abrir as ferramentas de desenvolvedor ao iniciar.
   // mainWindow.webContents.openDevTools();
+
+  // --- OCULTA O MENU PADRÃO ---
+  mainWindow.setMenu(null);
 }
 
 app.whenReady().then(() => {

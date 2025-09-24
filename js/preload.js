@@ -3,6 +3,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expõe funções seguras para o processo de renderização (suas páginas HTML)
 contextBridge.exposeInMainWorld('electronAPI', {
   // Funções de atualização
+  minimizeWindow: () => ipcRenderer.send('minimize-window'),
+  maximizeWindow: () => ipcRenderer.send('maximize-window'),
+  closeWindow: () => ipcRenderer.send('close-window'),
+  onWindowMaximizedStatus: (callback) => ipcRenderer.on('window-maximized-status', (_event, isMaximized) => callback(isMaximized)),
   onUpdateProgress: (callback) => ipcRenderer.on('update-download-progress', (_event, value) => callback(value)),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),

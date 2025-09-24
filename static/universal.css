@@ -106,6 +106,76 @@ body {
     background-color: var(--bg-page);
     color: var(--text);
     min-height: 100vh;
+    padding-top: 32px; /* Empurra todo o conteúdo para baixo para dar espaço à barra de título */
+}
+
+/* ===== BARRA DE TÍTULO CUSTOMIZADA (WINDOW-BAR) ===== */
+.window-bar {
+    -webkit-app-region: drag; /* Torna a barra arrastável */
+    height: 32px;
+    /* Cor padrão azul-água escurecido para telas de login */
+    background-color: #2a7c87; 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 0 0 0 10px; /* Padding apenas à esquerda */
+}
+
+.window-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+}
+
+#window-icon {
+    width: 20px;
+    height: 20px;
+}
+
+#window-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.window-controls {
+    -webkit-app-region: no-drag; /* Garante que os botões não sejam arrastáveis */
+    display: flex;
+    height: 100%;
+}
+
+.window-btn {
+    width: 46px;
+    height: 100%;
+    border: none;
+    background-color: transparent;
+    color: #ffffff;
+    font-size: 16px;
+    transition: background-color 0.2s ease;
+}
+
+.window-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+.window-btn#window-close-btn:hover {
+    background-color: #e81123;
+}
+
+/* --- CORREÇÃO PARA O SMART HEADER --- */
+/* Cria uma "zona de ativação" invisível no topo da barra de título. */
+/* Esta área não é arrastável, permitindo que o evento de mouse passe e ative o Smart Header. */
+.window-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px; /* Uma faixa fina no topo da tela */
+    -webkit-app-region: no-drag; /* Essencial: permite que o mouse seja detectado aqui */
 }
 
 /* Força a fonte em elementos que podem resistir */
