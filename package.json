@@ -41,6 +41,11 @@
     "linux": {
       "icon": "assets/kanban-deep-logo.png"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "README.md"
+    },
     "publish": {
       "provider": "github",
       "owner": "Uebster",
