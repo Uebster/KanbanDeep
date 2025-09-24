@@ -26,6 +26,7 @@
     "archive.sections.columns": "Spalten",
     "archive.tabs.archived": "Archiviert",
     "archive.tabs.trash": "Papierkorb",
+    "archive.unknownBoard": "Unbekanntes Board",
     "activityLog.action.archived": "{user} hat diese Karte archiviert.",
     "activityLog.action.completed": "{user} hat diese Karte abgeschlossen.",
     "activityLog.action.created": "{user} hat diese Karte erstellt.",

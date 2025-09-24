@@ -26,6 +26,7 @@
     "archive.sections.columns": "Columns",
     "archive.tabs.archived": "Archived",
     "archive.tabs.trash": "Trash",
+    "archive.unknownBoard": "Unknown Board",
     "activityLog.action.archived": "{user} archived this card.",
     "activityLog.action.completed": "{user} completed this card.",
     "activityLog.action.created": "{user} created this card.",

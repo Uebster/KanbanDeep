@@ -26,6 +26,7 @@
     "archive.sections.columns": "Colunas",
     "archive.tabs.archived": "Arquivados",
     "archive.tabs.trash": "Lixeira",
+    "archive.unknownBoard": "Quadro Desconhecido",
     "activityLog.action.archived": "{user} arquivou este cartão.",
     "activityLog.action.completed": "{user} concluiu este cartão.",
     "activityLog.action.created": "{user} criou este cartão.",

@@ -26,6 +26,7 @@
     "archive.sections.columns": "Columnas",
     "archive.tabs.archived": "Archivados",
     "archive.tabs.trash": "Papelera",
+    "archive.unknownBoard": "Tablero Desconocido",
     "activityLog.action.archived": "{user} archivó esta tarjeta.",
     "activityLog.action.completed": "{user} completó esta tarjeta.",
     "activityLog.action.created": "{user} creó esta tarjeta.",

@@ -26,6 +26,7 @@
     "archive.sections.columns": "Colonne",
     "archive.tabs.archived": "Archiviati",
     "archive.tabs.trash": "Cestino",
+    "archive.unknownBoard": "Bacheca Sconosciuta",
     "activityLog.action.archived": "{user} ha archiviato questa scheda.",
     "activityLog.action.completed": "{user} ha completato questa scheda.",
     "activityLog.action.created": "{user} ha creato questa scheda.",

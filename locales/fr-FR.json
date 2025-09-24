@@ -26,6 +26,7 @@
     "archive.sections.columns": "Colonnes",
     "archive.tabs.archived": "Archivés",
     "archive.tabs.trash": "Corbeille",
+    "archive.unknownBoard": "Tableau Inconnu",
     "activityLog.action.archived": "{user} a archivé cette carte.",
     "activityLog.action.completed": "{user} a terminé cette carte.",
     "activityLog.action.created": "{user} a créé cette carte.",

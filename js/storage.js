@@ -51,8 +51,8 @@ async function getItem(id, prefix) { return await universalLoad(`${prefix}_${id}
 async function saveItem(itemData, prefix) {
     if (!itemData.id) {
         itemData.id = generateUniqueId(prefix.slice(0, -1));
-        // Garante que novos itens tenham um log de atividades
-        if (prefix === 'card') itemData.activityLog = [];
+        // Garante que novos cartões tenham um log de atividades, se ele ainda não existir.
+        if (prefix === 'card' && !itemData.activityLog) itemData.activityLog = [];
     }
     await universalSave(`${prefix}_${itemData.id}`, itemData);
     return itemData;

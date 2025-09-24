@@ -30,55 +30,27 @@ export async function initArchivePage() {
     await initTranslations();
 
     allUsers = await getAllUsers();
-    loadAllArchivedItems();
+    await loadAllArchivedItems(); // CORREÇÃO: Adicionado 'await' aqui
     renderAllLists();
     setupEventListeners();
 }
 
 async function loadAllArchivedItems() {
-    const userProfile = await getUserProfile(currentUser.id);    
+    // 1. Limpa o estado e busca todos os arquivos de dados de uma vez
     allArchivedItems = { cards: [], columns: [], boards: [] };
-
-    if (!userProfile) {
-        console.error("Could not load user profile for archive page.");
-        renderAllLists(); // Render empty lists to avoid a blank page
-        return;
-    }
-
-    // CORREÇÃO: Usa a API de arquivos para buscar todos os dados, em vez do localStorage.
-    const allFileNames = await window.electronAPI.listFiles();
+    const allFileNames = await window.electronAPI.listFiles(); // Busca todos os nomes de arquivo
+    const allCardKeys = allFileNames.filter(name => name.startsWith('card_'));
+    const allColumnKeys = allFileNames.filter(name => name.startsWith('column_'));
     const allBoardKeys = allFileNames.filter(name => name.startsWith('board_'));
 
-    for (const key of allBoardKeys) {
-        const boardId = key.replace('board_', '');
-        const board = await getFullBoardData(boardId, true); // true to include archived items
-        if (!board) return;
+    // 2. Carrega TODOS os itens que estão marcados como arquivados (incluindo os da lixeira)
+    const archivedCards = (await Promise.all(allCardKeys.map(key => getCard(key.replace('card_', ''))))).filter(c => c && c.isArchived);
+    const archivedColumns = (await Promise.all(allColumnKeys.map(key => getColumn(key.replace('column_', ''))))).filter(c => c && c.isArchived);
+    const archivedBoards = (await Promise.all(allBoardKeys.map(key => getBoard(key.replace('board_', ''))))).filter(b => b && b.isArchived);
 
-        // Find archived cards
-        for (const column of board.columns) {
-            for (const card of column.cards) {
-                if (card.isArchived) {
-                    allArchivedItems.cards.push({
-                        ...card,
-                        boardId: board.id,
-                        columnId: column.id
-                    });
-                }
-            }
-        }
-
-        // Find archived columns
-        const archivedColumnPromises = (board.archivedColumnIds || []).map(async (colId) => {
-            const col = await getColumn(colId);
-            return col ? { ...col, boardId: board.id } : null;
-        });
-        const archivedColumns = (await Promise.all(archivedColumnPromises)).filter(Boolean);
-        allArchivedItems.columns.push(...archivedColumns);
-    }
-
-    // Carrega quadros arquivados do perfil do usuário
-    const archivedBoardIds = userProfile.archivedBoardIds || [];
-    const archivedBoards = (await Promise.all(archivedBoardIds.map(id => getBoard(id)))).filter(b => b && b.isArchived);
+    // 3. Adiciona todos os itens encontrados às listas globais. A função de renderização cuidará do resto
+    allArchivedItems.cards.push(...archivedCards);
+    allArchivedItems.columns.push(...archivedColumns);
     allArchivedItems.boards.push(...archivedBoards);
 }
 
@@ -446,11 +418,14 @@ async function handleEmptyTrash() {
     showConfirmationDialog(
         t('archive.confirm.emptyTrash', { count: totalItems }),
         async (dialog) => {
+            // 1. Deleta os arquivos físicos
             await Promise.all(trashCards.map(card => deleteCard(card.id)));
             await Promise.all(trashColumns.map(col => deleteColumn(col.id)));
             await Promise.all(trashBoards.map(board => deleteBoard(board.id)));
 
             showDialogMessage(dialog, t('archive.feedback.trashEmptied'), 'success');
+            
+            // 2. Recarrega o estado do zero para garantir a sincronia
             await loadAllArchivedItems();
             renderAllLists();
             return true;

@@ -2828,7 +2828,7 @@ async function handleCopyColumn(columnId) {
             ...card,
             id: null, // Reseta o ID para criar um novo
             creatorId: currentUser.id,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString() // REMOVIDO: Não copia o log de atividades antigo.
         }));
 
         clipboard = {
@@ -2837,7 +2837,7 @@ async function handleCopyColumn(columnId) {
             data: {
                 ...columnToCopy,
                 id: null, // Reseta o ID da coluna
-                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`,
+                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`, // Adiciona o sufixo ao título da coluna
                 cards: cardsToCopy // Armazena os dados completos dos cartões a serem criados
             }
         };
@@ -3730,11 +3730,10 @@ async function handlePasteColumn() {
                 ...cardData,
                 id: null, // Garante um novo ID
                 title: `${cardData.title} ${t('kanban.board.copySuffix')}`,
-                activityLog: [{
-                    action: 'created_from_column_copy', // Ação específica
-                    userId: currentUser.id,
-                    timestamp: new Date().toISOString()
-                }]
+                activityLog: [
+                    // Apenas o log específico de cópia de coluna é necessário.
+                    { action: 'created_from_column_copy', userId: currentUser.id, timestamp: new Date().toISOString() } // Log de cópia de coluna
+                ]
             };
             return await saveCard(newCard);
         }));

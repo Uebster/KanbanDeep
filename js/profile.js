@@ -5,7 +5,7 @@ import { getUserProfile, deleteUserProfile, getUserTagTemplates, getSystemTagTem
       getNotifications,   // <-- Adicione esta
   saveNotifications, saveUserProfile
 } from './storage.js';
-import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage, debounce, initCustomSelects, applyUserTheme } from './ui-controls.js';
+import { showFloatingMessage, initDraggableElements, updateUserAvatar, showConfirmationDialog, showDialogMessage, debounce, initCustomSelects, applyUserTheme, applySmartHeaderState } from './ui-controls.js';
 import { applyTranslations, t, initTranslations, loadLanguage } from './translations.js';
 import { addGroupRequestNotification } from './notifications.js';
 
@@ -240,7 +240,8 @@ function setupEventListeners() {
     // Listeners com pré-visualização
     const previewFields = [
         { id: 'theme', action: (e) => applyThemeFromSelect(e.target.value) },
-        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) }, // applyFontSize agora é async
+        { id: 'font-size', action: (e) => applyFontSize(e.target.value, true) },
+        { id: 'pref-smart-header', action: (e) => applySmartHeaderState(e.target.checked) },
         { id: 'font-family', action: (e) => applyFontFamily(e.target.value, true) } // <-- CORREÇÃO ADICIONADA
     ];
     previewFields.forEach(field => {
@@ -255,7 +256,7 @@ function setupEventListeners() {
 
     // Para checkboxes
     [
-        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details', 'pref-enable-card-tooltip', 'pref-smart-header'
+        'pref-card-show-tags', 'pref-card-show-date', 'pref-card-show-status', 'pref-card-show-assignment', 'pref-board-show-title', 'pref-board-show-icon', 'pref-card-show-details', 'pref-enable-card-tooltip'
     ].forEach(id => document.getElementById(id)?.addEventListener('change', () => { isSaved = false; }));
     
     // Para opções de privacidade
@@ -1088,6 +1089,9 @@ async function restoreOriginalData() {
     // Restaura a fonte
     applyFontFamily(prefs.fontFamily || 'Segoe UI, Inter, sans-serif');
     await applyFontSize(prefs.fontSize || 'medium', true);
+
+    // Restaura o Smart Header
+    applySmartHeaderState(originalUserData.preferences?.smartHeader === true);
 
     // Restaura a cor primária
     const primaryColor = prefs.primaryColor;
