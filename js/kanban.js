@@ -18,6 +18,7 @@ import { addCardAssignmentNotification, addCardDueNotification } from './notific
 let currentUser = null;
 let allUsers = [];
 let boards = [];
+let allGroups = [];
 let currentBoard = null;
 let draggedElement = null;
 let currentBoardFilter = 'personal';
@@ -134,8 +135,8 @@ async function loadData() {
     allUsers = await getAllUsers();
     const userProfile = await getUserProfile(currentUser.id);
 
-    // Carrega todos os quadros de todos os grupos dos quais o usuário é membro
-    const allGroups = await getAllGroups();
+    // Carrega todos os quadros de todos os grupos dos quais o usuário é membro (agora em escopo global)
+    allGroups = await getAllGroups();
     const memberGroups = allGroups.filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
     const groupBoardIds = memberGroups.flatMap(g => g.boardIds || []);
 
@@ -3112,17 +3113,29 @@ function handleArchiveBoard(boardId) {
     showConfirmationDialog(
         t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }), // Adicionar tradução
         async (dialog) => {
-            const archived = archiveBoard(boardId, currentUser.id, 'archived');
+            const archived = await archiveBoard(boardId, currentUser.id, 'archived');
             if (!archived) return false;
 
-            // Atualiza o perfil do usuário para mover o quadro para a lista de arquivados
-            const userProfile = await getUserProfile(currentUser.id);
-            userProfile.boardIds = (userProfile.boardIds || []).filter(id => id !== boardId);
-            if (!userProfile.archivedBoardIds) userProfile.archivedBoardIds = [];
-            if (!userProfile.archivedBoardIds.includes(boardId)) {
-                userProfile.archivedBoardIds.push(boardId);
+            // --- CORREÇÃO: Lógica de arquivamento para quadros de grupo ---
+            if (boardToArchive.groupId) {
+                // Se for um quadro de grupo, remove a referência do grupo
+                const group = await getGroup(boardToArchive.groupId);
+                if (group) {
+                    group.boardIds = (group.boardIds || []).filter(id => id !== boardId);
+                    await saveGroup(group);
+                }
+            } else {
+                // Se for um quadro pessoal, remove a referência do perfil do usuário
+                const userProfile = await getUserProfile(currentUser.id);
+                if (userProfile) {
+                    userProfile.boardIds = (userProfile.boardIds || []).filter(id => id !== boardId);
+                    if (!userProfile.archivedBoardIds) userProfile.archivedBoardIds = [];
+                    if (!userProfile.archivedBoardIds.includes(boardId)) {
+                        userProfile.archivedBoardIds.push(boardId);
+                    }
+                    await saveUserProfile(userProfile);
+                }
             }
-            await saveUserProfile(userProfile);
             
             // Recarrega os dados para atualizar a lista de quadros
             await loadData();
@@ -3219,11 +3232,19 @@ async function trashEntireBoard(boardId) {
     // 3. Arquiva o quadro
     await archiveBoard(board.id, currentUser.id, 'deleted');
 
-    // 4. Remove o quadro da lista ativa do usuário
-    const userProfile = await getUserProfile(currentUser.id);
-    if (userProfile && userProfile.boardIds) {
-        userProfile.boardIds = userProfile.boardIds.filter(id => id !== boardId);
-        await saveUserProfile(userProfile);
+    // 4. Remove a referência do quadro da sua lista de origem (perfil do usuário ou grupo)
+    if (board.groupId) {
+        const group = await getGroup(board.groupId);
+        if (group && group.boardIds) {
+            group.boardIds = group.boardIds.filter(id => id !== boardId);
+            await saveGroup(group);
+        }
+    } else {
+        const userProfile = await getUserProfile(currentUser.id);
+        if (userProfile && userProfile.boardIds) {
+            userProfile.boardIds = userProfile.boardIds.filter(id => id !== boardId);
+            await saveUserProfile(userProfile);
+        }
     }
 }
 
