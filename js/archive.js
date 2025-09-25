@@ -525,14 +525,24 @@ async function handleEmptyTrash() {
     showConfirmationDialog(
         t('archive.confirm.emptyTrash', { count: trashItems.length }),
         async (dialog) => {
-            // CORREÇÃO FINAL: Lógica simplificada e direta para esvaziar a lixeira.
-            // Itera sobre todos os itens e chama a função de exclusão apropriada.
-            // A inteligência de cascata está nas funções `hardDelete`.
-            await Promise.all(trashItems.map(item => {
-                if (item.id.startsWith('board_')) return hardDeleteBoard(item.id);
-                if (item.id.startsWith('column_')) return hardDeleteColumn(item.id);
-                if (item.id.startsWith('card_')) return deleteCard(item.id);
-            }));
+            // ETAPA 4: Lógica de exclusão hierárquica para evitar conflitos
+            const cardsInTrash = trashItems.filter(item => item.id.startsWith('card_'));
+            const columnsInTrash = trashItems.filter(item => item.id.startsWith('column_'));
+            const boardsInTrash = trashItems.filter(item => item.id.startsWith('board_'));
+
+            const columnIdsInTrash = new Set(columnsInTrash.map(c => c.id));
+            const boardIdsInTrash = new Set(boardsInTrash.map(b => b.id));
+
+            // 1. Exclui os quadros. A função hardDeleteBoard cuidará de todos os seus filhos.
+            await Promise.all(boardsInTrash.map(board => hardDeleteBoard(board.id)));
+
+            // 2. Exclui as colunas que são verdadeiramente órfãs (cujo quadro NÃO estava na lixeira).
+            const orphanColumns = columnsInTrash.filter(col => !boardIdsInTrash.has(col.boardId));
+            await Promise.all(orphanColumns.map(col => hardDeleteColumn(col.id)));
+
+            // 3. Exclui os cartões que são verdadeiramente órfãos (cuja coluna NÃO estava na lixeira).
+            const orphanCards = cardsInTrash.filter(card => !columnIdsInTrash.has(card.columnId));
+            await Promise.all(orphanCards.map(card => deleteCard(card.id)));
 
             showDialogMessage(dialog, t('archive.feedback.trashEmptied'), 'success');
             await loadAllArchivedItems();

@@ -122,17 +122,28 @@ export async function deleteCard(cardId) { return await deleteItem(cardId, 'card
 export async function archiveCard(cardId, userId, reason = 'archived', context = {}) {
     const card = await getCard(cardId);
     if (!card) return null;
+
+    // Adiciona o log de atividade apropriado ANTES de salvar.
+    const logAction = reason === 'deleted' ? 'trashed' : 'archived';
+    if (!card.activityLog) card.activityLog = [];
+    card.activityLog.push({
+        action: logAction,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    });
+
     card.isArchived = true;
     card.archivedAt = new Date().toISOString();
     card.archivedBy = userId;
     card.archiveReason = reason;
-    
-    // Store original context for intelligent restore
-    card.columnId = context.columnId;
-    card.boardId = context.boardId;
-    card.columnTitle = context.columnTitle;
-    card.boardTitle = context.boardTitle;
 
+    // Armazena o contexto original para restauração inteligente
+    card.columnId = context.columnId || card.columnId;
+    card.boardId = context.boardId || card.boardId;
+    card.columnTitle = context.columnTitle || card.columnTitle;
+    card.boardTitle = context.boardTitle || card.boardTitle;
+
+    // A função agora é responsável por salvar a si mesma, garantindo a atomicidade.
     return await saveCard(card);
 }
 

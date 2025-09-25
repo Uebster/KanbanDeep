@@ -1849,10 +1849,25 @@ async function handleSaveBoard() {
             if (boardId && boardId !== 'null') {
                 const boardData = await getBoard(boardId);
                 if (!boardData) return false;
+
+                // Adiciona log de edição se algo mudou
+                const hasChanged = boardData.title !== title || 
+                                 (boardData.description || '') !== description || 
+                                 (boardData.icon || '📋') !== icon;
+
+                if (hasChanged) {
+                    if (!boardData.activityLog) boardData.activityLog = [];
+                    boardData.activityLog.push({
+                        action: 'edited',
+                        userId: currentUser.id,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+
                 boardData.title = title;
                 boardData.description = description;
                 boardData.icon = icon;
-                savedBoard = saveBoard(boardData);
+                savedBoard = await saveBoard(boardData);
             } else { // Criando um novo quadro
                 const allTemplates = [...(await getUserBoardTemplates(currentUser.id)), ...(await getSystemBoardTemplates())];
                 const selectedTemplate = allTemplates.find(t => t.id === templateId);
@@ -1868,6 +1883,12 @@ async function handleSaveBoard() {
                     visibility: visibility, 
                     columnIds: newColumns.map(c => c.id) 
                 };
+                // Adiciona o log de criação
+                newBoardData.activityLog = [{
+                    action: 'created',
+                    userId: currentUser.id,
+                    timestamp: new Date().toISOString()
+                }];
 
                 // Se for um quadro de grupo, atribui o groupId
                 if (isGroupContext) {
@@ -2953,6 +2974,20 @@ async function showDetailsDialog(cardId = null, columnId = null) {
             });
         });
 
+    } else if (boardId) {
+        const board = boards.find(b => b.id === boardId);
+        if (!board) return;
+        titleEl.textContent = t('kanban.dialog.details.boardTitle', { title: board.title });
+
+        contentContainer.innerHTML = `
+            <div class="details-tabs">
+                <button class="details-tab-btn active" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
+            </div>
+            <div id="activity-pane" class="details-tab-pane active"></div>
+        `;
+        
+        renderBoardActivityLog(board, contentContainer.querySelector('#activity-pane'));
+
     } else if (columnId) {
         const column = findColumn(columnId);
         titleEl.textContent = t('kanban.dialog.details.columnTitle', { title: column.title });
@@ -3019,10 +3054,11 @@ function renderCardDetails(card, container) {
 /**
  * Renderiza a aba de log de atividades de um cartão.
  * @param {object} card - O objeto do cartão.
+ * @param {string} itemType - O tipo de item ('card', 'column', 'board').
  * @param {HTMLElement} container - O elemento onde o log será renderizado.
  */
-function renderActivityLog(card, container) {
-    const log = card.activityLog || [];
+function renderActivityLog(item, container, itemType = 'card') {
+    const log = item.activityLog || [];
     if (log.length === 0) {
         container.innerHTML = `<p class="activity-log-empty">${t('activityLog.empty')}</p>`;
         return;
@@ -3046,7 +3082,7 @@ function renderActivityLog(card, container) {
             toBoard: entry.toBoard
         };
         
-        const message = t(`activityLog.action.${entry.action}`, replacements)
+        const message = t(`activityLog.action.${itemType}.${entry.action}`, replacements)
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Converte markdown **bold** para <strong>
 
         logHtml += `
@@ -3212,6 +3248,15 @@ async function trashEntireBoard(boardId) {
         return;
     }
 
+    // Adiciona log de que foi movido para a lixeira
+    if (!board.activityLog) board.activityLog = [];
+    board.activityLog.push({
+        action: 'trashed',
+        userId: currentUser.id,
+        timestamp: new Date().toISOString()
+    });
+    await saveBoard(board);
+
     // A lógica de desmembramento está em archiveBoard.
     // Chamamos a função centralizada com o boardId correto.
     await archiveBoard(boardId, currentUser.id, 'deleted');
@@ -3239,8 +3284,8 @@ function handleDeleteBoard() {
     showConfirmationDialog(
         t('kanban.confirm.deleteBoard', { boardTitle: currentBoard.title }),
         async (dialog) => {
-            const boardIdToDelete = currentBoard.id;
-            await trashEntireBoard(boardIdToDelete);
+            const boardIdToDelete = currentBoard.id; // Salva o ID antes que currentBoard mude
+            await trashEntireBoard(boardIdToDelete); // 1. Aguarda a operação de mover para a lixeira (que já remove a referência do grupo/perfil).
             
             // CORREÇÃO DEFINITIVA: Remove o quadro da lista em memória para que a UI seja atualizada imediatamente.
             const boardIndex = boards.findIndex(b => b.id === boardIdToDelete);
