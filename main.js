@@ -4,6 +4,17 @@ const path = require('path');
 const log = require('electron-log');
 const fs = require('fs').promises; // Usaremos a versão baseada em Promises do 'fs'
 
+// --- CORREÇÃO PARA REPOSITÓRIO PRIVADO ---
+// Define o token de acesso do GitHub para o autoUpdater.
+// Isso permite que a aplicação baixe atualizações de um repositório privado.
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'Uebster',
+  repo: 'KanbanDeep',
+  private: true, // Informa que o repositório é privado
+  token: process.env.GH_TOKEN // Usa o mesmo token que você usa para publicar
+});
+
 // Nenhuma configuração manual é necessária. O electron-builder cuida disso.
 // Opcionalmente, configure o logging para depuração.
 autoUpdater.logger = log;
