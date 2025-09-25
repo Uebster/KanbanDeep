@@ -2846,7 +2846,7 @@ async function handleDeleteColumnFromMenu(columnId){
                 timestamp: new Date().toISOString()
             });
             await saveColumn(column); // Salva o log antes de arquivar
-            await archiveColumn(columnId, 'deleted'); // Arquiva com o motivo 'deleted'
+            await archiveColumn(columnId, currentUser.id, 'deleted'); // Chama a função do storage
             confirmationDialog.close(); // Fecha o diálogo de confirmação
         }, 
         null, t('ui.yesDelete'), t('ui.no'));
@@ -3257,15 +3257,6 @@ async function trashEntireBoard(boardId) {
         showFloatingMessage(t('archive.feedback.itemNotFound'), 'error');
         return;
     }
-
-    // Adiciona log de que foi movido para a lixeira
-    if (!board.activityLog) board.activityLog = [];
-    board.activityLog.push({
-        action: 'trashed',
-        userId: currentUser.id,
-        timestamp: new Date().toISOString()
-    });
-    await saveBoard(board);
 
     // A lógica de desmembramento está em archiveBoard.
     // Chamamos a função centralizada com o boardId correto.

@@ -167,6 +167,23 @@ export async function archiveColumn(columnId, userId, reason = 'archived', conte
     const column = await getColumn(columnId);
     if (!column) return null;
 
+    // Desmembra os cartões da coluna, arquivando-os individualmente.
+    if (column.cardIds && column.cardIds.length > 0) {
+        const cardContext = { ...context, columnId: column.id, columnTitle: column.title };
+        await Promise.all(column.cardIds.map(cardId => 
+            archiveCard(cardId, userId, reason, cardContext)
+        ));
+    }
+
+    // Adiciona o log de atividade apropriado ANTES de salvar.
+    const logAction = reason === 'deleted' ? 'trashed' : 'archived';
+    if (!column.activityLog) column.activityLog = [];
+    column.activityLog.push({
+        action: logAction,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    });
+
     column.isArchived = true;
     column.archiveReason = reason;
     column.archivedAt = new Date().toISOString();
@@ -273,6 +290,15 @@ export async function archiveBoard(boardId, userId, reason = 'archived') {
     board.archiveReason = reason;
     board.archivedAt = new Date().toISOString();
     board.archivedBy = userId;
+
+    // Adiciona o log de atividade apropriado ao quadro.
+    const logAction = reason === 'deleted' ? 'trashed' : 'archived';
+    if (!board.activityLog) board.activityLog = [];
+    board.activityLog.push({
+        action: logAction,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    });
     
     return await saveBoard(board);
 }
