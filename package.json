@@ -1,6 +1,6 @@
 {
   "name": "kanbandeep",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Um sistema de gerenciamento de projetos e tarefas inspirado no Kanban.",
   "main": "main.js",
   "scripts": {
