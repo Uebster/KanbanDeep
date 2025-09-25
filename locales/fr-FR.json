@@ -9,6 +9,7 @@
     "archive.confirm.emptyTrash": "Êtes-vous sûr de vouloir vider la corbeille ? {count} éléments seront supprimés définitivement.",
     "archive.confirm.restore": "Êtes-vous sûr de vouloir restaurer cet élément ?",
     "archive.confirm.restoreToNewBoardAndColumn": "Le tableau et la colonne d'origine n'existent plus. Voulez-vous créer un nouveau tableau et une nouvelle colonne pour restaurer cette carte ?",
+    "archive.confirm.restoreParent": "L'élément parent '{itemName}' se trouve dans {location}. Voulez-vous également le restaurer pour insérer cet élément ?",
     "archive.confirm.restoreToNewBoard": "Le tableau original '{boardName}' a été supprimé. Voulez-vous créer un nouveau tableau avec ce nom pour restaurer la colonne ?",
     "archive.confirm.restoreToNewColumn": "La colonne d'origine n'existe pas et le tableau '{boardName}' n'a pas de colonnes. Voulez-vous créer une nouvelle colonne nommée 'Colonne Restaurée' pour cette carte ?",
     "archive.confirm.restoreToFirstColumn": "La colonne d'origine n'existe plus. Voulez-vous restaurer cette carte dans la première colonne du tableau '{boardName}' ?",

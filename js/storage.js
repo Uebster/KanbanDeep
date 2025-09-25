@@ -140,15 +140,46 @@ export async function archiveCard(cardId, userId, reason = 'archived', context =
 export async function getColumn(columnId) { return await getItem(columnId, 'column'); }
 export async function saveColumn(columnData) { return await saveItem(columnData, 'column'); }
 export async function deleteColumn(columnId) {
-    const column = await getColumn(columnId);
-    if (column && column.cardIds) {
-        // Deleta apenas os cartões que NÃO estão arquivados.
-        const cards = await Promise.all(column.cardIds.map(cardId => getCard(cardId)));
-        const unarchivedCards = cards.filter(card => card && !card.isArchived);
-        await Promise.all(unarchivedCards.map(card => deleteCard(card.id)));
-    }
+    // ETAPA 1: A exclusão permanente de uma coluna agora não afeta mais seus cartões filhos.
+    // Eles se tornarão órfãos na lixeira, preservando seu contexto.
     return await deleteItem(columnId, 'column');
 }
+
+/**
+ * Arquiva uma coluna, movendo-a da visão principal para a lista de arquivadas.
+ * @param {string} columnId O ID da coluna a ser arquivada.
+ * @param {string} userId O ID do usuário que está arquivando.
+ * @param {string} reason O motivo do arquivamento ('archived' ou 'deleted').
+ * @param {object} context Contexto adicional como boardId e boardTitle.
+ */
+export async function archiveColumn(columnId, userId, reason = 'archived', context = {}) {
+    const column = await getColumn(columnId);
+    if (!column) return null;
+
+    column.isArchived = true;
+    column.archiveReason = reason;
+    column.archivedAt = new Date().toISOString();
+    column.archivedBy = userId;
+    column.boardId = context.boardId || column.boardId || 'unknown';
+    column.boardTitle = context.boardTitle || column.boardTitle || 'Unknown Board';
+    return await saveColumn(column);
+}
+
+/**
+ * ETAPA 4: Exclui permanentemente uma coluna e TODOS os seus cartões, independentemente do status.
+ * Usado para esvaziar a lixeira em cascata.
+ * @param {string} columnId O ID da coluna a ser excluída.
+ */
+export async function hardDeleteColumn(columnId) {
+    const column = await getColumn(columnId);
+    if (column && column.cardIds) {
+        // Deleta todos os cartões, sem verificar se estão arquivados.
+        await Promise.all(column.cardIds.map(cardId => deleteCard(cardId)));
+    }
+    // Finalmente, deleta a própria coluna.
+    return await deleteItem(columnId, 'column');
+}
+
 
 // --- Quadros ---
 export async function getBoard(boardId) { return await getItem(boardId, 'board'); }
@@ -169,12 +200,9 @@ export async function saveBoard(boardData) {
 }
 export async function deleteBoard(boardId) {
     const board = await getBoard(boardId);
-    if (board && board.columnIds) {
-        // Deleta apenas as colunas que NÃO estão arquivadas.
-        const columns = await Promise.all(board.columnIds.map(columnId => getColumn(columnId)));
-        const unarchivedColumns = columns.filter(col => col && !col.isArchived);
-        await Promise.all(unarchivedColumns.map(col => deleteColumn(col.id)));
-    }
+    // ETAPA 1: A exclusão permanente de um quadro agora não afeta mais suas colunas filhas.
+    // Elas se tornarão órfãs na lixeira. A lógica abaixo apenas remove as referências.
+
     // Remove a referência do quadro do perfil do dono
     if (board && board.ownerId) {
         const owner = await getUserProfile(board.ownerId);
@@ -194,19 +222,48 @@ export async function deleteBoard(boardId) {
     return await deleteItem(boardId, 'board');
 }
 
-export async function archiveBoard(boardId, userId, reason = 'archived') {
+/**
+ * ETAPA 4: Exclui permanentemente um quadro e TODOS os seus filhos (colunas e cartões).
+ * Usado para esvaziar a lixeira em cascata.
+ * @param {string} boardId O ID do quadro a ser excluído.
+ */
+export async function hardDeleteBoard(boardId) {
     const board = await getBoard(boardId);
+    if (board) {
+        // Deleta todas as colunas (que por sua vez deletarão seus cartões)
+        // tanto as ativas quanto as já arquivadas que pertencem a este quadro.
+        const allColumnIds = [...(board.columnIds || []), ...(board.archivedColumnIds || [])];
+        if (allColumnIds.length > 0) {
+            await Promise.all(allColumnIds.map(colId => hardDeleteColumn(colId)));
+        }
+    }
+    // Finalmente, deleta o próprio quadro.
+    return await deleteItem(boardId, 'board');
+}
+
+export async function archiveBoard(boardId, userId, reason = 'archived') {
+    // ETAPA 2: A função agora desmembra o quadro em itens independentes.
+    // Busca o quadro completo com todos os seus filhos.
+    const board = await getFullBoardData(boardId, true); // true para incluir itens já arquivados
     if (!board) return null;
 
+    // 1. Arquiva todos os filhos (colunas e cartões) individualmente.
+    for (const column of board.columns) {
+        // Arquiva cada cartão da coluna, salvando o contexto.
+        for (const card of column.cards) {
+            await archiveCard(card.id, userId, reason, { columnId: column.id, boardId: board.id, columnTitle: column.title, boardTitle: board.title });
+        }
+        // Arquiva a própria coluna, salvando o contexto.
+        await archiveColumn(column.id, userId, reason, { boardId: board.id, boardTitle: board.title }); // CORREÇÃO: Esta chamada agora funciona.
+    }
+
+    // 2. Arquiva o próprio quadro.
     board.isArchived = true;
     board.archiveReason = reason;
     board.archivedAt = new Date().toISOString();
     board.archivedBy = userId;
-    await saveBoard(board);
-
-    // A lógica de mover o ID do quadro do perfil do usuário será tratada no kanban.js
-    // para ter acesso ao currentUser.
-    return board;
+    
+    return await saveBoard(board);
 }
 
 /**

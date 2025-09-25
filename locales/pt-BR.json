@@ -9,6 +9,7 @@
     "archive.confirm.emptyTrash": "Tem certeza que deseja esvaziar a lixeira? {count} itens serão excluídos permanentemente.",
     "archive.confirm.restore": "Tem certeza de que deseja restaurar este item?",
     "archive.confirm.restoreToNewBoardAndColumn": "O quadro e a coluna originais não existem mais. Deseja criar um novo quadro e uma nova coluna para restaurar este cartão?",
+    "archive.confirm.restoreParent": "O item pai '{itemName}' está em {location}. Deseja restaurá-lo também para inserir este item?",
     "archive.confirm.restoreToNewBoard": "O quadro original '{boardName}' foi excluído. Deseja criar um novo quadro com este nome para restaurar a coluna?",
     "archive.confirm.restoreToNewColumn": "A coluna original não existe e o quadro '{boardName}' não tem colunas. Deseja criar uma nova coluna chamada 'Coluna Restaurada' para este cartão?",
     "archive.confirm.restoreToFirstColumn": "A coluna original não existe mais. Deseja restaurar este cartão para a primeira coluna do quadro '{boardName}'?",

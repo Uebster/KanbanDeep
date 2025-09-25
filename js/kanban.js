@@ -3142,8 +3142,12 @@ function handleArchiveBoard(boardId) {
                 }
             }
             
-            // Recarrega os dados para atualizar a lista de quadros
-            await loadData();
+            // CORREÇÃO DEFINITIVA: Remove o quadro da lista em memória para que a UI seja atualizada imediatamente.
+            const boardIndex = boards.findIndex(b => b.id === boardId);
+            if (boardIndex > -1) {
+                boards.splice(boardIndex, 1);
+            }
+
             // Seleciona o próximo quadro disponível que não esteja arquivado
             currentBoard = boards.find(b => !b.isArchived) || null; // Seleciona o próximo quadro disponível
             localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
@@ -3201,43 +3205,19 @@ async function toggleCardComplete(cardId) {
  * @param {string} boardId O ID do quadro a ser movido para a lixeira.
  */
 async function trashEntireBoard(boardId) {
-    const board = await getFullBoardData(boardId, true); // true para incluir colunas arquivadas
+    // CORREÇÃO: A variável 'board' não estava definida. É preciso buscar o quadro primeiro.
+    const board = await getBoard(boardId);
     if (!board) {
-        showFloatingMessage(t('kanban.feedback.boardNotFound'), 'error');
+        showFloatingMessage(t('archive.feedback.itemNotFound'), 'error');
         return;
     }
 
-    // 1. Arquiva todos os cartões dentro do quadro
-    for (const column of board.columns) {
-        // Garante que cards exista e seja um array
-        if (column.cards && Array.isArray(column.cards)) {
-            for (const card of column.cards) {
-                await archiveCard(card.id, currentUser.id, 'deleted', {
-                    columnId: column.id,
-                    boardId: board.id,
-                    columnTitle: column.title,
-                    boardTitle: board.title
-                });
-            }
-        }
-    }
-
-    // 2. Arquiva todas as colunas do quadro
-    for (const column of board.columns) {
-        const columnToArchive = await getColumn(column.id);
-        if (columnToArchive) {
-            columnToArchive.isArchived = true;
-            columnToArchive.archiveReason = 'deleted';
-            columnToArchive.archivedAt = new Date().toISOString();
-            columnToArchive.archivedBy = currentUser.id;
-            await saveColumn(columnToArchive);
-        }
-    }
-
-    // 3. Arquiva o quadro
-    await archiveBoard(board.id, currentUser.id, 'deleted');
+    // A lógica de desmembramento está em archiveBoard.
+    // Chamamos a função centralizada com o boardId correto.
+    await archiveBoard(boardId, currentUser.id, 'deleted');
 
     // 4. Remove a referência do quadro da sua lista de origem (perfil do usuário ou grupo)
+    // Agora a variável 'board' existe e esta lógica funcionará.
     if (board.groupId) {
         const group = await getGroup(board.groupId);
         if (group && group.boardIds) {
@@ -3259,20 +3239,18 @@ function handleDeleteBoard() {
     showConfirmationDialog(
         t('kanban.confirm.deleteBoard', { boardTitle: currentBoard.title }),
         async (dialog) => {
-            await trashEntireBoard(currentBoard.id);
+            const boardIdToDelete = currentBoard.id;
+            await trashEntireBoard(boardIdToDelete);
             
-            // --- CORREÇÃO: Remove o quadro da lista em memória para atualizar a UI imediatamente ---
-            const boardIndex = boards.findIndex(b => b.id === currentBoard.id);
+            // CORREÇÃO DEFINITIVA: Remove o quadro da lista em memória para que a UI seja atualizada imediatamente.
+            const boardIndex = boards.findIndex(b => b.id === boardIdToDelete);
             if (boardIndex > -1) {
                 boards.splice(boardIndex, 1);
             }
 
-            // Recarrega os dados para atualizar a UI
-            await loadData();
-            
             // Define o próximo quadro como ativo
             currentBoard = boards[0] || null;
-            localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : null);
+            localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
             
             renderBoardSelector();
             initCustomSelects();

@@ -9,6 +9,7 @@
     "archive.confirm.emptyTrash": "Are you sure you want to empty the trash? {count} items will be permanently deleted.",
     "archive.confirm.restore": "Are you sure you want to restore this item?",
     "archive.confirm.restoreToNewBoardAndColumn": "The original board and column no longer exist. Do you want to create a new board and a new column to restore this card?",
+    "archive.confirm.restoreParent": "The parent item '{itemName}' is in the {location}. Do you want to restore it as well to insert this item?",
     "archive.confirm.restoreToNewBoard": "The original board '{boardName}' was deleted. Do you want to create a new board with this name to restore the column?",
     "archive.confirm.restoreToNewColumn": "The original column does not exist and the board '{boardName}' has no columns. Do you want to create a new column named 'Restored Column' for this card?",
     "archive.confirm.restoreToFirstColumn": "The original column no longer exists. Do you want to restore this card to the first column of the board '{boardName}'?",

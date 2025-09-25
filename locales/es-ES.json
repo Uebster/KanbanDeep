@@ -9,6 +9,7 @@
     "archive.confirm.emptyTrash": "¿Estás seguro de que quieres vaciar la papelera? Se eliminarán {count} elementos de forma permanente.",
     "archive.confirm.restore": "¿Estás seguro de que quieres restaurar este elemento?",
     "archive.confirm.restoreToNewBoardAndColumn": "El tablero y la columna originales ya no existen. ¿Deseas crear un nuevo tablero y una nueva columna para restaurar esta tarjeta?",
+    "archive.confirm.restoreParent": "El elemento padre '{itemName}' está en {location}. ¿Deseas restaurarlo también para insertar este elemento?",
     "archive.confirm.restoreToNewBoard": "El tablero original '{boardName}' fue eliminado. ¿Deseas crear un nuevo tablero con este nombre para restaurar la columna?",
     "archive.confirm.restoreToNewColumn": "La columna original no existe y el tablero '{boardName}' no tiene columnas. ¿Deseas crear una nueva columna llamada 'Columna Restaurada' para esta tarjeta?",
     "archive.confirm.restoreToFirstColumn": "La columna original ya no existe. ¿Quieres restaurar esta tarjeta a la primera columna del tablero '{boardName}'?",

@@ -9,6 +9,7 @@
     "archive.confirm.emptyTrash": "Möchten Sie den Papierkorb wirklich leeren? {count} Elemente werden dauerhaft gelöscht.",
     "archive.confirm.restore": "Möchten Sie dieses Element wirklich wiederherstellen?",
     "archive.confirm.restoreToNewBoardAndColumn": "Das ursprüngliche Board und die ursprüngliche Spalte existieren nicht mehr. Möchten Sie ein neues Board und eine neue Spalte erstellen, um diese Karte wiederherzustellen?",
+    "archive.confirm.restoreParent": "Das übergeordnete Element '{itemName}' befindet sich in {location}. Möchten Sie es ebenfalls wiederherstellen, um dieses Element einzufügen?",
     "archive.confirm.restoreToNewBoard": "Das ursprüngliche Board '{boardName}' wurde gelöscht. Möchten Sie ein neues Board mit diesem Namen erstellen, um die Spalte wiederherzustellen?",
     "archive.confirm.restoreToNewColumn": "Die ursprüngliche Spalte existiert nicht und das Board '{boardName}' hat keine Spalten. Möchten Sie eine neue Spalte mit dem Namen 'Wiederhergestellte Spalte' für diese Karte erstellen?",
     "archive.confirm.restoreToFirstColumn": "Die ursprüngliche Spalte existiert nicht mehr. Möchten Sie diese Karte in der ersten Spalte des Boards '{boardName}' wiederherstellen?",

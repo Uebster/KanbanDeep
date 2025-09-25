@@ -9,6 +9,7 @@
     "archive.confirm.emptyTrash": "Sei sicuro di voler svuotare il cestino? {count} elementi verranno eliminati definitivamente.",
     "archive.confirm.restore": "Sei sicuro di voler ripristinare questo elemento?",
     "archive.confirm.restoreToNewBoardAndColumn": "La bacheca e la colonna originali non esistono più. Vuoi creare una nuova bacheca e una nuova colonna per ripristinare questa scheda?",
+    "archive.confirm.restoreParent": "L'elemento genitore '{itemName}' si trova in {location}. Vuoi ripristinarlo anche per inserire questo elemento?",
     "archive.confirm.restoreToNewBoard": "La bacheca originale '{boardName}' è stata eliminata. Vuoi creare una nuova bacheca con questo nome per ripristinare la colonna?",
     "archive.confirm.restoreToNewColumn": "La colonna originale non esiste e la bacheca '{boardName}' non ha colonne. Vuoi creare una nuova colonna chiamata 'Colonna Ripristinata' per questa scheda?",
     "archive.confirm.restoreToFirstColumn": "La colonna originale non esiste più. Vuoi ripristinare questa scheda nella prima colonna della bacheca '{boardName}'?",
