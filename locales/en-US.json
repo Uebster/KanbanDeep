@@ -468,6 +468,7 @@
     "kanban.dialog.template.title": "Save Board as Template",
     "kanban.dialog.templateNameRequired": "Template name is required.",
     "kanban.dialog.titleRequired": "Title is required.",
+    "kanban.feedback.boardMovedToTrash": "Board moved to trash.",
     "kanban.feedback.boardDeleted": "Board deleted successfully.",
     "kanban.feedback.boardSaved": "Board saved successfully!",
     "kanban.feedback.cardCopied": "Card copied!",

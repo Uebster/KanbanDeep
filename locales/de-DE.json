@@ -468,6 +468,7 @@
     "kanban.dialog.template.title": "Board als Vorlage speichern",
     "kanban.dialog.templateNameRequired": "Vorlagenname ist erforderlich.",
     "kanban.dialog.titleRequired": "Titel ist erforderlich.",
+    "kanban.feedback.boardMovedToTrash": "Board in den Papierkorb verschoben.",
     "kanban.feedback.boardDeleted": "Board erfolgreich gelöscht.",
     "kanban.feedback.boardSaved": "Board erfolgreich gespeichert!",
     "kanban.feedback.cardCopied": "Karte kopiert!",

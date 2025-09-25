@@ -468,6 +468,7 @@
     "kanban.dialog.template.title": "Salvar Quadro como Template",
     "kanban.dialog.templateNameRequired": "O nome do template é obrigatório.",
     "kanban.dialog.titleRequired": "O título é obrigatório.",
+    "kanban.feedback.boardMovedToTrash": "Quadro movido para a lixeira.",
     "kanban.feedback.boardDeleted": "Quadro excluído com sucesso.",
     "kanban.feedback.boardSaved": "Quadro salvo com sucesso!",
     "kanban.feedback.cardCopied": "Cartão copiado!",

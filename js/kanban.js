@@ -2020,6 +2020,11 @@ async function handleSaveColumn() {
                     if (!boardData.columnIds) boardData.columnIds = []; // Garante que o array exista
                     boardData.columnIds.push(newColumn.id);
                     await saveBoard(boardData);
+                    // --- CORREÇÃO: Adiciona a nova coluna ao currentBoard em memória ---
+                    // Isso garante que a coluna possa ser encontrada imediatamente por outras funções.
+                    if (!currentBoard.columns) currentBoard.columns = [];
+                    if (!currentBoard.columnIds) currentBoard.columnIds = [];
+                    currentBoard.columns.push(newColumn);
                 }
             }
             showDialogMessage(confirmationDialog, t('kanban.feedback.columnSaved'), 'success');
@@ -3256,6 +3261,12 @@ function handleDeleteBoard() {
         async (dialog) => {
             await trashEntireBoard(currentBoard.id);
             
+            // --- CORREÇÃO: Remove o quadro da lista em memória para atualizar a UI imediatamente ---
+            const boardIndex = boards.findIndex(b => b.id === currentBoard.id);
+            if (boardIndex > -1) {
+                boards.splice(boardIndex, 1);
+            }
+
             // Recarrega os dados para atualizar a UI
             await loadData();
             
@@ -3267,7 +3278,7 @@ function handleDeleteBoard() {
             initCustomSelects();
             renderCurrentBoard();
             
-            showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash', {defaultValue: "Quadro movido para a lixeira."} ), 'success');
+            showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
             return true;
         },
         null,

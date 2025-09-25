@@ -468,6 +468,7 @@
     "kanban.dialog.template.title": "Salva bacheca come modello",
     "kanban.dialog.templateNameRequired": "Il nome del modello è obbligatorio.",
     "kanban.dialog.titleRequired": "Il titolo è obbligatorio.",
+    "kanban.feedback.boardMovedToTrash": "Bacheca spostata nel cestino.",
     "kanban.feedback.boardDeleted": "Bacheca eliminata con successo.",
     "kanban.feedback.boardSaved": "Bacheca salvata con successo!",
     "kanban.feedback.cardCopied": "Scheda copiata!",

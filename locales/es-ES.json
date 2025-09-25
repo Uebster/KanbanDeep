@@ -468,6 +468,7 @@
     "kanban.dialog.template.title": "Guardar tablero como plantilla",
     "kanban.dialog.templateNameRequired": "El nombre de la plantilla es obligatorio.",
     "kanban.dialog.titleRequired": "El título es obligatorio.",
+    "kanban.feedback.boardMovedToTrash": "Tablero movido a la papelera.",
     "kanban.feedback.boardDeleted": "Tablero eliminado con éxito.",
     "kanban.feedback.boardSaved": "¡Tablero guardado con éxito!",
     "kanban.feedback.cardCopied": "¡Tarjeta copiada!",

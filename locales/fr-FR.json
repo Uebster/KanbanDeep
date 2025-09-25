@@ -468,6 +468,7 @@
     "kanban.dialog.template.title": "Enregistrer le Tableau comme Modèle",
     "kanban.dialog.templateNameRequired": "Le nom du modèle est requis.",
     "kanban.dialog.titleRequired": "Le titre est requis.",
+    "kanban.feedback.boardMovedToTrash": "Tableau déplacé vers la corbeille.",
     "kanban.feedback.boardDeleted": "Tableau supprimé avec succès.",
     "kanban.feedback.boardSaved": "Tableau enregistré avec succès !",
     "kanban.feedback.cardCopied": "Carte copiée !",
