@@ -277,19 +277,115 @@ async function handleRestoreCard(cardId) {
     const card = await getCard(cardId);
     if (!card) return showFloatingMessage(t('archive.feedback.itemNotFound'), 'error');
 
-    // FLUXO CORRIGIDO: Se estiver na lixeira, a única ação é mover para os arquivos.
-    if (card.archiveReason === 'deleted') {
-        card.archiveReason = 'archived';
-        await saveCard(card);
-        showFloatingMessage(t('archive.feedback.restoredFromTrash'), 'success');
-        await loadAllArchivedItems();
-        renderAllLists();
-        return;
+    showConfirmationDialog(t('archive.confirm.restore'), async (dialog) => {
+        await intelligentRestoreCard(card.id, dialog);
+    });
+}
+
+/**
+ * Função central para a restauração inteligente de um cartão.
+ * @param {string} cardId - O ID do cartão a ser restaurado.
+ * @param {HTMLElement} dialog - O diálogo de confirmação original.
+ */
+async function intelligentRestoreCard(cardId, dialog) {
+    const card = await getCard(cardId);
+    if (!card) {
+        showDialogMessage(dialog, t('archive.feedback.itemNotFound'), 'error');
+        return false;
     }
 
-    // A lógica de restauração inteligente só é acionada a partir dos "Arquivados".
-    // (O código para isso já existe e está correto)
-    // ...
+    const originalBoard = await getBoard(column.boardId);
+
+    // Cenário 1: O quadro pai existe e está ativo.
+    if (originalBoard && !originalBoard.isArchived) {
+        column.isArchived = false;
+        const fromLocation = column.archiveReason === 'deleted' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+        if (!column.activityLog) column.activityLog = [];
+        column.activityLog.push({ action: 'restored', userId: currentUser.id, timestamp: new Date().toISOString(), from: fromLocation });
+        delete column.archiveReason; delete column.archivedAt; delete column.archivedBy;
+        if (!originalBoard.columnIds) originalBoard.columnIds = [];
+        if (!originalBoard.columnIds.includes(column.id)) originalBoard.columnIds.push(column.id);
+        await saveColumn(column);
+        await saveBoard(originalBoard);
+        showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
+        await loadAllArchivedItems(); renderAllLists();
+        return true;
+    }
+
+    // Cenário 2: O quadro pai existe, mas está no arquivo/lixeira.
+    if (originalBoard && originalBoard.isArchived) {
+        const location = originalBoard.archiveReason === 'deleted' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+        showConfirmationDialog(
+            t('archive.confirm.restoreParent', { itemName: originalBoard.title, location: location }),
+            async (parentDialog) => {
+                const boardRestored = await intelligentRestoreBoard(originalBoard.id, parentDialog);
+                if (boardRestored) {
+                    // Agora que o quadro foi restaurado, restaura a coluna.
+                    await intelligentRestoreColumn(column.id, parentDialog);
+                    return true;
+                }
+                return false;
+            }
+        );
+        dialog.close();
+        return false;
+    }
+
+    // Cenário 3: O quadro pai foi excluído permanentemente.
+    const boardTitleForRestore = column.boardTitle || t('archive.unknownBoard');
+    showConfirmationDialog(
+        t('archive.confirm.restoreToNewBoard', { boardName: boardTitleForRestore }),
+        async (newBoardDialog) => {
+            const newBoard = await saveBoard({
+                title: t('archive.restoredBoardName', { oldName: boardTitleForRestore }),
+                ownerId: currentUser.id,
+                columnIds: [column.id]
+            });
+            column.isArchived = false;
+            const fromLocation = column.archiveReason === 'deleted' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+            if (!column.activityLog) column.activityLog = [];
+            column.activityLog.push({ action: 'restored', userId: currentUser.id, timestamp: new Date().toISOString(), from: fromLocation });
+            delete column.archiveReason; delete column.archivedAt; delete column.archivedBy;
+            column.boardId = newBoard.id;
+            await saveColumn(column);
+            showDialogMessage(newBoardDialog, t('archive.feedback.restoredToNewBoard'), 'success');
+            await loadAllArchivedItems(); renderAllLists();
+            return true;
+        }
+    );
+    dialog.close();
+    return false;
+}
+
+/**
+ * Função auxiliar para restaurar um cartão em uma coluna de destino.
+ * @param {object} card - O objeto do cartão.
+ * @param {string} targetColumnId - O ID da coluna de destino.
+ * @param {string} targetBoardId - O ID do quadro de destino.
+ */
+async function restoreCardToColumn(card, targetColumnId, targetBoardId) {
+    card.isArchived = false;
+
+    const fromLocation = card.archiveReason === 'deleted' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+    if (!card.activityLog) card.activityLog = [];
+    card.activityLog.push({
+        action: 'restored',
+        userId: currentUser.id,
+        timestamp: new Date().toISOString(),
+        from: fromLocation
+    });
+
+    delete card.archiveReason; delete card.archivedAt; delete card.archivedBy;
+    card.columnId = targetColumnId;
+    card.boardId = targetBoardId;
+    
+    const targetColumn = await getColumn(targetColumnId);
+    if (targetColumn) {
+        if (!targetColumn.cardIds) targetColumn.cardIds = [];
+        if (!targetColumn.cardIds.includes(card.id)) targetColumn.cardIds.push(card.id);
+        await saveColumn(targetColumn);
+    }
+    await saveCard(card);
 }
 
 /**
@@ -299,42 +395,48 @@ async function handleRestoreCard(cardId) {
 async function handleRestoreBoard(boardId) {
     const board = await getBoard(boardId);
     if (!board) return showFloatingMessage(t('archive.feedback.itemNotFound'), 'error');
+    
+    showConfirmationDialog(t('archive.confirm.restore'), async (dialog) => {
+        await intelligentRestoreBoard(board.id, dialog);
+    });
+}
 
-    if (board.archiveReason === 'deleted') {
-        delete board.archiveReason;
-        board.archiveReason = 'archived'; // Define explicitamente como arquivado
-        await saveBoard(board);
-        showFloatingMessage(t('archive.feedback.restoredFromTrash'), 'success');
-        await loadAllArchivedItems();
-        renderAllLists();
-        return;
+/**
+ * Função central para a restauração inteligente de um quadro.
+ * @param {string} boardId - O ID do quadro a ser restaurado.
+ * @param {HTMLElement} dialog - O diálogo de confirmação original.
+ */
+async function intelligentRestoreBoard(boardId, dialog) {
+    const board = await getBoard(boardId);
+    if (!board) {
+        showDialogMessage(dialog, t('archive.feedback.itemNotFound'), 'error');
+        return false;
     }
 
-    showConfirmationDialog(t('archive.confirm.restore'), async (dialog) => {
-        const userProfile = await getUserProfile(currentUser.id);
-        const group = board.groupId ? await getGroup(board.groupId) : null;
+    const userProfile = await getUserProfile(currentUser.id);
+    const group = board.groupId ? await getGroup(board.groupId) : null;
 
-        // Remove o status de arquivado do quadro.
-        board.isArchived = false;
-        delete board.archivedAt; delete board.archivedBy;
-        
-        // Adiciona a referência de volta à sua origem (grupo ou perfil pessoal).
-        if (group) {
-            if (!group.boardIds) group.boardIds = [];
-            if (!group.boardIds.includes(boardId)) group.boardIds.push(boardId);
-            await saveGroup(group);
-        } else if (userProfile) {
-            if (!userProfile.boardIds) userProfile.boardIds = [];
-            if (!userProfile.boardIds.includes(boardId)) userProfile.boardIds.push(boardId);
-            await saveUserProfile(userProfile);
-        }
-        
-        await saveBoard(board);
+    board.isArchived = false;
+    const fromLocation = board.archiveReason === 'deleted' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+    if (!board.activityLog) board.activityLog = [];
+    board.activityLog.push({ action: 'restored', userId: currentUser.id, timestamp: new Date().toISOString(), from: fromLocation });
+    delete board.archiveReason; delete board.archivedAt; delete board.archivedBy;
+    
+    if (group) {
+        if (!group.boardIds) group.boardIds = [];
+        if (!group.boardIds.includes(boardId)) group.boardIds.push(boardId);
+        await saveGroup(group);
+    } else if (userProfile) {
+        if (!userProfile.boardIds) userProfile.boardIds = [];
+        if (!userProfile.boardIds.includes(boardId)) userProfile.boardIds.push(boardId);
+        await saveUserProfile(userProfile);
+    }
+    
+    await saveBoard(board);
 
-        showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
-        await loadAllArchivedItems(); renderAllLists();
-        return true;
-    });
+    showDialogMessage(dialog, t('archive.feedback.restored'), 'success');
+    await loadAllArchivedItems(); renderAllLists();
+    return true;
 }
 
 // --- OTHER FUNCTIONS (UNCHANGED) ---
@@ -355,8 +457,7 @@ async function handleMoveToArchived(itemId, type) {
     if (type === 'column') await saveColumn(item);
     else if (type === 'board') await saveBoard(item);
 
-    showFloatingMessage(t('archive.feedback.restoredFromTrash'), 'success');
-    await loadAllArchivedItems();
+    showFloatingMessage(t('archive.feedback.restoredFromTrash'), 'success'); await loadAllArchivedItems();
     renderAllLists();
 }
 
