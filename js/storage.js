@@ -119,16 +119,20 @@ export async function deleteCard(cardId) { return await deleteItem(cardId, 'card
  * @param {string} reason - O motivo do arquivamento ('archived' ou 'deleted' para lixeira).
  * @param {string|null} columnId - O ID da coluna original do cartão.
  */
-export async function archiveCard(cardId, userId, reason = 'archived', columnId = null) {
+export async function archiveCard(cardId, userId, reason = 'archived', context = {}) {
     const card = await getCard(cardId);
     if (!card) return null;
     card.isArchived = true;
     card.archivedAt = new Date().toISOString();
     card.archivedBy = userId;
-    card.archiveReason = reason; // 'archived' ou 'deleted' (para lixeira)
-    if (columnId) { // Armazena a coluna original para facilitar a restauração
-        card.columnId = columnId;
-    }
+    card.archiveReason = reason;
+    
+    // Store original context for intelligent restore
+    card.columnId = context.columnId;
+    card.boardId = context.boardId;
+    card.columnTitle = context.columnTitle;
+    card.boardTitle = context.boardTitle;
+
     return await saveCard(card);
 }
 
@@ -138,7 +142,10 @@ export async function saveColumn(columnData) { return await saveItem(columnData,
 export async function deleteColumn(columnId) {
     const column = await getColumn(columnId);
     if (column && column.cardIds) {
-        await Promise.all(column.cardIds.map(cardId => deleteCard(cardId)));
+        // Deleta apenas os cartões que NÃO estão arquivados.
+        const cards = await Promise.all(column.cardIds.map(cardId => getCard(cardId)));
+        const unarchivedCards = cards.filter(card => card && !card.isArchived);
+        await Promise.all(unarchivedCards.map(card => deleteCard(card.id)));
     }
     return await deleteItem(columnId, 'column');
 }
@@ -163,7 +170,10 @@ export async function saveBoard(boardData) {
 export async function deleteBoard(boardId) {
     const board = await getBoard(boardId);
     if (board && board.columnIds) {
-        await Promise.all(board.columnIds.map(columnId => deleteColumn(columnId)));
+        // Deleta apenas as colunas que NÃO estão arquivadas.
+        const columns = await Promise.all(board.columnIds.map(columnId => getColumn(columnId)));
+        const unarchivedColumns = columns.filter(col => col && !col.isArchived);
+        await Promise.all(unarchivedColumns.map(col => deleteColumn(col.id)));
     }
     // Remove a referência do quadro do perfil do dono
     if (board && board.ownerId) {

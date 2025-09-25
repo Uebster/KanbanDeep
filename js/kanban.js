@@ -1749,8 +1749,7 @@ async function showBoardDialog(boardId = null) {
             groupSelect.disabled = true;
         }
         iconInput.value = board.icon || '📋';
-    } else {
-        // Criando um novo quadro
+    } else { // Criando um novo quadro
         if (currentBoardFilter === 'group') {
             // Para quadros de GRUPO, as opções de visibilidade são contextuais.
             visibilitySelect.innerHTML = `
@@ -1775,8 +1774,7 @@ async function showBoardDialog(boardId = null) {
                 groupSelect.disabled = false;
                 dialog.dataset.groupCreationAllowed = "true"; // Flag para validação
             }
-        } else {
-            // Para quadros PESSOAIS, as opções de visibilidade são mais amplas.
+        } else { // Para quadros PESSOAIS, as opções de visibilidade são mais amplas.
             visibilitySelect.innerHTML = `
                 <option value="private">${t('kanban.dialog.board.visibilityPrivate')}</option>
                 <option value="friends">${t('kanban.dialog.board.visibilityFriends')}</option>
@@ -2295,7 +2293,7 @@ async function handleSaveCard() {
                         await saveColumn(targetColumn);
                     }
                 }
-            } else {
+            } else { // Criando um novo cartão
                 cardData.creatorId = currentUser.id;
                 cardData.isComplete = false;
                 const newCard = await saveCard(cardData);
@@ -2880,6 +2878,7 @@ async function archiveColumn(columnId, reason = 'archived') {
 
     // CORREÇÃO: Garante que a referência ao quadro seja salva junto com a coluna.
     column.boardId = currentBoard.id;
+    column.boardTitle = currentBoard.title;
     // Adiciona a entrada de log apropriada
     const logEntry = {
         action: reason === 'deleted' ? 'trashed' : 'archived',
@@ -3085,7 +3084,7 @@ function renderColumnActivityLog(column, container) {
         };
         
         const message = t(`activityLog.action.column.${entry.action}`, replacements)
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        .replace(/\*\*(\.*?)\*\*/g, '<strong>$1</strong>');
 
         logHtml += `<li class="activity-log-item"><div class="log-message">${message}</div><div class="log-date">${date}</div></li>`;
     });
@@ -3117,7 +3116,7 @@ function handleArchiveBoard(boardId) {
             if (!archived) return false;
 
             // Atualiza o perfil do usuário para mover o quadro para a lista de arquivados
-            const userProfile = getUserProfile(currentUser.id);
+            const userProfile = await getUserProfile(currentUser.id);
             userProfile.boardIds = (userProfile.boardIds || []).filter(id => id !== boardId);
             if (!userProfile.archivedBoardIds) userProfile.archivedBoardIds = [];
             if (!userProfile.archivedBoardIds.includes(boardId)) {
@@ -3126,14 +3125,14 @@ function handleArchiveBoard(boardId) {
             await saveUserProfile(userProfile);
             
             // Recarrega os dados para atualizar a lista de quadros
-            await loadData().then(async () => {
-                // Seleciona o próximo quadro disponível que não esteja arquivado
-                currentBoard = boards.find(b => !b.isArchived) || null; // Seleciona o próximo quadro disponível
-                localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
-                await renderBoardSelector();
-                await renderCurrentBoard();
-                initCustomSelects();
-            });
+            await loadData();
+            // Seleciona o próximo quadro disponível que não esteja arquivado
+            currentBoard = boards.find(b => !b.isArchived) || null; // Seleciona o próximo quadro disponível
+            localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+            renderBoardSelector();
+            renderCurrentBoard();
+            initCustomSelects();
+            
             showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success'); // Adicionar tradução
             return true;
         });
@@ -3179,34 +3178,75 @@ async function toggleCardComplete(cardId) {
     }
 }
 
+/**
+ * Move um quadro inteiro e todo o seu conteúdo para a lixeira.
+ * @param {string} boardId O ID do quadro a ser movido para a lixeira.
+ */
+async function trashEntireBoard(boardId) {
+    const board = await getFullBoardData(boardId, true); // true para incluir colunas arquivadas
+    if (!board) {
+        showFloatingMessage(t('kanban.feedback.boardNotFound'), 'error');
+        return;
+    }
+
+    // 1. Arquiva todos os cartões dentro do quadro
+    for (const column of board.columns) {
+        // Garante que cards exista e seja um array
+        if (column.cards && Array.isArray(column.cards)) {
+            for (const card of column.cards) {
+                await archiveCard(card.id, currentUser.id, 'deleted', {
+                    columnId: column.id,
+                    boardId: board.id,
+                    columnTitle: column.title,
+                    boardTitle: board.title
+                });
+            }
+        }
+    }
+
+    // 2. Arquiva todas as colunas do quadro
+    for (const column of board.columns) {
+        const columnToArchive = await getColumn(column.id);
+        if (columnToArchive) {
+            columnToArchive.isArchived = true;
+            columnToArchive.archiveReason = 'deleted';
+            columnToArchive.archivedAt = new Date().toISOString();
+            columnToArchive.archivedBy = currentUser.id;
+            await saveColumn(columnToArchive);
+        }
+    }
+
+    // 3. Arquiva o quadro
+    await archiveBoard(board.id, currentUser.id, 'deleted');
+
+    // 4. Remove o quadro da lista ativa do usuário
+    const userProfile = await getUserProfile(currentUser.id);
+    if (userProfile && userProfile.boardIds) {
+        userProfile.boardIds = userProfile.boardIds.filter(id => id !== boardId);
+        await saveUserProfile(userProfile);
+    }
+}
+
 function handleDeleteBoard() {
     if (!currentBoard) return;
+    // A chave de tradução pode ser a mesma, pois para o usuário a ação é "excluir"
     showConfirmationDialog(
         t('kanban.confirm.deleteBoard', { boardTitle: currentBoard.title }),
         async (dialog) => {
-            // Não salva estado para o Desfazer, pois é uma ação destrutiva maior
-            undoStack = [];
-            redoStack = [];
-            await deleteBoard(currentBoard.id);
-
-            // --- CORREÇÃO: Recarrega TODOS os quadros (pessoais e de grupo) ---
-            const userProfile = await getUserProfile(currentUser.id);
-            const personalBoards = await Promise.all((userProfile.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
-            const allGroups = await getAllGroups();
-            const memberGroups = (allGroups || []).filter(g => g.memberIds && g.memberIds.includes(currentUser.id));
-            const groupBoards = await Promise.all(memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
-            const allBoardMap = new Map();
-            personalBoards.forEach(b => allBoardMap.set(b.id, b));
-            groupBoards.forEach(b => allBoardMap.set(b.id, b));
-            boards = Array.from(allBoardMap.values());
-
+            await trashEntireBoard(currentBoard.id);
+            
+            // Recarrega os dados para atualizar a UI
+            await loadData();
+            
+            // Define o próximo quadro como ativo
             currentBoard = boards[0] || null;
             localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : null);
             
-            await renderBoardSelector();
-            initCustomSelects(); // ATUALIZAÇÃO: Garante que o select customizado seja reconstruído.
-            await renderCurrentBoard();
-            showDialogMessage(dialog, t('kanban.feedback.boardDeleted'), 'success');
+            renderBoardSelector();
+            initCustomSelects();
+            renderCurrentBoard();
+            
+            showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash', {defaultValue: "Quadro movido para a lixeira."} ), 'success');
             return true;
         },
         null,
@@ -3256,7 +3296,7 @@ async function handleDeleteCard(cardId) {
             await saveCard(card); // Salva o log antes de arquivar
 
             // Arquiva com o motivo 'deleted' (move para a lixeira).
-            await archiveCard(cardId, currentUser.id, 'deleted', column.id, currentBoard.id);
+            await archiveCard(cardId, currentUser.id, 'deleted', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
 
             // FASE 2: Atualiza contadores de tarefas do grupo
             if (currentBoard.groupId) {
@@ -3306,12 +3346,13 @@ async function handleArchiveCard(cardId) {
             const group = await getGroup(currentBoard.groupId);
             if (group) {
                 group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
-                group.completedTaskCount = (group.completedTaskCount || 0) + 1;
+                if(card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) -1);
+                else group.completedTaskCount = (group.completedTaskCount || 0) + 1;
                 await saveGroup(group);
             }
         }
 
-        await archiveCard(cardId, currentUser.id, 'archived', column.id, currentBoard.id);
+        await archiveCard(cardId, currentUser.id, 'archived', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
         await saveState();
         showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
         showSuccessAndRefresh(dialog, currentBoard.id);
@@ -3881,7 +3922,7 @@ async function restoreKanbanOriginalSettings() {
 async function handleSavePreferences(preferencesDialog) {
     showConfirmationDialog(
         t('preferences.confirm.save'),
-        (confirmationDialog) => { // onConfirm
+        (confirmationDialog) => {
             if (savePreferencesData()) {
                 showDialogMessage(confirmationDialog, t('kanban.feedback.prefsSaved'), 'success');
                 preferencesDialog.close(); // Fecha o diálogo de preferências
@@ -3956,7 +3997,7 @@ function shadeColor(color, percent) {
     G = parseInt(G * (100 + percent) / 100);
     B = parseInt(B * (100 + percent) / 100);
 
-    R = (R < 255) ? R : 255; G = (G < 255) ? G : 255; B = (B < 255) ? B : 255;
+    R = (R < 255) ? R : 255;  G = (G < 255) ? G : 255;  B = (B < 255) ? B : 255;
 
     return `#${(R.toString(16).padStart(2, '0'))}${(G.toString(16).padStart(2, '0'))}${(B.toString(16).padStart(2, '0'))}`;
 }
