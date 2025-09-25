@@ -1,7 +1,7 @@
  {
     "archive.buttons.delete": "Elimina definitivamente",
     "archive.buttons.emptyTrash": "Svuota cestino",
-    "archive.buttons.moveToTrash": "Sposta nel cestino",
+    "archive.buttons.moveToTrash": "Sposta nel Cestino",
     "archive.buttons.restore": "Ripristina",
     "archive.confirm.archiveBoard": "Sei sicuro di voler archiviare la bacheca \"{boardName}\"?",
     "archive.confirm.archiveCard": "Sei sicuro di voler archiviare la scheda \"{cardTitle}\"?",
@@ -13,6 +13,7 @@
     "archive.confirm.restoreToNewBoard": "La bacheca originale '{boardName}' è stata eliminata. Vuoi creare una nuova bacheca con questo nome per ripristinare la colonna?",
     "archive.confirm.restoreToNewColumn": "La colonna originale non esiste e la bacheca '{boardName}' non ha colonne. Vuoi creare una nuova colonna chiamata 'Colonna Ripristinata' per questa scheda?",
     "archive.confirm.restoreToFirstColumn": "La colonna originale non esiste più. Vuoi ripristinare questa scheda nella prima colonna della bacheca '{boardName}'?",
+    "archive.buttons.moveToArchived": "Sposta in Archivio",
     "archive.feedback.boardArchived": "Bacheca archiviata con successo!",
     "archive.feedback.cannotRestoreBoardNotFound": "Impossibile ripristinare: la bacheca originale non è stata trovata.",
     "archive.feedback.cannotRestoreColumnDeleted": "Impossibile ripristinare: la colonna originale è stata eliminata.",

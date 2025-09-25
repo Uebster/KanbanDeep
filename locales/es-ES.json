@@ -1,7 +1,7 @@
 {
     "archive.buttons.delete": "Eliminar permanentemente",
     "archive.buttons.emptyTrash": "Vaciar papelera",
-    "archive.buttons.moveToTrash": "Mover a la papelera",
+    "archive.buttons.moveToTrash": "Mover a Papelera",
     "archive.buttons.restore": "Restaurar",
     "archive.confirm.archiveBoard": "¿Estás seguro de que quieres archivar el tablero \"{boardName}\"?",
     "archive.confirm.archiveCard": "¿Estás seguro de que quieres archivar la tarjeta \"{cardTitle}\"?",
@@ -13,6 +13,7 @@
     "archive.confirm.restoreToNewBoard": "El tablero original '{boardName}' fue eliminado. ¿Deseas crear un nuevo tablero con este nombre para restaurar la columna?",
     "archive.confirm.restoreToNewColumn": "La columna original no existe y el tablero '{boardName}' no tiene columnas. ¿Deseas crear una nueva columna llamada 'Columna Restaurada' para esta tarjeta?",
     "archive.confirm.restoreToFirstColumn": "La columna original ya no existe. ¿Quieres restaurar esta tarjeta a la primera columna del tablero '{boardName}'?",
+    "archive.buttons.moveToArchived": "Mover a Archivados",
     "archive.feedback.boardArchived": "¡Tablero archivado con éxito!",
     "archive.feedback.cannotRestoreBoardNotFound": "No se puede restaurar: no se encontró el tablero original.",
     "archive.feedback.cannotRestoreColumnDeleted": "No se puede restaurar: la columna original ha sido eliminada.",

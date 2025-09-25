@@ -13,6 +13,7 @@
     "archive.confirm.restoreToNewBoard": "The original board '{boardName}' was deleted. Do you want to create a new board with this name to restore the column?",
     "archive.confirm.restoreToNewColumn": "The original column does not exist and the board '{boardName}' has no columns. Do you want to create a new column named 'Restored Column' for this card?",
     "archive.confirm.restoreToFirstColumn": "The original column no longer exists. Do you want to restore this card to the first column of the board '{boardName}'?",
+    "archive.buttons.moveToArchived": "Move to Archived",
     "archive.feedback.boardArchived": "Board archived successfully!",
     "archive.feedback.cannotRestoreBoardNotFound": "Cannot restore: the original board was not found.",
     "archive.feedback.cannotRestoreColumnDeleted": "Cannot restore: the original column has been deleted.",

@@ -2832,14 +2832,24 @@ async function handleDeleteColumnFromMenu(columnId){
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
-    // A mensagem de confirmação ainda faz sentido, pois para o usuário é uma "exclusão"
-    showConfirmationDialog(t('kanban.confirm.deleteColumn'), (confirmationDialog) => {
-            // Em vez de deletar, arquiva com o motivo 'deleted'
-            archiveColumn(columnId, 'deleted');
-            // A função archiveColumn já mostra a mensagem flutuante e atualiza a tela.
-            confirmationDialog.close();
-            return false; // Retorna false para que o showConfirmationDialog não tente fechar de novo ou mostrar outra mensagem.
-        }, null, t('ui.yesDelete'), t('ui.no'));
+    const column = findColumn(columnId);
+    if (!column) return;
+
+    showConfirmationDialog(
+        t('kanban.confirm.deleteColumn'), 
+        async (confirmationDialog) => {
+            // Adiciona o log de "movido para lixeira"
+            if (!column.activityLog) column.activityLog = [];
+            column.activityLog.push({
+                action: 'trashed',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            });
+            await saveColumn(column); // Salva o log antes de arquivar
+            await archiveColumn(columnId, 'deleted'); // Arquiva com o motivo 'deleted'
+            confirmationDialog.close(); // Fecha o diálogo de confirmação
+        }, 
+        null, t('ui.yesDelete'), t('ui.no'));
 }
 /**
  * Copia uma coluna e seus cartões para a área de transferência interna.

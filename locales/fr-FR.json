@@ -1,7 +1,7 @@
 {
     "archive.buttons.delete": "Supprimer définitivement",
     "archive.buttons.emptyTrash": "Vider la corbeille",
-    "archive.buttons.moveToTrash": "Mettre à la corbeille",
+    "archive.buttons.moveToTrash": "Mettre à la Corbeille",
     "archive.buttons.restore": "Restaurer",
     "archive.confirm.archiveBoard": "Êtes-vous sûr de vouloir archiver le tableau \"{boardName}\" ?",
     "archive.confirm.archiveCard": "Êtes-vous sûr de vouloir archiver la carte \"{cardTitle}\" ?",
@@ -13,6 +13,7 @@
     "archive.confirm.restoreToNewBoard": "Le tableau original '{boardName}' a été supprimé. Voulez-vous créer un nouveau tableau avec ce nom pour restaurer la colonne ?",
     "archive.confirm.restoreToNewColumn": "La colonne d'origine n'existe pas et le tableau '{boardName}' n'a pas de colonnes. Voulez-vous créer une nouvelle colonne nommée 'Colonne Restaurée' pour cette carte ?",
     "archive.confirm.restoreToFirstColumn": "La colonne d'origine n'existe plus. Voulez-vous restaurer cette carte dans la première colonne du tableau '{boardName}' ?",
+    "archive.buttons.moveToArchived": "Déplacer vers les Archives",
     "archive.feedback.boardArchived": "Tableau archivé avec succès !",
     "archive.feedback.cannotRestoreBoardNotFound": "Impossible de restaurer : le tableau d'origine n'a pas été trouvé.",
     "archive.feedback.cannotRestoreColumnDeleted": "Impossible de restaurer : la colonne d'origine a été supprimée.",

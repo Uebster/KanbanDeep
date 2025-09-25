@@ -1,7 +1,7 @@
 {
     "archive.buttons.delete": "Excluir Permanentemente",
     "archive.buttons.emptyTrash": "Esvaziar Lixeira",
-    "archive.buttons.moveToTrash": "Mover para Lixeira",
+    "archive.buttons.moveToTrash": "Mover para a Lixeira",
     "archive.buttons.restore": "Restaurar",
     "archive.confirm.archiveBoard": "Tem certeza que deseja arquivar o quadro \"{boardName}\"?",
     "archive.confirm.archiveCard": "Tem certeza que deseja arquivar o cartão \"{cardTitle}\"?",
@@ -13,6 +13,7 @@
     "archive.confirm.restoreToNewBoard": "O quadro original '{boardName}' foi excluído. Deseja criar um novo quadro com este nome para restaurar a coluna?",
     "archive.confirm.restoreToNewColumn": "A coluna original não existe e o quadro '{boardName}' não tem colunas. Deseja criar uma nova coluna chamada 'Coluna Restaurada' para este cartão?",
     "archive.confirm.restoreToFirstColumn": "A coluna original não existe mais. Deseja restaurar este cartão para a primeira coluna do quadro '{boardName}'?",
+    "archive.buttons.moveToArchived": "Mover para Arquivados",
     "archive.feedback.boardArchived": "Quadro arquivado com sucesso!",
     "archive.feedback.cannotRestoreBoardNotFound": "Não é possível restaurar: o quadro original não foi encontrado.",
     "archive.feedback.cannotRestoreColumnDeleted": "Não é possível restaurar: a coluna original foi excluída.",
