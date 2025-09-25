@@ -14,7 +14,7 @@ import {
     deleteCard, 
     hardDeleteColumn,
     hardDeleteBoard,  // <-- Usar a nova função
-    getAllUsers,
+    getAllUsers, deleteColumn, deleteItem,
     universalLoad
 } from './storage.js';
 import { showConfirmationDialog, showFloatingMessage, showDialogMessage } from './ui-controls.js';
@@ -532,26 +532,28 @@ function setupEventListeners() {
 }
 
 async function handleEmptyTrash() {
-    const trashItems = [
-        ...allArchivedItems.cards.filter(c => c.archiveReason === 'deleted'),
-        ...allArchivedItems.columns.filter(c => c.archiveReason === 'deleted'),
-        ...allArchivedItems.boards.filter(b => b.archiveReason === 'deleted')
-    ];
+    const trashItems = {
+        boards: allArchivedItems.boards.filter(b => b.archiveReason === 'deleted'),
+        columns: allArchivedItems.columns.filter(c => c.archiveReason === 'deleted'),
+        cards: allArchivedItems.cards.filter(c => c.archiveReason === 'deleted')
+    };
 
-    if (trashItems.length === 0) {
+    const totalItems = trashItems.boards.length + trashItems.columns.length + trashItems.cards.length;
+    
+    if (totalItems === 0) {
         showFloatingMessage(t('archive.feedback.trashEmpty'), 'info');
         return;
     }
+
     showConfirmationDialog(
-        t('archive.confirm.emptyTrash', { count: trashItems.length }),
+        t('archive.confirm.emptyTrash', { count: totalItems }),
         async (dialog) => {
-            // CORREÇÃO FINAL: Lógica simplificada e direta para esvaziar a lixeira.
-            // Itera sobre todos os itens e chama a função de exclusão individual apropriada.
-            await Promise.all(trashItems.map(item => {
-                if (item.id.startsWith('board_')) return deleteBoard(item.id);
-                if (item.id.startsWith('column_')) return deleteColumn(item.id);
-                if (item.id.startsWith('card_')) return deleteCard(item.id);
-            }));
+            // OPTIMIZED & SAFE DELETION:
+            // We run deletions in parallel for each type, but wait for each type to finish
+            // in the correct order: Cards -> Columns -> Boards.
+            await Promise.all(trashItems.cards.map(card => deleteItem(card.id, 'card')));
+            await Promise.all(trashItems.columns.map(column => deleteItem(column.id, 'column')));
+            await Promise.all(trashItems.boards.map(board => deleteItem(board.id, 'board')));
 
             showDialogMessage(dialog, t('archive.feedback.trashEmptied'), 'success');
             await loadAllArchivedItems();

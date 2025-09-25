@@ -57,7 +57,7 @@ async function saveItem(itemData, prefix) {
     await universalSave(`${prefix}_${itemData.id}`, itemData);
     return itemData;
 }
-async function deleteItem(id, prefix) { return await universalRemove(`${prefix}_${id}`); }
+export async function deleteItem(id, prefix) { return await universalRemove(`${prefix}_${id}`); }
 
 
 // ========================================================================
