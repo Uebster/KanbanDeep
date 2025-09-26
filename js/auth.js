@@ -4,7 +4,9 @@ import {
     getAllUsers as storageGetAllUsers,
     deleteUserProfile,
     setCurrentUserId,
-    getCurrentUserId
+    getCurrentUserId,
+    getGroup, 
+    getAllGroups
 } from './storage.js';
 
 export const MASTER_PASSWORD = "87654"; // Senha mestra
@@ -138,3 +140,42 @@ export function validateMasterPassword(password) {
 // As funções getCurrentUserBoards e updateUserBoards foram removidas daqui
 // pois a gestão de boards será feita diretamente pelo módulo kanban.js
 // usando as funções de board do storage.js.
+
+/**
+ * Verifica se o usuário atual tem uma permissão específica para um quadro.
+ * @param {object} user - O objeto do usuário atual.
+ * @param {object | null} board - O objeto do quadro. Se for nulo, verifica permissões globais.
+ * @param {string} permission - A chave da permissão (ex: 'createColumns', 'editBoards').
+ * @returns {Promise<boolean>} - Retorna true se o usuário tiver a permissão.
+ */
+export async function hasPermission(user, board, permission) {
+    if (!user) return false;
+
+    // Caso especial: Verificar se o usuário pode criar quadros em QUALQUER grupo.
+    if (permission === 'createBoards' && !board) {
+        const allGroups = await getAllGroups();
+        const creatableInGroups = (allGroups || []).filter(g => {
+            if (g.adminId === user.id) return true;
+            if (!g.memberIds?.includes(user.id)) return false;
+
+            if (g.memberPermissions?.[user.id]?.createBoards !== undefined) {
+                return g.memberPermissions[user.id].createBoards;
+            }
+            return g.defaultPermissions?.createBoards;
+        });
+        return creatableInGroups.length > 0;
+    }
+
+    if (!board || !board.groupId) return true;
+
+    const group = await getGroup(board.groupId);
+    if (!group) return false;
+    if (group.adminId === user.id) return true;
+    if (!group.memberIds?.includes(user.id)) return false;
+
+    if (group.memberPermissions?.[user.id]?.[permission] !== undefined) {
+        return group.memberPermissions[user.id][permission];
+    }
+
+    return group.defaultPermissions?.[permission];
+}

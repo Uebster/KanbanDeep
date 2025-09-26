@@ -1,6 +1,6 @@
 // js/kanban.js - VERSÃO REFATORADA E FINAL
 
-import { getCurrentUser, updateUser } from './auth.js';
+import { getCurrentUser, updateUser, hasPermission } from './auth.js';
 import { archiveBoard,
     getUserProfile, saveUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
     getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard, deleteGroup,
@@ -193,7 +193,7 @@ function setupEventListeners() {
             showFloatingMessage(t('kanban.feedback.noBoardForColumn'), 'error');
             return;
         }
-        if (!await hasPermission(currentBoard, 'createColumns')) {
+        if (!await hasPermission(currentUser, currentBoard, 'createColumns')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
@@ -209,7 +209,7 @@ function setupEventListeners() {
             showFloatingMessage(t('kanban.feedback.noColumnForCard'), 'error');
             return;
         }
-        if (!await hasPermission(currentBoard, 'createCards')) {
+        if (!await hasPermission(currentUser, currentBoard, 'createCards')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
@@ -1286,8 +1286,10 @@ function createCardElement(card) {
  * @param {MouseEvent} event O evento do mouse para posicionamento.
  */
 async function showTooltip(cardId, event) {
-    const { card } = findCardAndColumn(cardId);
-    if (!card || !tooltipElement) return;
+    const result = findCardAndColumn(cardId);
+    // CORREÇÃO: Verifica se o resultado (e o cartão) existem antes de prosseguir.
+    if (!result || !result.card || !tooltipElement) return;
+    const { card } = result;
 
     const creator = allUsers.find(u => u.id === card.creatorId);
     const assignee = allUsers.find(u => u.id === card.assignedTo);
@@ -1419,7 +1421,7 @@ async function populateManagerBoards() {
         `;
 
         itemEl.querySelector('.archive-board-btn').onclick = async () => {
-            if (await hasPermission(board, 'editBoards')) { // Reutiliza a permissão de edição para arquivar
+            if (await hasPermission(currentUser, board, 'editBoards')) { // Reutiliza a permissão de edição para arquivar
                 document.getElementById('manager-dialog').close();
                 handleArchiveBoard(board.id);
             } else {
@@ -1427,7 +1429,7 @@ async function populateManagerBoards() {
             }
         };
         itemEl.querySelector('.btn.edit').onclick = async () => {
-            if (await hasPermission(board, 'editBoards')) {
+            if (await hasPermission(currentUser, board, 'editBoards')) {
                 document.getElementById('manager-dialog').close();
                 showBoardDialog(board.id);
             } else {
@@ -1436,7 +1438,7 @@ async function populateManagerBoards() {
         };
 
         itemEl.querySelector('.btn.danger').onclick = async () => {
-            if (await hasPermission(board, 'editBoards')) {
+            if (await hasPermission(currentUser, board, 'editBoards')) {
                 document.getElementById('manager-dialog').close();
                 currentBoard = board; // Define o quadro a ser excluído
                 handleDeleteBoard();
@@ -1552,13 +1554,14 @@ function renderManagerColumnList(board, listContainer) {
         itemEl.innerHTML = `
             <span>${column.title}</span>
             <div class="manager-item-actions">
+                <button class="btn btn-sm alternative1 archive-column-btn" data-id="${column.id}" title="${t('kanban.contextMenu.column.archive')}">🗄️</button>
                 <button class="btn btn-sm edit" data-id="${column.id}">✏️</button>
                 <button class="btn btn-sm danger" data-id="${column.id}">🗑️</button>
             </div>
         `;
 
         itemEl.querySelector('.btn.edit').onclick = async () => {
-            if (await hasPermission(board, 'editColumns')) {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
                 document.getElementById('manager-dialog').close();
                 showColumnDialog(column.id);
             } else {
@@ -1567,9 +1570,27 @@ function renderManagerColumnList(board, listContainer) {
         };
 
         itemEl.querySelector('.btn.danger').onclick = async () => {
-            if (await hasPermission(board, 'editColumns')) {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
                 document.getElementById('manager-dialog').close();
-                handleDeleteColumnFromMenu(column.id);
+                archiveColumn(column.id, 'deleted'); // CORREÇÃO: Chama a função correta
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+
+        itemEl.querySelector('.archive-column-btn').onclick = async () => {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                archiveColumn(column.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+
+        itemEl.querySelector('.archive-column-btn').onclick = async () => {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                archiveColumn(column.id);
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
@@ -1621,7 +1642,7 @@ function populateManagerCards() {
     columnSelectContainer.innerHTML = '';
     columnSelectContainer.appendChild(columnSelect);
 
-    initCustomSelects(); // Estiliza os novos selects
+    initCustomSelects(); // Estiliza o select de quadros
 
     // 3. Adiciona listeners
     boardSelect.onchange = () => {
@@ -1630,11 +1651,13 @@ function populateManagerCards() {
         listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectColumn')}</div>`;
         if (boardId) {
             const board = boards.find(b => b.id === boardId);
-            board.columns.forEach(col => {
+            (board?.columns || []).forEach(col => {
                 columnSelect.innerHTML += `<option value="${col.id}">${col.title}</option>`;
             });
         }
-        initCustomSelects(); // Re-estiliza o select de colunas
+        // CORREÇÃO DEFINITIVA: Usa setTimeout para garantir que o DOM seja atualizado
+        // antes de tentar reinicializar o select customizado, evitando a race condition.
+        setTimeout(() => initCustomSelects(), 0);
     };
 
     columnSelect.onchange = () => {
@@ -1665,6 +1688,7 @@ function renderManagerCardList(board, column, listContainer) {
         itemEl.innerHTML = `
             <span>${card.title}</span>
             <div class="manager-item-actions">
+                <button class="btn btn-sm alternative1 archive-card-btn" data-id="${card.id}" title="${t('kanban.contextMenu.card.archive')}">🗄️</button>
                 <button class="btn btn-sm edit" data-id="${card.id}">✏️</button>
                 <button class="btn btn-sm danger" data-id="${card.id}">🗑️</button>
             </div>
@@ -1674,9 +1698,25 @@ function renderManagerCardList(board, column, listContainer) {
             showCardDialog(card.id);
         };
         itemEl.querySelector('.btn.danger').onclick = async () => {
-            if (await hasPermission(board, 'editColumns')) {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
                 document.getElementById('manager-dialog').close();
                 handleDeleteCard(card.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+        itemEl.querySelector('.archive-card-btn').onclick = async () => {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                handleArchiveCard(card.id);
+            } else {
+                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+            }
+        };
+        itemEl.querySelector('.archive-card-btn').onclick = async () => {
+            if (await hasPermission(currentUser, board, 'editColumns')) {
+                document.getElementById('manager-dialog').close();
+                handleArchiveCard(card.id);
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
@@ -1705,7 +1745,7 @@ async function showBoardDialog(boardId = null) {
 
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
     const allGroups = await getAllGroups() || [];
-    const groupPermissions = await Promise.all(allGroups.map(async (g) => {
+    const groupPermissions = await Promise.all((allGroups || []).map(async (g) => {
         const isAdmin = g.adminId === currentUser.id;
         const canCreate = g.permissions?.createBoards && g.memberIds.includes(currentUser.id);
         return isAdmin || canCreate;
@@ -2469,14 +2509,6 @@ function handlePrintBoard() {
 function handleDragStart(e) {
     // ETAPA 3: VERIFICAÇÃO DE PERMISSÃO PARA ARRASTAR
     // Se for um quadro de grupo, verifica se o usuário tem permissão para editar colunas.
-    // Esta permissão controla a reorganização do quadro.
-    if (currentBoard && currentBoard.groupId) {
-        if (!hasPermission(currentBoard, 'editColumns')) {
-            e.preventDefault(); // Impede o início do arraste.
-            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-            return;
-        }
-    }
     hideTooltip(); // Esconde qualquer tooltip ao começar a arrastar
     isDragging = true;
 
@@ -2571,7 +2603,7 @@ function handleDragLeave(e) {
  * Lida com o evento de soltar um cartão ou coluna.
  * Esta função foi reescrita para ser mais robusta e evitar erros de inconsistência.
  */
-function handleDrop(e) {
+async function handleDrop(e) {
     e.preventDefault();
     // CORREÇÃO: Garante que o estado de "arrastando" seja finalizado ao soltar,
     // reativando o tooltip imediatamente.
@@ -2591,6 +2623,12 @@ function handleDrop(e) {
         const cardId = draggedElement.dataset.cardId;
         const sourceColumnId = draggedElement.closest('.column').dataset.columnId;
         const targetColumnId = targetColumnEl.dataset.columnId;
+
+        // VERIFICA PERMISSÃO ANTES DE SOLTAR
+        if (!await hasPermission(currentUser, currentBoard, 'createCards')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
 
         const sourceColumn = currentBoard.columns.find(c => c.id === sourceColumnId);
         const targetColumn = currentBoard.columns.find(c => c.id === targetColumnId);
@@ -2631,6 +2669,12 @@ function handleDrop(e) {
         const movedColumnId = draggedElement.dataset.columnId;
         const fromIndex = currentBoard.columnIds.indexOf(movedColumnId);
         const toIndex = currentBoard.columnIds.indexOf(targetColumnEl.dataset.columnId);
+
+        // VERIFICA PERMISSÃO ANTES DE SOLTAR
+        if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+            showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+            return;
+        }
 
         if (fromIndex === -1 || toIndex === -1) return; // Segurança
 
@@ -2709,50 +2753,6 @@ function checkAllCardDueDates() {
     });
 }
 
-/**
- * Verifica se o usuário atual tem uma permissão específica para um quadro.
- * @param {object | null} board - O objeto do quadro. Se for nulo, verifica permissões globais (como criar quadro de grupo).
- * @param {string} permission - A chave da permissão (ex: 'createColumns', 'editBoards').
- * @returns {boolean} - Retorna true se o usuário tiver a permissão.
- */
-async function hasPermission(board, permission) {
-    // Caso especial: Verificar se o usuário pode criar quadros em QUALQUER grupo.
-    // Isso é chamado quando board é null (ex: botão "Adicionar Quadro" no filtro de grupos).
-    if (permission === 'createBoards' && !board) {
-        const allGroups = await getAllGroups();
-        const creatableInGroups = (allGroups || []).filter(g => {
-            if (g.adminId === currentUser.id) return true; // Admin sempre pode.
-            if (!g.memberIds?.includes(currentUser.id)) return false; // Precisa ser membro.
-
-            // 1. Verifica permissão individual
-            if (g.memberPermissions?.[currentUser.id]?.createBoards !== undefined) {
-                return g.memberPermissions[currentUser.id].createBoards;
-            }
-            // 2. Usa a permissão padrão do grupo
-            return g.defaultPermissions?.createBoards;
-        });
-        return creatableInGroups.length > 0;
-    }
-
-    // Se não for um quadro de grupo, o usuário sempre tem permissão.
-    if (!board || !board.groupId) return true;
-
-    const group = await getGroup(board.groupId);
-    if (!group) return false; // Quadro de grupo órfão, nega por segurança.
-
-    // Admin sempre tem permissão.
-    if (group.adminId === currentUser.id) return true;
-    if (!group.memberIds?.includes(currentUser.id)) return false; // Se não for membro, não tem permissão.
-
-    // 1. Verifica se há uma permissão individual definida para este usuário.
-    if (group.memberPermissions?.[currentUser.id]?.[permission] !== undefined) {
-        return group.memberPermissions[currentUser.id][permission];
-    }
-
-    // 2. Se não houver, usa a permissão padrão do grupo.
-    return group.defaultPermissions?.[permission];
-}
-
 // --- LÓGICA DO MENU DE CONTEXTO (BOTÃO DIREITO) ---
 
 /**
@@ -2796,7 +2796,7 @@ async function createCardContextMenu(event, cardEl) {
  */
 async function createColumnContextMenu(event, columnEl) {
     const columnId = columnEl.dataset.columnId;
-    if (!await hasPermission(currentBoard, 'editColumns')) {
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
@@ -2818,7 +2818,7 @@ async function createColumnContextMenu(event, columnEl) {
         { 
             label: t('kanban.contextMenu.column.archive'), // Adicionar esta chave no pt-BR.json
             icon: '🗄️', 
-            action: () => archiveColumn(columnId)
+            action: () => archiveColumn(columnId, 'archived'),
         },
         { isSeparator: true },
         { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true }
@@ -2827,34 +2827,6 @@ async function createColumnContextMenu(event, columnEl) {
     showContextMenu(event, menuItems);
 }
 
-async function handleDeleteColumnFromMenu(columnId){
-    if (!await hasPermission(currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-    const column = findColumn(columnId);
-    if (!column) return;
-
-    showConfirmationDialog(
-        t('kanban.confirm.deleteColumn'), 
-        async (confirmationDialog) => {
-            // Adiciona o log de "movido para lixeira"
-            if (!column.activityLog) column.activityLog = [];
-            column.activityLog.push({
-                action: 'trashed',
-                userId: currentUser.id,
-                timestamp: new Date().toISOString()
-            });
-            await saveColumn(column); // Salva o log antes de arquivar
-            await archiveColumn(columnId, currentUser.id, 'deleted'); // Chama a função do storage
-            confirmationDialog.close(); // Fecha o diálogo de confirmação
-        }, 
-        null, t('ui.yesDelete'), t('ui.no'));
-}
-/**
- * Copia uma coluna e seus cartões para a área de transferência interna.
- * @param {string} columnId O ID da coluna a ser copiada.
- */
 async function handleCopyColumn(columnId) {
     const columnToCopy = findColumn(columnId);
     if (columnToCopy) {
@@ -2905,46 +2877,54 @@ async function handleCutColumn(columnId) {
  * @param {string} reason O motivo do arquivamento ('archived' ou 'deleted').
  */
 async function archiveColumn(columnId, reason = 'archived') {
-    if (!await hasPermission(currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
-    saveState(); // Salva o estado antes de arquivar
     const column = findColumn(columnId);
     if (!column) return;
 
-    // CORREÇÃO: Garante que a referência ao quadro seja salva junto com a coluna.
-    column.boardId = currentBoard.id;
-    column.boardTitle = currentBoard.title;
-    // Adiciona a entrada de log apropriada
-    const logEntry = {
-        action: reason === 'deleted' ? 'trashed' : 'archived',
-        userId: currentUser.id,
-        timestamp: new Date().toISOString()
-    };
-    if (!column.activityLog) {
-        column.activityLog = [];
-    }
-    column.activityLog.push(logEntry);
+    // CORREÇÃO: Usa uma chave de tradução específica para arquivar/excluir colunas.
+    const confirmationMessage = reason === 'deleted' 
+        ? t('kanban.confirm.deleteColumn') 
+        : t('kanban.confirm.archiveColumn', { columnTitle: column.title });
 
-    // Adiciona metadados de arquivamento
-    column.isArchived = true;
-    column.archiveReason = reason;
-    column.archivedAt = new Date().toISOString();
-    column.archivedBy = currentUser.id;
-    await saveColumn(column);
+    showConfirmationDialog(confirmationMessage, async (dialog) => {
+        if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+            showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+            return false;
+        }
+        await saveState();
 
-    // Remove a coluna da lista ativa do quadro
-    currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-    
-    // Adiciona a coluna à lista de arquivadas do quadro
-    if (!currentBoard.archivedColumnIds) currentBoard.archivedColumnIds = [];
-    if (!currentBoard.archivedColumnIds.includes(columnId)) {
-        currentBoard.archivedColumnIds.push(columnId);
-    }
-    await saveBoard(currentBoard);
+        // CORREÇÃO: Arquiva todos os cartões da coluna antes de arquivar a própria coluna.
+        for (const cardId of [...column.cardIds]) { // Cria uma cópia para iterar com segurança
+            await archiveCard(cardId, currentUser.id, reason, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+        }
 
-    await showSuccessAndRefresh(null, currentBoard.id);
+        // Agora arquiva a coluna
+        column.boardId = currentBoard.id;
+        column.boardTitle = currentBoard.title;
+        if (!column.activityLog) column.activityLog = [];
+        const logEntry = {
+            action: reason === 'deleted' ? 'trashed' : 'archived',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString()
+        };
+        column.activityLog.push(logEntry);
+
+        column.isArchived = true;
+        column.archiveReason = reason;
+        column.archivedAt = new Date().toISOString();
+        column.archivedBy = currentUser.id;
+        await saveColumn(column);
+
+        // Atualiza o quadro
+        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+        if (!currentBoard.archivedColumnIds) currentBoard.archivedColumnIds = [];
+        if (!currentBoard.archivedColumnIds.includes(columnId)) currentBoard.archivedColumnIds.push(columnId);
+        await saveBoard(currentBoard);
+
+        const successMsg = reason === 'deleted' ? t('kanban.feedback.columnMovedToTrash') : t('kanban.feedback.columnArchived');
+        showDialogMessage(dialog, successMsg, 'success');
+        await showSuccessAndRefresh(dialog, currentBoard.id);
+        return true;
+    });
 }
 
 // --- LÓGICA DO DIÁLOGO DE DETALHES ---
@@ -2958,47 +2938,7 @@ async function showDetailsDialog(cardId = null, columnId = null) {
     const contentContainer = document.getElementById('details-content');
     contentContainer.innerHTML = ''; // Limpa o conteúdo anterior
 
-    if (cardId) {
-        const { card } = findCardAndColumn(cardId);
-        titleEl.textContent = t('kanban.dialog.details.cardTitle', { title: card.title });
-        
-        // Cria a estrutura de abas
-        contentContainer.innerHTML = `
-            <div class="details-tabs">
-                <button class="details-tab-btn active" data-tab="details-pane">${t('activityLog.details.tabDetails')}</button>
-                <button class="details-tab-btn" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
-            </div>
-            <div id="details-pane" class="details-tab-pane active"></div>
-            <div id="activity-pane" class="details-tab-pane"></div>
-        `;
-
-        renderCardDetails(card, contentContainer.querySelector('#details-pane'));
-        renderActivityLog(card, contentContainer.querySelector('#activity-pane'));
-
-        // Adiciona listeners para as abas
-        contentContainer.querySelectorAll('.details-tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                contentContainer.querySelectorAll('.details-tab-btn, .details-tab-pane').forEach(el => el.classList.remove('active'));
-                btn.classList.add('active');
-                contentContainer.querySelector(`#${btn.dataset.tab}`).classList.add('active');
-            });
-        });
-
-    } else if (boardId) {
-        const board = boards.find(b => b.id === boardId);
-        if (!board) return;
-        titleEl.textContent = t('kanban.dialog.details.boardTitle', { title: board.title });
-
-        contentContainer.innerHTML = `
-            <div class="details-tabs">
-                <button class="details-tab-btn active" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
-            </div>
-            <div id="activity-pane" class="details-tab-pane active"></div>
-        `;
-        
-        renderBoardActivityLog(board, contentContainer.querySelector('#activity-pane'));
-
-    } else if (columnId) {
+    if (columnId) {
         const column = findColumn(columnId);
         titleEl.textContent = t('kanban.dialog.details.columnTitle', { title: column.title });
 
@@ -3014,6 +2954,31 @@ async function showDetailsDialog(cardId = null, columnId = null) {
 
         renderColumnDetails(column, contentContainer.querySelector('#details-pane'));
         renderColumnActivityLog(column, contentContainer.querySelector('#activity-pane'));
+
+        // Adiciona listeners para as abas
+        contentContainer.querySelectorAll('.details-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                contentContainer.querySelectorAll('.details-tab-btn, .details-tab-pane').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+                contentContainer.querySelector(`#${btn.dataset.tab}`).classList.add('active');
+            });
+        });
+    } else if (cardId) {
+        const { card } = findCardAndColumn(cardId);
+        titleEl.textContent = t('kanban.dialog.details.cardTitle', { title: card.title });
+        
+        // Cria a estrutura de abas
+        contentContainer.innerHTML = `
+            <div class="details-tabs">
+                <button class="details-tab-btn active" data-tab="details-pane">${t('activityLog.details.tabDetails')}</button>
+                <button class="details-tab-btn" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
+            </div>
+            <div id="details-pane" class="details-tab-pane active"></div>
+            <div id="activity-pane" class="details-tab-pane"></div>
+        `;
+
+        renderCardDetails(card, contentContainer.querySelector('#details-pane'));
+        renderActivityLog(card, contentContainer.querySelector('#activity-pane'));
 
         // Adiciona listeners para as abas
         contentContainer.querySelectorAll('.details-tab-btn').forEach(btn => {
@@ -3157,12 +3122,18 @@ function switchBoard(e) {
     updateHeaderButtonPermissions(); // Atualiza permissões ao trocar de quadro
 }
 
-function handleArchiveBoard(boardId) {
+async function handleArchiveBoard(boardId) {
     const boardToArchive = boards.find(b => b.id === boardId);
     if (!boardToArchive) return;
 
+    // CORREÇÃO: Adiciona a verificação de permissão que estava faltando.
+    if (!await hasPermission(currentUser, boardToArchive, 'editBoards')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     showConfirmationDialog(
-        t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }), // Adicionar tradução
+        t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
         async (dialog) => {
             const archived = await archiveBoard(boardId, currentUser.id, 'archived');
             if (!archived) return false;
@@ -3201,7 +3172,7 @@ function handleArchiveBoard(boardId) {
             renderCurrentBoard();
             initCustomSelects();
             
-            showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success'); // Adicionar tradução
+            showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
             return true;
         });
 }
@@ -3338,8 +3309,9 @@ async function handleDeleteCard(cardId) {
     showConfirmationDialog(
         t('kanban.confirm.deleteCard'),
         async (dialog) => {
-            const { card, column } = findCardAndColumn(cardId);
-            if (!card || !column) return false;
+            const result = findCardAndColumn(cardId);
+            if (!result) return false; // CORREÇÃO: Impede o erro se o cartão não for encontrado
+            const { card, column } = result;
             
             // Adiciona a ação 'trashed' ao log de atividades
             const logEntry = {
@@ -3379,41 +3351,42 @@ async function handleDeleteCard(cardId) {
 }
 
 async function handleArchiveCard(cardId) {
-    if (!await hasPermission(currentBoard, 'editColumns')) { // Archiving is an edit action
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) { // Archiving is an edit action
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
-    const { card, column } = findCardAndColumn(cardId);
-    if (!card) return;
+    const result = findCardAndColumn(cardId);
+    if (!result) return; // CORREÇÃO: Impede o erro se o cartão não for encontrado.
+    const { card, column } = result;
 
-    showConfirmationDialog(t('archive.confirm.archiveCard', { cardTitle: card.title }), async (dialog) => {
-        // Adiciona a ação 'archived' ao log de atividades
-        const logEntry = {
-            action: 'archived',
-            userId: currentUser.id,
-            timestamp: new Date().toISOString()
-        };
-        if (!card.activityLog) card.activityLog = [];
-        card.activityLog.push(logEntry);
-        await saveCard(card); // Salva o log antes de arquivar
+    // CORREÇÃO: Garante que a confirmação seja sempre solicitada.
+    showConfirmationDialog(
+        t('archive.confirm.archiveCard', { cardTitle: card.title }), 
+        async (dialog) => {
+            const logEntry = {
+                action: 'archived',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push(logEntry);
+            await saveCard(card);
 
-        // CORREÇÃO BUG: Atualiza contadores de tarefas do grupo ao arquivar.
-        if (currentBoard.groupId) {
-            const group = await getGroup(currentBoard.groupId);
-            if (group) {
-                group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
-                if(card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) -1);
-                else group.completedTaskCount = (group.completedTaskCount || 0) + 1;
-                await saveGroup(group);
+            if (currentBoard.groupId) {
+                const group = await getGroup(currentBoard.groupId);
+                if (group) {
+                    group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
+                    if(card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) -1);
+                    await saveGroup(group);
+                }
             }
-        }
 
-        await archiveCard(cardId, currentUser.id, 'archived', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
-        await saveState();
-        showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
-        showSuccessAndRefresh(dialog, currentBoard.id);
-        return true;
-    });
+            await archiveCard(cardId, currentUser.id, 'archived', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+            await saveState();
+            showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
+            await showSuccessAndRefresh(dialog, currentBoard.id);
+            return true;
+        });
 }
 
 async function saveState() {
@@ -3749,9 +3722,9 @@ async function saveBoardAsTemplate() {
     });
 }
 
-function handleEditColumnFromMenu(columnId) {
+async function handleEditColumnFromMenu(columnId) {
     // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-    if (!hasPermission(currentBoard, 'editColumns')) {
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         return;
     }
@@ -3767,7 +3740,7 @@ async function handlePasteColumn() {
     if (clipboard.mode === 'cut') {
         // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
         // Para mover (recortar/colar), o usuário precisa de permissão de edição no quadro de origem E no de destino.
-        if (!await hasPermission(await getBoard(clipboard.sourceBoardId), 'editColumns') || !await hasPermission(currentBoard, 'editColumns')) {
+        if (!await hasPermission(currentUser, await getBoard(clipboard.sourceBoardId), 'editColumns') || !await hasPermission(currentUser, currentBoard, 'editColumns')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }
@@ -3814,7 +3787,7 @@ async function handlePasteColumn() {
 
     } else { // 'copy'
         // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO
-        if (!await hasPermission(currentBoard, 'createColumns')) {
+        if (!await hasPermission(currentUser, currentBoard, 'createColumns')) {
             showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
             return;
         }

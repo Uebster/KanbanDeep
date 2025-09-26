@@ -932,8 +932,10 @@ export function initCustomSelects() {
         // Se o select não tiver opções (pode ser preenchido dinamicamente mais tarde), pule.
         // Se não houver opção selecionada (selectedIndex === -1), também pula. Isso acontece
         // quando o valor salvo no storage não corresponde a nenhuma opção disponível ou o select está vazio.
-        // Esta é a correção definitiva para o erro 'Cannot read properties of undefined (reading 'innerHTML')'.
-        if (selElmnt.options.length === 0 || selElmnt.selectedIndex === -1) {
+        // Esta é a correção definitiva para o erro 'Cannot read properties of null'.
+        const selectedOption = selElmnt.options[selElmnt.selectedIndex];
+        // A verificação `!selectedOption` é a mais robusta, cobrindo o caso de `selectedIndex` ser -1.
+        if (selElmnt.options.length === 0 || !selectedOption) {
             continue;
         }
 

@@ -111,7 +111,7 @@ async function loadNotifications() {
     notifications = await getNotifications(currentUser.id) || [];
 }
 
-function renderNotifications() {
+async function renderNotifications() {
     const notificationsList = document.querySelector('#all-notifications .notifications-list');
     if (!notificationsList) return;
     
@@ -125,8 +125,8 @@ function renderNotifications() {
         return;
     }
     
-    const filteredNotifications = filterNotificationsByType(displayableNotifications, currentFilter);
-    const timeFilteredNotifications = filterNotificationsByTime(filteredNotifications, currentTimeFilter);
+    const filteredNotifications = await filterNotificationsByType(displayableNotifications, currentFilter);
+    const timeFilteredNotifications = await filterNotificationsByTime(filteredNotifications, currentTimeFilter);
     
     timeFilteredNotifications.forEach(notification => {
         const notificationEl = createNotificationElement(notification);
