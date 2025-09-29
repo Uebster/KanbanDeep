@@ -112,19 +112,18 @@ export async function setCurrentUserId(userId) { return await universalSave('cur
 export async function getCard(cardId) { return await getItem(cardId, 'card'); }
 export async function saveCard(cardData) { return await saveItem(cardData, 'card'); }
 export async function deleteCard(cardId) { return await deleteItem(cardId, 'card'); }
+
 /**
  * Arquiva um cartão, marcando-o como arquivado em vez de deletá-lo.
  * @param {string} cardId - O ID do cartão a ser arquivado.
  * @param {string} userId - O ID do usuário que está arquivando.
- * @param {string} reason - O motivo do arquivamento ('archived' ou 'deleted' para lixeira).
- * @param {string|null} columnId - O ID da coluna original do cartão.
+ * @param {object} context - Contexto original do cartão.
  */
-export async function archiveCard(cardId, userId, reason = 'archived', context = {}) {
+export async function archiveCard(cardId, userId, context = {}) {
     const card = await getCard(cardId);
     if (!card) return null;
 
-    // Adiciona o log de atividade apropriado ANTES de salvar.
-    const logAction = reason === 'deleted' ? 'trashed' : 'archived';
+    const logAction = 'archived';
     if (!card.activityLog) card.activityLog = [];
     card.activityLog.push({
         action: logAction,
@@ -134,8 +133,7 @@ export async function archiveCard(cardId, userId, reason = 'archived', context =
 
     card.isArchived = true;
     card.archivedAt = new Date().toISOString();
-    card.archivedBy = userId;
-    card.archiveReason = reason;
+    card.archivedBy = userId;    card.archiveReason = 'archived';
 
     // Armazena o contexto original para restauração inteligente
     card.columnId = context.columnId || card.columnId;
@@ -147,6 +145,36 @@ export async function archiveCard(cardId, userId, reason = 'archived', context =
     return await saveCard(card);
 }
 
+/**
+ * Move um cartão para a lixeira.
+ * @param {string} cardId - O ID do cartão a ser movido para a lixeira.
+ * @param {string} userId - O ID do usuário que está realizando a ação.
+ * @param {object} context - Contexto original do cartão.
+ */
+export async function trashCard(cardId, userId, context = {}) {
+    const card = await getCard(cardId);
+    if (!card) return null;
+
+    const logAction = 'trashed';
+    if (!card.activityLog) card.activityLog = [];
+    card.activityLog.push({
+        action: logAction,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    });
+
+    card.isArchived = true;
+    card.archivedAt = new Date().toISOString();
+    card.archivedBy = userId;
+    card.archiveReason = 'deleted'; // Motivo explícito para lixeira
+
+    card.columnId = context.columnId || card.columnId;
+    card.boardId = context.boardId || card.boardId;
+    card.columnTitle = context.columnTitle || card.columnTitle;
+    card.boardTitle = context.boardTitle || card.boardTitle;
+
+    return await saveCard(card);
+}
 // --- Colunas ---
 export async function getColumn(columnId) { return await getItem(columnId, 'column'); }
 export async function saveColumn(columnData) { return await saveItem(columnData, 'column'); }
@@ -158,25 +186,20 @@ export async function deleteColumn(columnId) {
 
 /**
  * Arquiva uma coluna, movendo-a da visão principal para a lista de arquivadas.
- * @param {string} columnId O ID da coluna a ser arquivada.
- * @param {string} userId O ID do usuário que está arquivando.
- * @param {string} reason O motivo do arquivamento ('archived' ou 'deleted').
- * @param {object} context Contexto adicional como boardId e boardTitle.
+ * @param {string} columnId - O ID da coluna a ser arquivada.
+ * @param {string} userId - O ID do usuário que está arquivando.
+ * @param {object} context - Contexto adicional como boardId e boardTitle.
  */
-export async function archiveColumn(columnId, userId, reason = 'archived', context = {}) {
+export async function archiveColumn(columnId, userId, context = {}) {
     const column = await getColumn(columnId);
     if (!column) return null;
 
-    // Desmembra os cartões da coluna, arquivando-os individualmente.
     if (column.cardIds && column.cardIds.length > 0) {
         const cardContext = { ...context, columnId: column.id, columnTitle: column.title };
-        await Promise.all(column.cardIds.map(cardId => 
-            archiveCard(cardId, userId, reason, cardContext)
-        ));
+        await Promise.all(column.cardIds.map(cardId => archiveCard(cardId, userId, cardContext)));
     }
 
-    // Adiciona o log de atividade apropriado ANTES de salvar.
-    const logAction = reason === 'deleted' ? 'trashed' : 'archived';
+    const logAction = 'archived';
     if (!column.activityLog) column.activityLog = [];
     column.activityLog.push({
         action: logAction,
@@ -185,11 +208,43 @@ export async function archiveColumn(columnId, userId, reason = 'archived', conte
     });
 
     column.isArchived = true;
-    column.archiveReason = reason;
+    column.archiveReason = 'archived';
     column.archivedAt = new Date().toISOString();
     column.archivedBy = userId;
     column.boardId = context.boardId || column.boardId || 'unknown';
     column.boardTitle = context.boardTitle || column.boardTitle || 'Unknown Board';
+    return await saveColumn(column);
+}
+
+/**
+ * Move uma coluna e seus cartões para a lixeira.
+ * @param {string} columnId - O ID da coluna a ser movida para a lixeira.
+ * @param {string} userId - O ID do usuário que está realizando a ação.
+ * @param {object} context - Contexto adicional como boardId e boardTitle.
+ */
+export async function trashColumn(columnId, userId, context = {}) {
+    const column = await getColumn(columnId);
+    if (!column) return null;
+
+    if (column.cardIds && column.cardIds.length > 0) {
+        const cardContext = { ...context, columnId: column.id, columnTitle: column.title };
+        await Promise.all(column.cardIds.map(cardId => trashCard(cardId, userId, cardContext)));
+    }
+
+    const logAction = 'trashed';
+    if (!column.activityLog) column.activityLog = [];
+    column.activityLog.push({
+        action: logAction,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    });
+
+    column.isArchived = true;
+    column.archiveReason = 'deleted';
+    column.archivedAt = new Date().toISOString();
+    column.archivedBy = userId;
+    column.boardId = context.boardId || column.boardId || 'unknown';
+    column.boardTitle = context.boardTitle || context.boardTitle || 'Unknown Board';
     return await saveColumn(column);
 }
 
@@ -269,30 +324,49 @@ export async function hardDeleteBoard(boardId) {
     return await deleteItem(boardId, 'board');
 }
 
-export async function archiveBoard(boardId, userId, reason = 'archived') {
-    // ETAPA 2: A função agora desmembra o quadro em itens independentes.
-    // Busca o quadro completo com todos os seus filhos.
+export async function archiveBoard(boardId, userId) {
     const board = await getFullBoardData(boardId, true); // true para incluir itens já arquivados
     if (!board) return null;
 
-    // 1. Arquiva todos os filhos (colunas e cartões) individualmente.
     for (const column of board.columns) {
-        // Arquiva cada cartão da coluna, salvando o contexto.
-        for (const card of column.cards) {
-            await archiveCard(card.id, userId, reason, { columnId: column.id, boardId: board.id, columnTitle: column.title, boardTitle: board.title });
-        }
-        // Arquiva a própria coluna, salvando o contexto.
-        await archiveColumn(column.id, userId, reason, { boardId: board.id, boardTitle: board.title }); // CORREÇÃO: Esta chamada agora funciona.
+        await archiveColumn(column.id, userId, { boardId: board.id, boardTitle: board.title });
     }
 
-    // 2. Arquiva o próprio quadro.
     board.isArchived = true;
-    board.archiveReason = reason;
+    board.archiveReason = 'archived';
     board.archivedAt = new Date().toISOString();
     board.archivedBy = userId;
 
-    // Adiciona o log de atividade apropriado ao quadro.
-    const logAction = reason === 'deleted' ? 'trashed' : 'archived';
+    const logAction = 'archived';
+    if (!board.activityLog) board.activityLog = [];
+    board.activityLog.push({
+        action: logAction,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    });
+    
+    return await saveBoard(board);
+}
+
+/**
+ * Move um quadro e todo o seu conteúdo para a lixeira.
+ * @param {string} boardId - O ID do quadro a ser movido para a lixeira.
+ * @param {string} userId - O ID do usuário que está realizando a ação.
+ */
+export async function trashBoard(boardId, userId) {
+    const board = await getFullBoardData(boardId, true);
+    if (!board) return null;
+
+    for (const column of board.columns) {
+        await trashColumn(column.id, userId, { boardId: board.id, boardTitle: board.title });
+    }
+
+    board.isArchived = true;
+    board.archiveReason = 'deleted';
+    board.archivedAt = new Date().toISOString();
+    board.archivedBy = userId;
+
+    const logAction = 'trashed';
     if (!board.activityLog) board.activityLog = [];
     board.activityLog.push({
         action: logAction,

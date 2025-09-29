@@ -1,11 +1,25 @@
 // js/kanban.js - VERSÃO REFATORADA E FINAL
 
 import { getCurrentUser, updateUser, hasPermission } from './auth.js';
-import { archiveBoard,
-    getUserProfile, saveUserProfile, getFullBoardData, getBoard, saveBoard, deleteBoard, 
-    getColumn, saveColumn, deleteColumn, getCard, saveCard, deleteCard, archiveCard, deleteGroup,
+import { 
+    archiveBoard as archiveBoardInStorage,
+    trashBoard as trashBoardInStorage,
+    archiveColumn as archiveColumnInStorage,
+    trashColumn as trashColumnInStorage,
+    archiveCard as archiveCardInStorage,
+    trashCard as trashCardInStorage,
+    getUserProfile, 
+    saveUserProfile, 
+    getFullBoardData, 
+    getBoard, 
+    saveBoard, 
+    getColumn, 
+    saveColumn, 
+    getCard, 
+    saveCard, 
+    deleteGroup,
     getAllUsers, getAllGroups, getGroup, saveGroup, getSystemBoardTemplates, getUserBoardTemplates,
-    getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates
+    getSystemTagTemplates, getUserTagTemplates, saveUserBoardTemplates 
 } from './storage.js';
 import { showFloatingMessage, initDraggableElements, updateUserAvatar, closeAllDropdowns,
     initUIControls, showConfirmationDialog, showDialogMessage, initCustomSelects,
@@ -1357,6 +1371,122 @@ function showManagerDialog() {
     dialog.showModal();
 }
 
+// ===== FUNÇÕES OFICIAIS DE ARQUIVAR/EXCLUIR (LÓGICA DE NEGÓCIO) =====
+
+/**
+ * Arquiva um quadro, movendo-o para a seção de arquivados.
+ * @param {string} boardId - O ID do quadro a ser arquivado.
+ * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
+ */
+async function archiveBoard(boardId) {
+    const boardToArchive = boards.find(b => b.id === boardId);
+    if (!boardToArchive) return false;
+
+    // A função de storage já lida com o desmembramento e arquivamento dos filhos.
+    const archived = await archiveBoardInStorage(boardId, currentUser.id);
+    if (!archived) return false;
+
+    // Atualiza a UI
+    const boardIndex = boards.findIndex(b => b.id === boardId);
+    if (boardIndex > -1) boards.splice(boardIndex, 1);
+    
+    if (currentBoard && currentBoard.id === boardId) {
+        currentBoard = boards.find(b => !b.isArchived) || null;
+        localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+    }
+    
+    await showSuccessAndRefresh(null, currentBoard?.id);
+    return true;
+}
+
+/**
+ * Exclui um quadro, movendo-o para a lixeira.
+ * @param {string} boardId - O ID do quadro a ser movido para a lixeira.
+ * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
+ */
+export async function deleteBoard(boardId) {
+    const boardToDelete = boards.find(b => b.id === boardId);
+    if (!boardToDelete) return false;
+
+    // CHAMA A NOVA FUNÇÃO EXPLÍCITA PARA MOVER PARA A LIXEIRA
+    const deleted = await trashBoardInStorage(boardId, currentUser.id);
+    if (!deleted) return false;
+
+    // Atualiza a UI
+    const boardIndex = boards.findIndex(b => b.id === boardId);
+    if (boardIndex > -1) boards.splice(boardIndex, 1);
+
+    if (currentBoard && currentBoard.id === boardId) {
+        currentBoard = boards.find(b => !b.isArchived) || null;
+        localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+    }
+
+    await showSuccessAndRefresh(null, currentBoard?.id);
+    return true;
+}
+
+/**
+ * Exclui uma coluna, movendo-a e seus cartões para a lixeira.
+ * @param {string} columnId - O ID da coluna a ser excluída.
+ * @returns {Promise<void>}
+ */
+async function deleteColumn(columnId) { // Lógica de negócio pura
+    if (!columnId) return false;
+    // CHAMA A NOVA FUNÇÃO EXPLÍCITA PARA MOVER PARA A LIXEIRA
+    return await trashColumnInStorage(columnId, currentUser.id, { boardId: currentBoard.id, boardTitle: currentBoard.title });
+}
+
+async function archiveColumn(columnId) { // Lógica de negócio pura
+    if (!columnId) return false;
+    // CHAMA A FUNÇÃO DE ARQUIVAMENTO
+    return await archiveColumnInStorage(columnId, currentUser.id, { boardId: currentBoard.id, boardTitle: currentBoard.title });
+}
+
+/**
+ * Arquiva um cartão, movendo-o para a seção de arquivados.
+ * @param {string} cardId - O ID do cartão a ser arquivado.
+ * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
+ */
+async function archiveCard(cardId) { // Lógica de negócio pura
+    const result = findCardAndColumn(cardId);
+    if (!result) return false;
+    const { card, column } = result;
+
+    // Lógica de negócio (logs, contadores, etc.)
+    if (currentBoard.groupId) {
+        const group = await getGroup(currentBoard.groupId);
+        if (group) {
+            group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
+            if (card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
+            await saveGroup(group);
+        }
+    }
+    return await archiveCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+}
+
+/**
+ * Exclui um cartão, movendo-o para a lixeira.
+ * @param {string} cardId - O ID do cartão a ser excluído.
+ * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
+ */
+async function deleteCard(cardId) { // Lógica de negócio pura
+    const result = findCardAndColumn(cardId);
+    if (!result) return false;
+    const { card, column } = result;
+
+    // Lógica de negócio (logs, contadores, etc.)
+    if (currentBoard.groupId) {
+        const group = await getGroup(currentBoard.groupId);
+        if (group) {
+            group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
+            if (card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
+            await saveGroup(group);
+        }
+    }
+    return await trashCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+}
+
+
 // ===== LÓGICA DE MENUS (DROPDOWNS) =====
 
 /**
@@ -1421,17 +1551,15 @@ async function populateManagerBoards() {
         `;
 
         itemEl.querySelector('.archive-board-btn').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editBoards')) { // Reutiliza a permissão de edição para arquivar
-                document.getElementById('manager-dialog').close();
-                handleArchiveBoard(board.id);
+            if (await hasPermission(currentUser, board, 'editBoards')) {
+                await handleArchiveBoard(board.id, true); // Passa true para fechar o manager-dialog no sucesso
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
         };
         itemEl.querySelector('.btn.edit').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editBoards')) {
-                document.getElementById('manager-dialog').close();
-                showBoardDialog(board.id);
+                await showBoardDialog(board.id);
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
@@ -1439,9 +1567,7 @@ async function populateManagerBoards() {
 
         itemEl.querySelector('.btn.danger').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editBoards')) {
-                document.getElementById('manager-dialog').close();
-                currentBoard = board; // Define o quadro a ser excluído
-                handleDeleteBoard();
+                await handleDeleteBoard(board.id, true); // Passa true para fechar o manager-dialog no sucesso
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
@@ -1562,7 +1688,6 @@ function renderManagerColumnList(board, listContainer) {
 
         itemEl.querySelector('.btn.edit').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
                 showColumnDialog(column.id);
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
@@ -1571,8 +1696,7 @@ function renderManagerColumnList(board, listContainer) {
 
         itemEl.querySelector('.btn.danger').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
-                archiveColumn(column.id, 'deleted'); // CORREÇÃO: Chama a função correta
+                await handleDeleteColumn(column.id, true); // Passa true para fechar o manager-dialog no sucesso
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
@@ -1580,22 +1704,11 @@ function renderManagerColumnList(board, listContainer) {
 
         itemEl.querySelector('.archive-column-btn').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
-                archiveColumn(column.id);
+                await handleArchiveColumn(column.id, true); // Passa true para fechar o manager-dialog no sucesso
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
         };
-
-        itemEl.querySelector('.archive-column-btn').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
-                archiveColumn(column.id);
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-
         listContainer.appendChild(itemEl);
     });
 }
@@ -1694,29 +1807,23 @@ function renderManagerCardList(board, column, listContainer) {
             </div>
         `;
         itemEl.querySelector('.btn.edit').onclick = () => {
-            document.getElementById('manager-dialog').close();
-            showCardDialog(card.id);
+            // CORREÇÃO: Não fecha o manager-dialog. O diálogo de edição abrirá sobre ele.
+            // Se o usuário salvar, a função showSuccessAndRefresh fechará ambos.
+            // Se cancelar, ele volta para o manager.
+            if (hasPermission(currentUser, board, 'editColumns')) {
+                showCardDialog(card.id);
+            }
         };
         itemEl.querySelector('.btn.danger').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
-                handleDeleteCard(card.id);
+                await handleDeleteCard(card.id, true); // Passa true para fechar o manager-dialog no sucesso
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
         };
         itemEl.querySelector('.archive-card-btn').onclick = async () => {
             if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
-                handleArchiveCard(card.id);
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-        itemEl.querySelector('.archive-card-btn').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                document.getElementById('manager-dialog').close();
-                handleArchiveCard(card.id);
+                await handleArchiveCard(card.id, true); // Passa true para fechar o manager-dialog no sucesso
             } else {
                 showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
             }
@@ -2032,7 +2139,7 @@ async function handleSaveColumn() {
         async (confirmationDialog) => {
             await saveState(); // Salva o estado para o Desfazer
             const columnId = dialog.dataset.editingId;
-            
+
             const bgColor = document.getElementById('column-color-trigger').dataset.color;
             const textColor = document.getElementById('column-text-color-trigger').dataset.color;
 
@@ -2041,7 +2148,7 @@ async function handleSaveColumn() {
                 description: document.getElementById('column-description').value, 
                 // Se a cor for uma variável CSS (padrão), salva null para que a coluna herde o tema.
                 // Caso contrário, salva a cor customizada.
-                color: bgColor.startsWith('var(') ? null : bgColor,
+                color: bgColor.startsWith('var(') ? null : bgColor, // eslint-disable-line
                 textColor: textColor.startsWith('var(') ? null : textColor
             };
 
@@ -2506,11 +2613,24 @@ function handlePrintBoard() {
 
 // ===== LÓGICA DE DRAG-AND-DROP =====
 
-function handleDragStart(e) {
-    // ETAPA 3: VERIFICAÇÃO DE PERMISSÃO PARA ARRASTAR
-    // Se for um quadro de grupo, verifica se o usuário tem permissão para editar colunas.
+async function handleDragStart(e) {
     hideTooltip(); // Esconde qualquer tooltip ao começar a arrastar
     isDragging = true;
+
+    // ETAPA 3: VERIFICAÇÃO DE PERMISSÃO PARA ARRASTAR
+    const isCardDrag = e.target.closest('.card');
+    const isColumnDrag = e.target.closest('.column-header');
+    let requiredPermission = null;
+
+    if (isCardDrag) requiredPermission = 'createCards'; // Mover um cartão é como criar/recriar
+    if (isColumnDrag) requiredPermission = 'editColumns';
+
+    if (requiredPermission && !await hasPermission(currentUser, currentBoard, requiredPermission)) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        e.preventDefault(); // Impede o início do arrasto
+        isDragging = false; // Reseta o estado
+        return;
+    }
 
     const targetCard = e.target.closest('.card');
     const targetColumnHeader = e.target.closest('.column-header');
@@ -2818,19 +2938,19 @@ async function createColumnContextMenu(event, columnEl) {
         { 
             label: t('kanban.contextMenu.column.archive'), // Adicionar esta chave no pt-BR.json
             icon: '🗄️', 
-            action: () => archiveColumn(columnId, 'archived'),
+            action: () => handleArchiveColumn(columnId), // CORRETO
         },
         { isSeparator: true },
-        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumnFromMenu(columnId), isDestructive: true }
+        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumn(columnId), isDestructive: true } // CORRETO
     ];
 
     showContextMenu(event, menuItems);
 }
 
-async function handleCopyColumn(columnId) {
+function handleCopyColumn(columnId) {
     const columnToCopy = findColumn(columnId);
     if (columnToCopy) {
-        // Deep copy dos cartões é necessário para criar novas instâncias
+        // Deep copy dos cartões é necessário para criar novas instâncias.
         const cardsToCopy = columnToCopy.cards.map(card => ({
             ...card,
             id: null, // Reseta o ID para criar um novo
@@ -2856,7 +2976,7 @@ async function handleCopyColumn(columnId) {
  * Recorta uma coluna, marcando-a para ser movida.
  * @param {string} columnId O ID da coluna a ser recortada.
  */
-async function handleCutColumn(columnId) {
+function handleCutColumn(columnId) {
     // A permissão já foi verificada na função que chama esta (createColumnContextMenu)
     const columnToCut = findColumn(columnId);
     if (columnToCut) {
@@ -2869,62 +2989,6 @@ async function handleCutColumn(columnId) {
         };
         showFloatingMessage(t('kanban.feedback.columnCut'), 'info');
     }
-}
-
-/**
- * Arquiva uma coluna, movendo-a da visão principal para a lista de arquivadas.
- * @param {string} columnId O ID da coluna a ser arquivada.
- * @param {string} reason O motivo do arquivamento ('archived' ou 'deleted').
- */
-async function archiveColumn(columnId, reason = 'archived') {
-    const column = findColumn(columnId);
-    if (!column) return;
-
-    // CORREÇÃO: Usa uma chave de tradução específica para arquivar/excluir colunas.
-    const confirmationMessage = reason === 'deleted' 
-        ? t('kanban.confirm.deleteColumn') 
-        : t('kanban.confirm.archiveColumn', { columnTitle: column.title });
-
-    showConfirmationDialog(confirmationMessage, async (dialog) => {
-        if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
-            showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
-            return false;
-        }
-        await saveState();
-
-        // CORREÇÃO: Arquiva todos os cartões da coluna antes de arquivar a própria coluna.
-        for (const cardId of [...column.cardIds]) { // Cria uma cópia para iterar com segurança
-            await archiveCard(cardId, currentUser.id, reason, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
-        }
-
-        // Agora arquiva a coluna
-        column.boardId = currentBoard.id;
-        column.boardTitle = currentBoard.title;
-        if (!column.activityLog) column.activityLog = [];
-        const logEntry = {
-            action: reason === 'deleted' ? 'trashed' : 'archived',
-            userId: currentUser.id,
-            timestamp: new Date().toISOString()
-        };
-        column.activityLog.push(logEntry);
-
-        column.isArchived = true;
-        column.archiveReason = reason;
-        column.archivedAt = new Date().toISOString();
-        column.archivedBy = currentUser.id;
-        await saveColumn(column);
-
-        // Atualiza o quadro
-        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-        if (!currentBoard.archivedColumnIds) currentBoard.archivedColumnIds = [];
-        if (!currentBoard.archivedColumnIds.includes(columnId)) currentBoard.archivedColumnIds.push(columnId);
-        await saveBoard(currentBoard);
-
-        const successMsg = reason === 'deleted' ? t('kanban.feedback.columnMovedToTrash') : t('kanban.feedback.columnArchived');
-        showDialogMessage(dialog, successMsg, 'success');
-        await showSuccessAndRefresh(dialog, currentBoard.id);
-        return true;
-    });
 }
 
 // --- LÓGICA DO DIÁLOGO DE DETALHES ---
@@ -3111,6 +3175,53 @@ function renderColumnActivityLog(column, container) {
 
 // ===== LÓGICA DE AÇÕES E UTILIDADES =====
 
+// ===== FUNÇÕES DE SUPORTE (handle*) COM DIÁLOGOS DE CONFIRMAÇÃO =====
+
+/**
+ * Função de suporte para arquivar quadro (com diálogo de confirmação).
+ * @param {string} boardId O ID do quadro.
+ * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
+ */
+async function handleArchiveBoard(boardId, closeManagerDialog = false) {
+    const boardToArchive = boards.find(b => b.id === boardId);
+    if (!boardToArchive) return;
+
+    showConfirmationDialog(
+        t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
+        async (dialog) => {
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            if (await archiveBoard(boardId)) {
+                showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
+                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
+                return true;
+            }
+            return false;
+        }
+    );
+}
+
+/**
+ * Função de suporte para excluir quadro (com diálogo de confirmação).
+ * @param {string} boardId O ID do quadro.
+ * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
+ */
+async function handleDeleteBoard(boardId, closeManagerDialog = false) {
+    const boardToDelete = boards.find(b => b.id === boardId);
+    if (!boardToDelete) return;
+
+    showConfirmationDialog(
+        t('kanban.confirm.deleteBoard', { boardTitle: boardToDelete.title }),
+        async (dialog) => {
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            if (await deleteBoard(boardId)) {
+                showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
+                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
+                return true;
+            }
+            return false;
+        }, null, t('ui.yesDelete'), t('ui.no'));
+}
+
 function switchBoard(e) {
     const boardId = e.target.value;
     currentBoard = boards.find(b => b.id === boardId);
@@ -3122,60 +3233,55 @@ function switchBoard(e) {
     updateHeaderButtonPermissions(); // Atualiza permissões ao trocar de quadro
 }
 
-async function handleArchiveBoard(boardId) {
-    const boardToArchive = boards.find(b => b.id === boardId);
-    if (!boardToArchive) return;
-
-    // CORREÇÃO: Adiciona a verificação de permissão que estava faltando.
-    if (!await hasPermission(currentUser, boardToArchive, 'editBoards')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
+/**
+ * Função de suporte para arquivar coluna (com diálogo de confirmação).
+ * @param {string} columnId O ID da coluna.
+ * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
+ */
+async function handleArchiveColumn(columnId, closeManagerDialog = false) {
+    const column = findColumn(columnId);
+    if (!column) return;
 
     showConfirmationDialog(
-        t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
+        t('archive.confirm.archiveColumn', { columnTitle: column.title }),
         async (dialog) => {
-            const archived = await archiveBoard(boardId, currentUser.id, 'archived');
-            if (!archived) return false;
-
-            // --- CORREÇÃO: Lógica de arquivamento para quadros de grupo ---
-            if (boardToArchive.groupId) {
-                // Se for um quadro de grupo, remove a referência do grupo
-                const group = await getGroup(boardToArchive.groupId);
-                if (group) {
-                    group.boardIds = (group.boardIds || []).filter(id => id !== boardId);
-                    await saveGroup(group);
-                }
-            } else {
-                // Se for um quadro pessoal, remove a referência do perfil do usuário
-                const userProfile = await getUserProfile(currentUser.id);
-                if (userProfile) {
-                    userProfile.boardIds = (userProfile.boardIds || []).filter(id => id !== boardId);
-                    if (!userProfile.archivedBoardIds) userProfile.archivedBoardIds = [];
-                    if (!userProfile.archivedBoardIds.includes(boardId)) {
-                        userProfile.archivedBoardIds.push(boardId);
-                    }
-                    await saveUserProfile(userProfile);
-                }
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            if (await archiveColumn(columnId)) { // Chama a função de negócio
+                showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
+                await showSuccessAndRefresh(dialog, currentBoard.id);
+                return true;
             }
-            
-            // CORREÇÃO DEFINITIVA: Remove o quadro da lista em memória para que a UI seja atualizada imediatamente.
-            const boardIndex = boards.findIndex(b => b.id === boardId);
-            if (boardIndex > -1) {
-                boards.splice(boardIndex, 1);
-            }
-
-            // Seleciona o próximo quadro disponível que não esteja arquivado
-            currentBoard = boards.find(b => !b.isArchived) || null; // Seleciona o próximo quadro disponível
-            localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
-            renderBoardSelector();
-            renderCurrentBoard();
-            initCustomSelects();
-            
-            showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
-            return true;
-        });
+            return false;
+        }
+    );
 }
+
+/**
+ * Função de suporte para excluir coluna (com diálogo de confirmação).
+ * @param {string} columnId O ID da coluna.
+ * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
+ */
+async function handleDeleteColumn(columnId, closeManagerDialog = false) {
+    const column = findColumn(columnId);
+    if (!column) return;
+
+    showConfirmationDialog(
+        t('kanban.confirm.deleteColumn'),
+        async (dialog) => {
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            if (await deleteColumn(columnId)) {
+                showDialogMessage(dialog, t('kanban.feedback.columnMovedToTrash'), 'success');
+                await showSuccessAndRefresh(dialog, currentBoard.id);
+                return true;
+            }
+            return false;
+        },
+        null,
+        t('ui.yesDelete'),
+        t('ui.no')
+    );
+}
+
 async function toggleCardComplete(cardId) {
     const { card } = findCardAndColumn(cardId);
     if (card) {
@@ -3250,61 +3356,6 @@ async function trashEntireBoard(boardId) {
     }
 }
 
-function handleDeleteBoard() {
-    if (!currentBoard) return;
-    // A chave de tradução pode ser a mesma, pois para o usuário a ação é "excluir"
-    showConfirmationDialog(
-        t('kanban.confirm.deleteBoard', { boardTitle: currentBoard.title }),
-        async (dialog) => {
-            const boardIdToDelete = currentBoard.id; // Salva o ID antes que currentBoard mude
-            await trashEntireBoard(boardIdToDelete); // 1. Aguarda a operação de mover para a lixeira (que já remove a referência do grupo/perfil).
-            
-            // CORREÇÃO DEFINITIVA: Remove o quadro da lista em memória para que a UI seja atualizada imediatamente.
-            const boardIndex = boards.findIndex(b => b.id === boardIdToDelete);
-            if (boardIndex > -1) {
-                boards.splice(boardIndex, 1);
-            }
-
-            // Define o próximo quadro como ativo
-            currentBoard = boards[0] || null;
-            localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
-            
-            renderBoardSelector();
-            initCustomSelects();
-            renderCurrentBoard();
-            
-            showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
-            return true;
-        },
-        null,
-        t('ui.yesDelete'),
-        t('ui.no')
-    );
-}
-
-async function handleDeleteColumn(columnId) {
-    if (!columnId) return;
-
-    showConfirmationDialog(
-        t('kanban.confirm.deleteColumn'),
-        async (confirmationDialog) => {
-            const boardData = await getBoard(currentBoard.id);
-            boardData.columnIds = boardData.columnIds.filter(id => id !== columnId);
-            await saveBoard(boardData);
-            await deleteColumn(columnId); // Deleta a coluna e seus cartões
-            currentBoard = await getFullBoardData(currentBoard.id);
-            await saveState();
-            await renderCurrentBoard();
-            document.getElementById('column-dialog').close(); // Close the original column dialog
-            showDialogMessage(confirmationDialog, t('kanban.feedback.columnDeleted'), 'success');
-            return true;
-        },
-        null,
-        t('ui.yesDelete'),
-        t('ui.no')
-    );
-}
-
 async function handleDeleteCard(cardId) {
     showConfirmationDialog(
         t('kanban.confirm.deleteCard'),
@@ -3324,7 +3375,7 @@ async function handleDeleteCard(cardId) {
             await saveCard(card); // Salva o log antes de arquivar
 
             // Arquiva com o motivo 'deleted' (move para a lixeira).
-            await archiveCard(cardId, currentUser.id, 'deleted', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+            await archiveCardInStorage(cardId, currentUser.id, 'deleted', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
 
             // FASE 2: Atualiza contadores de tarefas do grupo
             if (currentBoard.groupId) {
@@ -3342,7 +3393,7 @@ async function handleDeleteCard(cardId) {
             
             await saveState();
             showDialogMessage(dialog, t('kanban.feedback.cardDeleted'), 'success');
-            showSuccessAndRefresh(dialog, currentBoard.id);
+            await showSuccessAndRefresh(dialog, currentBoard.id);
             return true;
         },
         null,
@@ -3350,43 +3401,37 @@ async function handleDeleteCard(cardId) {
     );
 }
 
-async function handleArchiveCard(cardId) {
-    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) { // Archiving is an edit action
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
+/**
+ * Função de suporte para arquivar cartão (com diálogo de confirmação).
+ * @param {string} cardId O ID do cartão.
+ * @param {boolean} [showDialog=true] Se false, executa a ação diretamente.
+ * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
+ */
+async function handleArchiveCard(cardId, showDialog = true, closeManagerDialog = false) {
     const result = findCardAndColumn(cardId);
-    if (!result) return; // CORREÇÃO: Impede o erro se o cartão não for encontrado.
-    const { card, column } = result;
+    if (!result) return false;
+    const { card } = result;
 
-    // CORREÇÃO: Garante que a confirmação seja sempre solicitada.
-    showConfirmationDialog(
-        t('archive.confirm.archiveCard', { cardTitle: card.title }), 
-        async (dialog) => {
-            const logEntry = {
-                action: 'archived',
-                userId: currentUser.id,
-                timestamp: new Date().toISOString()
-            };
-            if (!card.activityLog) card.activityLog = [];
-            card.activityLog.push(logEntry);
-            await saveCard(card);
-
-            if (currentBoard.groupId) {
-                const group = await getGroup(currentBoard.groupId);
-                if (group) {
-                    group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
-                    if(card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) -1);
-                    await saveGroup(group);
-                }
-            }
-
-            await archiveCard(cardId, currentUser.id, 'archived', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
-            await saveState();
-            showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
+    const deleteAction = async (dialog) => {
+        if (await deleteCard(cardId)) {
+            showDialogMessage(dialog, t('kanban.feedback.cardMovedToTrash'), 'success');
             await showSuccessAndRefresh(dialog, currentBoard.id);
             return true;
-        });
+        }
+        return false;
+    };
+
+    if (showDialog) {
+        showConfirmationDialog(
+            t('kanban.confirm.deleteCard'), 
+            deleteAction, 
+            null, 
+            t('ui.yesDelete'), 
+            t('ui.no')
+        );
+    } else {
+        return await deleteAction(null);
+    }
 }
 
 async function saveState() {
@@ -3476,7 +3521,7 @@ function handleKeyDown(e) {
  * Copia um cartão para a área de transferência interna.
  * @param {string} cardId - O ID do cartão a ser copiado.
  */
-async function handleCopyCard(cardId) {
+function handleCopyCard(cardId) {
     const { card, column } = findCardAndColumn(cardId);
     if (card) {
         clipboard = {
@@ -3501,7 +3546,7 @@ async function handleCopyCard(cardId) {
  * Recorta um cartão para a área de transferência, marcando-o para ser movido.
  * @param {string} cardId - O ID do cartão a ser recortado.
  */
-async function handleCutCard(cardId) {
+function handleCutCard(cardId) {
     const { card, column } = findCardAndColumn(cardId);
     if (card) {
         clipboard = {

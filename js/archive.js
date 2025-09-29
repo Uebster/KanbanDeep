@@ -9,7 +9,7 @@ import {
     getBoard, 
     saveBoard, 
     getGroup, // <-- CORREÇÃO: Adiciona a importação que faltava
-    saveGroup, // <-- CORREÇÃO: Adiciona a importação que faltava
+    saveGroup,
     deleteBoard, // <-- CORREÇÃO: Adiciona a importação que faltava
     deleteCard, 
     hardDeleteColumn,
@@ -17,6 +17,7 @@ import {
     getAllUsers, deleteColumn, deleteItem,
     universalLoad
 } from './storage.js';
+import { deleteBoard as deleteBoardFromKanban } from './kanban.js'; // Importa a função com diálogo
 import { showConfirmationDialog, showFloatingMessage, showDialogMessage } from './ui-controls.js';
 import { t, initTranslations } from './translations.js';
 
@@ -417,6 +418,12 @@ async function _unarchiveItem(item, type, context) {
  * Nova função para mover um item da lixeira para os arquivos.
  */
 async function handleMoveToArchived(itemId, type) {
+    // Validação de Permissão
+    if (!await hasPermissionForItem(itemId, type, 'edit')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     let item;
     if (type === 'card') item = await getCard(itemId);
     else if (type === 'column') item = await getColumn(itemId);
@@ -434,24 +441,43 @@ async function handleMoveToArchived(itemId, type) {
 }
 
 async function handleMoveToTrash(itemId, type) {
-    let item;
-    if (type === 'card') item = await getCard(itemId);
-    else if (type === 'column') item = await getColumn(itemId);
-    else if (type === 'board') item = await getBoard(itemId);
+    // Validação de Permissão
+    if (!await hasPermissionForItem(itemId, type, 'edit')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
 
-    if (!item) return;
+    // Reutiliza a lógica existente em kanban.js para consistência
+    if (type === 'board') {
+        // A função deleteBoardFromKanban já move para a lixeira e atualiza a UI.
+        await deleteBoardFromKanban(itemId);
+    } else {
+        let item;
+        if (type === 'card') item = await getCard(itemId);
+        else if (type === 'column') item = await getColumn(itemId);
 
-    item.archiveReason = 'deleted';
-    if (type === 'card') await saveCard(item);
-    if (type === 'column') await saveColumn(item);
-    else if (type === 'board') await saveBoard(item);
+        if (!item) return;
 
-    showFloatingMessage(t('archive.feedback.movedToTrash'), 'info');
-    await loadAllArchivedItems();
-    renderAllLists();
+        item.archiveReason = 'deleted';
+        if (type === 'card') await saveCard(item);
+        if (type === 'column') await saveColumn(item);
+    }
+
+    // Atualiza a UI da página de arquivos
+    showFloatingMessage(t('archive.feedback.movedToTrash'), 'success');
+    setTimeout(async () => {
+        await loadAllArchivedItems();
+        renderAllLists();
+    }, 500); // Pequeno delay para garantir que a operação de storage concluiu
 }
 
 async function handleDeleteCard(cardId) {
+    // Validação de Permissão
+    if (!await hasPermissionForItem(cardId, 'card', 'delete')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         if (await deleteCard(cardId)) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
@@ -464,6 +490,12 @@ async function handleDeleteCard(cardId) {
 }
 
 async function handleDeleteColumn(columnId) {
+    // Validação de Permissão
+    if (!await hasPermissionForItem(columnId, 'column', 'delete')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // CORREÇÃO: Usa deleteColumn para apagar apenas a coluna, não seus filhos.
         // hardDeleteColumn é reservado para a função "Esvaziar Lixeira".
@@ -478,6 +510,12 @@ async function handleDeleteColumn(columnId) {
 }
 
 async function handleDeleteBoard(boardId) {
+    // Validação de Permissão
+    if (!await hasPermissionForItem(boardId, 'board', 'delete')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // CORREÇÃO: Usa deleteBoard para apagar apenas o quadro, não seus filhos.
         // hardDeleteBoard é reservado para a função "Esvaziar Lixeira".
@@ -504,6 +542,12 @@ function setupEventListeners() {
 }
 
 async function handleEmptyTrash() {
+    // Para esvaziar a lixeira, o usuário precisa ser um administrador ou ter uma permissão global.
+    // Como essa permissão ainda não existe, vamos permitir por enquanto, mas é um ponto de melhoria.
+    // if (!currentUser.isAdmin) {
+    //     showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+    //     return;
+    // }
     const trashItems = {
         boards: allArchivedItems.boards.filter(b => b.archiveReason === 'deleted'),
         columns: allArchivedItems.columns.filter(c => c.archiveReason === 'deleted'),
@@ -535,4 +579,31 @@ async function handleEmptyTrash() {
         null,
         t('ui.yesDelete')
     );
+}
+
+/**
+ * Função auxiliar para verificar a permissão de um item que pode não estar no quadro atual.
+ * @param {string} itemId - O ID do item.
+ * @param {string} itemType - 'card', 'column', ou 'board'.
+ * @param {string} action - 'edit' ou 'delete'.
+ * @returns {Promise<boolean>}
+ */
+async function hasPermissionForItem(itemId, itemType, action) {
+    const item = await universalLoad(`${itemType}_${itemId}`);
+    if (!item) return false;
+
+    let boardContext;
+    let permissionType;
+
+    if (itemType === 'board') {
+        boardContext = item;
+        permissionType = action === 'edit' ? 'editBoards' : 'editBoards'; // Excluir usa a mesma permissão de editar
+    } else {
+        boardContext = await getBoard(item.boardId);
+        if (!boardContext) return false; // Não pode verificar permissão sem o quadro
+        permissionType = action === 'edit' ? 'editColumns' : 'editColumns'; // Para cartões e colunas
+    }
+
+    // A função hasPermission já lida com a lógica de admin, dono, etc.
+    return await hasPermission(currentUser, boardContext, permissionType);
 }
