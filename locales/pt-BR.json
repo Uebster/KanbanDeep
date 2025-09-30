@@ -445,7 +445,7 @@
     "kanban.dialog.edit.selectBoardPlaceholder": "Selecione um quadro",
     "kanban.dialog.edit.selectCard": "Selecione o Cartão (Opcional):",
     "kanban.dialog.edit.selectCardPlaceholder": "Selecione um cartão",
-    "kanban.dialog.edit.selectColumn": "Selecione a Coluna:",
+    "kanban.dialog.edit.selectColumn": "Selecione uma Coluna:",
     "kanban.dialog.edit.selectColumnPlaceholder": "Selecione uma coluna",
     "kanban.dialog.edit.title": "Editar / Excluir Itens",
     "kanban.dialog.manager.groupBoards": "Quadros de Grupos",

@@ -1514,7 +1514,7 @@ export async function deleteBoard(boardId) {
  * @param {string} columnId - O ID da coluna a ser excluída.
  * @returns {Promise<void>}
  */
-async function deleteColumn(columnId, boardContext) { 
+async function deleteColumn(columnId, boardContext) {
     const board = boardContext || currentBoard;
     if (!columnId || !board) return false;
     const success = await trashColumnInStorage(columnId, currentUser.id, { boardId: board.id, boardTitle: board.title });
@@ -1525,7 +1525,7 @@ async function deleteColumn(columnId, boardContext) {
     return success;
 }
 
-async function archiveColumn(columnId, boardContext) { 
+async function archiveColumn(columnId, boardContext) {
     const board = boardContext || currentBoard;
     if (!columnId || !board) return false;
     const success = await archiveColumnInStorage(columnId, currentUser.id, { boardId: board.id, boardTitle: board.title });
@@ -1541,7 +1541,7 @@ async function archiveColumn(columnId, boardContext) {
  * @param {string} cardId - O ID do cartão a ser arquivado.
  * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
  */
-async function archiveCard(cardId, boardContext) { 
+async function archiveCard(cardId, boardContext) {
     const result = findCardAndColumn(cardId, boardContext);
     if (!result) return false;
     const { card, column, board } = result; // board is now returned from findCardAndColumn
@@ -1571,7 +1571,7 @@ async function archiveCard(cardId, boardContext) {
  * @param {string} cardId - O ID do cartão a ser excluído.
  * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
  */
-async function deleteCard(cardId, boardContext) { 
+async function deleteCard(cardId, boardContext) {
     const result = findCardAndColumn(cardId, boardContext);
     if (!result) return false;
     const { card, column, board } = result; // board is now returned from findCardAndColumn
@@ -1757,7 +1757,7 @@ function renderManagerColumnList(board, listContainer) {
         listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noColumnsInBoard')}</div>`;
         return;
     }
-    
+
     board.columns.forEach(column => {
         const itemEl = document.createElement('div');
         itemEl.className = 'manager-item';
@@ -1779,7 +1779,7 @@ function renderManagerColumnList(board, listContainer) {
 function populateManagerCards() {
     const boardSelectContainer = document.getElementById('manager-card-board-select-container');
     const columnSelectContainer = document.getElementById('manager-card-column-select-container');
-    const listContainer = document.getElementById('manager-cards-list'); // Corrigido para 'manager-cards-list'
+    const listContainer = document.getElementById('manager-cards-list');
 
     // 1. Cria e popula o seletor de quadros
     const boardSelect = document.createElement('select');
@@ -1811,7 +1811,7 @@ function populateManagerCards() {
 
     // 2. Cria o seletor de colunas (inicialmente vazio)
     const columnSelect = document.createElement('select');
-    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`; // Placeholder corrigido
+    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
     columnSelectContainer.innerHTML = '';
     columnSelectContainer.appendChild(columnSelect);
 
@@ -1820,7 +1820,7 @@ function populateManagerCards() {
     // 3. Adiciona listeners
     boardSelect.onchange = () => {
         const boardId = boardSelect.value;
-        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`; // Placeholder corrigido
+        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
         listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectColumn')}</div>`;
         if (boardId) {
             const board = boards.find(b => b.id === boardId);
@@ -3230,10 +3230,10 @@ async function handleArchiveBoard(boardId, closeManagerDialog = false) {
     showConfirmationDialog(
         t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
         async (dialog) => {
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
             if (await archiveBoard(boardId)) {
                 showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard?.id);
-                if (closeManagerDialog) populateManagerBoards(); // Atualiza a lista no gerenciador
+                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
                 return true;
             }
             return false;
@@ -3253,10 +3253,10 @@ async function handleDeleteBoard(boardId, closeManagerDialog = false) {
     showConfirmationDialog(
         t('kanban.confirm.deleteBoard', { boardTitle: boardToDelete.title }),
         async (dialog) => {
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
             if (await deleteBoard(boardId)) {
                 showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard?.id);
-                if (closeManagerDialog) populateManagerBoards(); // Atualiza a lista no gerenciador
+                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
                 return true;
             }
             return false;
@@ -3280,17 +3280,17 @@ function switchBoard(e) {
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
 async function handleArchiveColumn(columnId, boardContext = null, fromManager = false) {
-    const board = boardContext || currentBoard;
-    const column = findColumn(columnId, board);
+    const boardForContext = boardContext || currentBoard;
+    const column = findColumn(columnId, boardForContext);
     if (!column) return;
 
     showConfirmationDialog(
         t('archive.confirm.archiveColumn', { columnTitle: column.title }),
         async (dialog) => {
-            if (await archiveColumn(columnId, boardForContext)) {
+            if (await archiveColumn(columnId, boardForContext)) { // CORREÇÃO: Passa a variável correta
                 showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
-                if (fromManager) populateManagerColumns();
-                await showSuccessAndRefresh(dialog, board.id);
+                await showSuccessAndRefresh(dialog, currentBoard.id);
+                if (fromManager) document.getElementById('manager-dialog')?.close();
                 return true;
             }
             return false;
@@ -3303,18 +3303,18 @@ async function handleArchiveColumn(columnId, boardContext = null, fromManager = 
  * @param {string} columnId O ID da coluna.
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
-async function handleDeleteColumn(columnId, boardContext = null, fromManager = false) { // fromManager é o closeManagerDialog
-    const board = boardContext || currentBoard;
-    const column = findColumn(columnId, board);
+async function handleDeleteColumn(columnId, boardContext = null, fromManager = false) {
+    const boardForContext = boardContext || currentBoard;
+    const column = findColumn(columnId, boardForContext);
     if (!column) return;
 
     showConfirmationDialog(
         t('kanban.confirm.deleteColumn'),
         async (dialog) => {
-            if (await deleteColumn(columnId, board)) {
+            if (await deleteColumn(columnId, boardForContext)) { // CORREÇÃO: Passa a variável correta
                 showDialogMessage(dialog, t('kanban.feedback.columnMovedToTrash'), 'success');
                 await showSuccessAndRefresh(dialog, currentBoard.id);
-                if (fromManager) populateManagerColumns();
+                if (fromManager) document.getElementById('manager-dialog')?.close();
                 return true;
             }
             return false;
@@ -3700,15 +3700,11 @@ function getTagColor(tagName) {
 }
 
 function findCardAndColumn(cardId, boardContext) {
-    // Se o boardContext não for fornecido, busca em todos os quadros carregados.
-    const boardsToSearch = boardContext ? [boardContext] : boards;
-    for (const board of boardsToSearch) {
-        if (board && board.columns) {
-            for (const column of board.columns) {
-                const card = column.cards.find(c => c.id === cardId);
-                if (card) return { card, column, board }; // Retorna o contexto completo
-            }
-        }
+    const board = boardContext || currentBoard;
+    if (!board || !board.columns) return null;
+    for (const column of board.columns) {
+        const card = column.cards.find(c => c.id === cardId);
+        if (card) return { card, column, board }; // also return the board for context
     }
     return null;
 }

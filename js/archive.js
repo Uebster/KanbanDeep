@@ -10,7 +10,7 @@ import {
     saveBoard, 
     getGroup, // <-- CORREÇÃO: Adiciona a importação que faltava
     saveGroup,
-    trashBoard, // Usar trashBoard do storage.js
+    trashBoard, // Usar trashBoard do storage.js (já estava aqui)
     deleteCard,
     hardDeleteColumn,
     hardDeleteBoard,  // <-- Usar a nova função
