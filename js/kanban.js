@@ -1396,6 +1396,8 @@ async function archiveBoard(boardId) {
     }
     
     await showSuccessAndRefresh(null, currentBoard?.id);
+    await loadData(); // Recarrega TODOS os dados
+    renderBoardSelector(); // Atualiza o seletor
     return true;
 }
 
@@ -1422,6 +1424,8 @@ export async function deleteBoard(boardId) {
     }
 
     await showSuccessAndRefresh(null, currentBoard?.id);
+    await loadData(); // Recarrega TODOS os dados
+    renderBoardSelector(); // Atualiza o seletor
     return true;
 }
 
@@ -1602,16 +1606,19 @@ function populateManagerColumns() {
     
     // 1. Cria o seletor de quadros
     const select = document.createElement('select');
-    select.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoardPlaceholder')}</option>`;
+    select.innerHTML = `<option value="">${t('kanban.dialog.edit.selectBoard')}</option>`;
 
     // Reutiliza a mesma lógica de filtro da aba de quadros
-    const visibleBoards = boards.filter(async board => {
-        if (!board.groupId) return true;
-        const group = await getGroup(board.groupId);
-        if (!group) return false;
-        if (group.adminId === currentUser.id) return true;
-        return board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
-    });
+    const visibleBoards = boards.filter(board => {
+    // Quadros pessoais são sempre visíveis
+    if (!board.groupId) return true;
+    
+    // Para quadros de grupo, verifica se o usuário é membro
+    const group = allGroups.find(g => g.id === board.groupId);
+    if (!group) return false;
+    
+    return group.memberIds.includes(currentUser.id);
+});
 
     // CORREÇÃO: Aplica o mesmo padrão de agrupamento da aba "Quadros"
     const personalBoards = visibleBoards.filter(b => !b.groupId);
@@ -1751,7 +1758,7 @@ function populateManagerCards() {
 
     // 2. Cria o seletor de colunas (inicialmente vazio)
     const columnSelect = document.createElement('select');
-    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
+    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumn')}</option>`;
     columnSelectContainer.innerHTML = '';
     columnSelectContainer.appendChild(columnSelect);
 
@@ -1815,19 +1822,21 @@ function renderManagerCardList(board, column, listContainer) {
             }
         };
         itemEl.querySelector('.btn.danger').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                await handleDeleteCard(card.id, true); // Passa true para fechar o manager-dialog no sucesso
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-        itemEl.querySelector('.archive-card-btn').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                await handleArchiveCard(card.id, true); // Passa true para fechar o manager-dialog no sucesso
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
+    if (await hasPermission(currentUser, board, 'editColumns')) {
+        await handleDeleteCard(card.id, true);
+    } else {
+        showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+    }
+};
+
+// Botão Arquivar  
+itemEl.querySelector('.archive-card-btn').onclick = async () => {
+    if (await hasPermission(currentUser, board, 'editColumns')) {
+        await handleArchiveCard(card.id, true);
+    } else {
+        showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
+    }
+};
         listContainer.appendChild(itemEl);
     });
 }
@@ -3246,7 +3255,14 @@ async function handleArchiveColumn(columnId, closeManagerDialog = false) {
         t('archive.confirm.archiveColumn', { columnTitle: column.title }),
         async (dialog) => {
             if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-            if (await archiveColumn(columnId)) { // Chama a função de negócio
+            
+            // Chama a função de arquivamento
+            if (await archiveColumn(columnId)) {
+                // Remove do quadro atual
+                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+                await saveBoard(currentBoard);
+                
                 showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
                 await showSuccessAndRefresh(dialog, currentBoard.id);
                 return true;
@@ -3269,7 +3285,14 @@ async function handleDeleteColumn(columnId, closeManagerDialog = false) {
         t('kanban.confirm.deleteColumn'),
         async (dialog) => {
             if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            
+            // Chama a função de exclusão
             if (await deleteColumn(columnId)) {
+                // Remove do quadro atual
+                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+                await saveBoard(currentBoard);
+                
                 showDialogMessage(dialog, t('kanban.feedback.columnMovedToTrash'), 'success');
                 await showSuccessAndRefresh(dialog, currentBoard.id);
                 return true;
@@ -3356,15 +3379,17 @@ async function trashEntireBoard(boardId) {
     }
 }
 
-async function handleDeleteCard(cardId) {
+async function handleDeleteCard(cardId, closeManagerDialog = false) {
+    const result = findCardAndColumn(cardId);
+    if (!result) return false;
+    const { card, column } = result;
+
     showConfirmationDialog(
         t('kanban.confirm.deleteCard'),
         async (dialog) => {
-            const result = findCardAndColumn(cardId);
-            if (!result) return false; // CORREÇÃO: Impede o erro se o cartão não for encontrado
-            const { card, column } = result;
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
             
-            // Adiciona a ação 'trashed' ao log de atividades
+            // Adiciona log antes de excluir
             const logEntry = {
                 action: 'trashed',
                 userId: currentUser.id,
@@ -3372,66 +3397,61 @@ async function handleDeleteCard(cardId) {
             };
             if (!card.activityLog) card.activityLog = [];
             card.activityLog.push(logEntry);
-            await saveCard(card); // Salva o log antes de arquivar
+            await saveCard(card);
 
-            // Arquiva com o motivo 'deleted' (move para a lixeira).
-            await archiveCardInStorage(cardId, currentUser.id, 'deleted', { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
-
-            // FASE 2: Atualiza contadores de tarefas do grupo
-            if (currentBoard.groupId) {
-                const group = await getGroup(currentBoard.groupId);
-                if (group) {
-                    group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
-                    if (card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
-                    await saveGroup(group);
-                }
+            // Chama a função CORRETA de exclusão
+            if (await deleteCard(cardId)) {
+                // Remove da coluna atual
+                column.cardIds = column.cardIds.filter(id => id !== cardId);
+                column.cards = column.cards.filter(c => c.id !== cardId);
+                await saveColumn(column);
+                
+                showDialogMessage(dialog, t('kanban.feedback.cardMovedToTrash'), 'success');
+                await showSuccessAndRefresh(dialog, currentBoard.id);
+                return true;
             }
-
-            // Remove da visualização atual em memória
-            column.cardIds = column.cardIds.filter(id => id !== cardId);
-            column.cards = column.cards.filter(c => c.id !== cardId);
-            
-            await saveState();
-            showDialogMessage(dialog, t('kanban.feedback.cardDeleted'), 'success');
-            await showSuccessAndRefresh(dialog, currentBoard.id);
-            return true;
+            return false;
         },
         null,
-        t('ui.yesDelete'), t('ui.no')
+        t('ui.yesDelete'),
+        t('ui.no')
     );
 }
 
-/**
- * Função de suporte para arquivar cartão (com diálogo de confirmação).
- * @param {string} cardId O ID do cartão.
- * @param {boolean} [showDialog=true] Se false, executa a ação diretamente.
- * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
- */
-async function handleArchiveCard(cardId, showDialog = true, closeManagerDialog = false) {
+async function handleArchiveCard(cardId, closeManagerDialog = false) {
     const result = findCardAndColumn(cardId);
     if (!result) return false;
-    const { card } = result;
+    const { card, column } = result;
 
-    const deleteAction = async (dialog) => {
-        if (await deleteCard(cardId)) {
-            showDialogMessage(dialog, t('kanban.feedback.cardMovedToTrash'), 'success');
-            await showSuccessAndRefresh(dialog, currentBoard.id);
-            return true;
+    showConfirmationDialog(
+        t('archive.confirm.archiveCard', { cardTitle: card.title }),
+        async (dialog) => {
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            
+            // Adiciona log antes de arquivar
+            const logEntry = {
+                action: 'archived',
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push(logEntry);
+            await saveCard(card);
+
+            // Chama a função CORRETA de arquivamento
+            if (await archiveCard(cardId)) {
+                // Remove da coluna atual
+                column.cardIds = column.cardIds.filter(id => id !== cardId);
+                column.cards = column.cards.filter(c => c.id !== cardId);
+                await saveColumn(column);
+                
+                showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
+                await showSuccessAndRefresh(dialog, currentBoard.id);
+                return true;
+            }
+            return false;
         }
-        return false;
-    };
-
-    if (showDialog) {
-        showConfirmationDialog(
-            t('kanban.confirm.deleteCard'), 
-            deleteAction, 
-            null, 
-            t('ui.yesDelete'), 
-            t('ui.no')
-        );
-    } else {
-        return await deleteAction(null);
-    }
+    );
 }
 
 async function saveState() {
