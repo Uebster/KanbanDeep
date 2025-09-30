@@ -244,7 +244,7 @@ export async function trashColumn(columnId, userId, context = {}) {
     column.archivedAt = new Date().toISOString();
     column.archivedBy = userId;
     column.boardId = context.boardId || column.boardId || 'unknown';
-    column.boardTitle = context.boardTitle || context.boardTitle || 'Unknown Board';
+    column.boardTitle = context.boardTitle || column.boardTitle || 'Unknown Board';
     return await saveColumn(column);
 }
 

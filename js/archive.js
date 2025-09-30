@@ -10,8 +10,8 @@ import {
     saveBoard, 
     getGroup, // <-- CORREÇÃO: Adiciona a importação que faltava
     saveGroup,
-    deleteBoard, // <-- CORREÇÃO: Adiciona a importação que faltava
-    deleteCard, 
+    trashBoard, // Usar trashBoard do storage.js
+    deleteCard,
     hardDeleteColumn,
     hardDeleteBoard,  // <-- Usar a nova função
     getAllUsers, deleteColumn, deleteItem,
@@ -20,6 +20,7 @@ import {
 import { deleteBoard as deleteBoardFromKanban } from './kanban.js'; // Importa a função com diálogo
 import { showConfirmationDialog, showFloatingMessage, showDialogMessage } from './ui-controls.js';
 import { t, initTranslations } from './translations.js';
+import { getAllGroups } from './storage.js';
 
 let currentUser = null;
 let allUsers = [];
@@ -44,19 +45,27 @@ async function loadAllArchivedItems() {
     allArchivedItems = { cards: [], columns: [], boards: [] };
     const allFileNames = await window.electronAPI.listFiles();
     
+    // CORREÇÃO: Filtra apenas os itens que pertencem ao usuário atual
+    const userGroups = (await getAllGroups()).filter(g => g.memberIds.includes(currentUser.id));
+    const userGroupIds = userGroups.map(g => g.id);
+
     const itemKeys = {
         cards: allFileNames.filter(name => name.startsWith('card_')),
         columns: allFileNames.filter(name => name.startsWith('column_')),
         boards: allFileNames.filter(name => name.startsWith('board_'))
     };
 
-    const loadItems = async (keys) => {
-        return (await Promise.all(keys.map(key => universalLoad(key)))).filter(item => item && item.isArchived);
+    const loadAndFilterItems = async (keys) => {
+        const allItems = await Promise.all(keys.map(key => universalLoad(key)));
+        return allItems.filter(item => 
+            item && item.isArchived && 
+            (item.ownerId === currentUser.id || item.archivedBy === currentUser.id || (item.groupId && userGroupIds.includes(item.groupId)))
+        );
     };
 
-    allArchivedItems.cards = await loadItems(itemKeys.cards);
-    allArchivedItems.columns = await loadItems(itemKeys.columns);
-    allArchivedItems.boards = await loadItems(itemKeys.boards);
+    allArchivedItems.cards = await loadAndFilterItems(itemKeys.cards);
+    allArchivedItems.columns = await loadAndFilterItems(itemKeys.columns);
+    allArchivedItems.boards = await loadAndFilterItems(itemKeys.boards);
 }
 
 async function renderAllLists() {
@@ -450,7 +459,7 @@ async function handleMoveToTrash(itemId, type) {
     // Reutiliza a lógica existente em kanban.js para consistência
     if (type === 'board') {
         // A função deleteBoardFromKanban já move para a lixeira e atualiza a UI.
-        await deleteBoardFromKanban(itemId);
+        await trashBoard(itemId, currentUser.id); // Chama a função de storage diretamente
     } else {
         let item;
         if (type === 'card') item = await getCard(itemId);
@@ -519,7 +528,7 @@ async function handleDeleteBoard(boardId) {
     showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // CORREÇÃO: Usa deleteBoard para apagar apenas o quadro, não seus filhos.
         // hardDeleteBoard é reservado para a função "Esvaziar Lixeira".
-        if (await deleteBoard(boardId)) {
+        if (await deleteItem(boardId, 'board')) { // Exclui permanentemente o item do storage
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             await loadAllArchivedItems();
             renderAllLists();

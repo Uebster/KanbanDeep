@@ -133,7 +133,7 @@ export async function initKanbanPage() {
     document.getElementById('tour-popover').addEventListener('click', e => e.stopPropagation());
 
     tooltipElement = document.getElementById('card-tooltip');
-    checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId)
+    checkAllCardDueDates(); // Verifica os cartões com vencimento próximo (agora com userId) 
     // 4. Renderização Inicial
     renderBoardSelector();
     renderCurrentBoard();
@@ -884,7 +884,7 @@ async function executeGlobalSearch() {
                 if (isMatch && filters.tag && (!card.tags || !card.tags.includes(filters.tag))) isMatch = false;
                 // A lógica de data é a mesma
                 if (isMatch && filters.dueDate) {
-                    if (!card.dueDate) { isMatch = false; }
+                    if (!card.dueDate) { isMatch = false; } 
                     else {
                         const today = new Date(); today.setHours(0, 0, 0, 0);
                         const dueDate = new Date(card.dueDate); dueDate.setHours(0, 0, 0, 0);
@@ -1335,16 +1335,22 @@ function hideTooltip() {
 }
 
 /**
- * Exibe o novo diálogo gerenciador com abas.
+ * Exibe o novo diálogo gerenciador com abas e configura listeners de eventos delegados.
  */
 function showManagerDialog() {
     const dialog = document.getElementById('manager-dialog');
     if (!dialog) return;
 
+    // --- DELEGAÇÃO DE EVENTOS ---
+    // Remove listener antigo para evitar duplicação se a função for chamada novamente
+    dialog.removeEventListener('click', handleManagerActions);
+    // Adiciona um único listener ao diálogo
+    dialog.addEventListener('click', handleManagerActions);
+    // --------------------------
+
     const tabs = dialog.querySelectorAll('.nav-item');
     const contents = dialog.querySelectorAll('.manager-tab-content');
 
-    // Lógica para trocar de aba
     tabs.forEach(tab => {
         tab.onclick = () => {
             tabs.forEach(t => t.classList.remove('active'));
@@ -1354,7 +1360,6 @@ function showManagerDialog() {
             const contentId = tab.dataset.tab;
             document.getElementById(contentId).classList.add('active');
 
-            // Futuramente, aqui chamaremos a função para popular a lista da aba ativa
             if (contentId === 'manager-boards') {
                 populateManagerBoards();
             } else if (contentId === 'manager-columns') {
@@ -1365,10 +1370,89 @@ function showManagerDialog() {
         };
     });
 
-    // Abre o diálogo na primeira aba por padrão
     tabs[0].click();
-
     dialog.showModal();
+}
+
+/**
+ * Manipulador de eventos delegado para todas as ações dentro do diálogo do gerenciador.
+ * @param {Event} e - O evento de clique.
+ */
+async function handleManagerActions(e) {
+    const button = e.target.closest('button[data-action], a[data-action]');
+    if (!button) return;
+
+    const action = button.dataset.action;
+    const id = button.dataset.id;
+    const dialog = document.getElementById('manager-dialog');
+
+    // Encontra o 'board' relevante para a ação, se aplicável (para colunas e cartões)
+    // CORREÇÃO: A lógica para encontrar o quadro foi simplificada e tornada mais robusta.
+    let board = null;
+    const listElement = button.closest('.manager-item-list');
+    if (listElement && listElement.dataset.boardId) {
+        board = boards.find(b => b.id === listElement.dataset.boardId);
+    }
+    
+    if (!board && action.includes('board')) {
+        board = boards.find(b => b.id === id);
+    }
+    
+    if (!board && (action.includes('column') || action.includes('card') || action.includes('board'))) {
+        // Para cartões e colunas, o quadro é essencial. Para quadros, o próprio quadro é essencial.
+        // Se não encontrarmos, não podemos prosseguir.
+        showDialogMessage(dialog, t('kanban.feedback.boardNotFound'), 'error');
+        return;
+    }
+
+    // Verifica a permissão com base na ação e no item
+    const hasPerm = {
+        'edit-board': await hasPermission(currentUser, board, 'editBoards'),
+        'archive-board': await hasPermission(currentUser, board, 'editBoards'),
+        'delete-board': await hasPermission(currentUser, board, 'editBoards'),
+        'edit-column': await hasPermission(currentUser, board, 'editColumns'),
+        'archive-column': await hasPermission(currentUser, board, 'editColumns'),
+        'delete-column': await hasPermission(currentUser, board, 'editColumns'),
+        'edit-card': await hasPermission(currentUser, board, 'editColumns'), // Editar cartão requer permissão de editar coluna
+        'archive-card': await hasPermission(currentUser, board, 'editColumns'),
+        'delete-card': await hasPermission(currentUser, board, 'editColumns'),
+    }[action];
+
+    if (!hasPerm) {
+        showDialogMessage(dialog, t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
+    // Executa a ação
+    switch (action) {
+        case 'edit-board':
+            await showBoardDialog(id);
+            break;
+        case 'archive-board':
+            await handleArchiveBoard(id, true); // Passa true para closeManagerDialog
+            break;
+        case 'delete-board':
+            await handleDeleteBoard(id, true); // Passa true para closeManagerDialog
+            break;
+        case 'edit-column':
+            showColumnDialog(id);
+            break;
+        case 'archive-column':
+            await handleArchiveColumn(id, board, true); // Passa o contexto do quadro
+            break;
+        case 'delete-column':
+            await handleDeleteColumn(id, board, true); // Passa o contexto do quadro
+            break;
+        case 'edit-card':
+            showCardDialog(id);
+            break;
+        case 'archive-card':
+            await handleArchiveCard(id, true, true); // Passa o closeManagerDialog
+            break;
+        case 'delete-card':
+            await handleDeleteCard(id, true, true); // Passa o closeManagerDialog
+            break;
+    }
 }
 
 // ===== FUNÇÕES OFICIAIS DE ARQUIVAR/EXCLUIR (LÓGICA DE NEGÓCIO) =====
@@ -1396,8 +1480,6 @@ async function archiveBoard(boardId) {
     }
     
     await showSuccessAndRefresh(null, currentBoard?.id);
-    await loadData(); // Recarrega TODOS os dados
-    renderBoardSelector(); // Atualiza o seletor
     return true;
 }
 
@@ -1424,8 +1506,6 @@ export async function deleteBoard(boardId) {
     }
 
     await showSuccessAndRefresh(null, currentBoard?.id);
-    await loadData(); // Recarrega TODOS os dados
-    renderBoardSelector(); // Atualiza o seletor
     return true;
 }
 
@@ -1434,16 +1514,26 @@ export async function deleteBoard(boardId) {
  * @param {string} columnId - O ID da coluna a ser excluída.
  * @returns {Promise<void>}
  */
-async function deleteColumn(columnId) { // Lógica de negócio pura
-    if (!columnId) return false;
-    // CHAMA A NOVA FUNÇÃO EXPLÍCITA PARA MOVER PARA A LIXEIRA
-    return await trashColumnInStorage(columnId, currentUser.id, { boardId: currentBoard.id, boardTitle: currentBoard.title });
+async function deleteColumn(columnId, boardContext) { 
+    const board = boardContext || currentBoard;
+    if (!columnId || !board) return false;
+    const success = await trashColumnInStorage(columnId, currentUser.id, { boardId: board.id, boardTitle: board.title });
+    if (success && currentBoard && currentBoard.id === board.id) {
+        currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+    }
+    return success;
 }
 
-async function archiveColumn(columnId) { // Lógica de negócio pura
-    if (!columnId) return false;
-    // CHAMA A FUNÇÃO DE ARQUIVAMENTO
-    return await archiveColumnInStorage(columnId, currentUser.id, { boardId: currentBoard.id, boardTitle: currentBoard.title });
+async function archiveColumn(columnId, boardContext) { 
+    const board = boardContext || currentBoard;
+    if (!columnId || !board) return false;
+    const success = await archiveColumnInStorage(columnId, currentUser.id, { boardId: board.id, boardTitle: board.title });
+    if (success && currentBoard && currentBoard.id === board.id) {
+        currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+    }
+    return success;
 }
 
 /**
@@ -1451,21 +1541,29 @@ async function archiveColumn(columnId) { // Lógica de negócio pura
  * @param {string} cardId - O ID do cartão a ser arquivado.
  * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
  */
-async function archiveCard(cardId) { // Lógica de negócio pura
-    const result = findCardAndColumn(cardId);
+async function archiveCard(cardId, boardContext) { 
+    const result = findCardAndColumn(cardId, boardContext);
     if (!result) return false;
-    const { card, column } = result;
+    const { card, column, board } = result; // board is now returned from findCardAndColumn
 
     // Lógica de negócio (logs, contadores, etc.)
-    if (currentBoard.groupId) {
-        const group = await getGroup(currentBoard.groupId);
+    if (board.groupId) {
+        const group = await getGroup(board.groupId);
         if (group) {
             group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
             if (card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
             await saveGroup(group);
         }
     }
-    return await archiveCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+    const success = await archiveCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: board.id, columnTitle: column.title, boardTitle: board.title });
+    if (success && currentBoard && currentBoard.id === board.id) {
+        const colInMemory = currentBoard.columns.find(c => c.id === column.id);
+        if (colInMemory) {
+            colInMemory.cards = colInMemory.cards.filter(c => c.id !== cardId);
+            colInMemory.cardIds = colInMemory.cardIds.filter(id => id !== cardId);
+        }
+    }
+    return success;
 }
 
 /**
@@ -1473,21 +1571,29 @@ async function archiveCard(cardId) { // Lógica de negócio pura
  * @param {string} cardId - O ID do cartão a ser excluído.
  * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
  */
-async function deleteCard(cardId) { // Lógica de negócio pura
-    const result = findCardAndColumn(cardId);
+async function deleteCard(cardId, boardContext) { 
+    const result = findCardAndColumn(cardId, boardContext);
     if (!result) return false;
-    const { card, column } = result;
+    const { card, column, board } = result; // board is now returned from findCardAndColumn
 
     // Lógica de negócio (logs, contadores, etc.)
-    if (currentBoard.groupId) {
-        const group = await getGroup(currentBoard.groupId);
+    if (board.groupId) {
+        const group = await getGroup(board.groupId);
         if (group) {
             group.taskCount = Math.max(0, (group.taskCount || 0) - 1);
             if (card.isComplete) group.completedTaskCount = Math.max(0, (group.completedTaskCount || 0) - 1);
             await saveGroup(group);
         }
     }
-    return await trashCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title });
+    const success = await trashCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: board.id, columnTitle: column.title, boardTitle: board.title });
+    if (success && currentBoard && currentBoard.id === board.id) {
+        const colInMemory = currentBoard.columns.find(c => c.id === column.id);
+        if (colInMemory) {
+            colInMemory.cards = colInMemory.cards.filter(c => c.id !== cardId);
+            colInMemory.cardIds = colInMemory.cardIds.filter(id => id !== cardId);
+        }
+    }
+    return success;
 }
 
 
@@ -1500,19 +1606,17 @@ async function populateManagerBoards() {
     const listContainer = document.getElementById('manager-boards-list');
     listContainer.innerHTML = ''; // Limpa a lista
 
-    // 1. Filtra os quadros que o usuário pode ver, respeitando a privacidade
     const visibleBoards = [];
     for (const board of boards) {
         let isVisible = false;
-        if (!board.groupId) { // Quadros pessoais são sempre visíveis para o dono
+        if (!board.groupId) {
             isVisible = true;
         } else {
             const group = await getGroup(board.groupId);
             if (group) {
                 if (group.adminId === currentUser.id) {
-                    isVisible = true; // Admin vê tudo do grupo
+                    isVisible = true;
                 } else if (group.memberIds.includes(currentUser.id)) {
-                    // Membro vê quadros de grupo ou os privados que ele criou
                     isVisible = board.visibility === 'group' || (board.visibility === 'private' && board.ownerId === currentUser.id);
                 }
             }
@@ -1522,21 +1626,17 @@ async function populateManagerBoards() {
         }
     }
 
-    // 2. Separa os quadros em pessoais e de grupo
     const personalBoards = visibleBoards.filter(b => b && !b.groupId);
     const groupBoards = visibleBoards.filter(b => b.groupId);
 
     if (personalBoards.length === 0 && groupBoards.length === 0) {
-        listContainer.innerHTML = `<p>${t('kanban.feedback.noPersonalBoards')}</p>`; // Reutiliza a tradução
+        listContainer.innerHTML = `<p>${t('kanban.feedback.noPersonalBoards')}</p>`;
         return;
     }
 
-    // 3. Função auxiliar para criar cada item da lista
     const createItemElement = (board) => {
         const itemEl = document.createElement('div');
         itemEl.className = 'manager-item';
-
-        // Adiciona o nome do grupo ao lado do título se for um quadro de grupo
         let titleHtml = `<span>${board.icon || '📋'} ${board.title}</span>`;
         if (board.groupId) {
             const group = allGroups.find(g => g.id === board.groupId);
@@ -1548,38 +1648,14 @@ async function populateManagerBoards() {
         itemEl.innerHTML = `
             <div class="manager-item-title">${titleHtml}</div>
             <div class="manager-item-actions">
-                <button class="btn btn-sm alternative1 archive-board-btn" data-id="${board.id}" title="${t('kanban.contextMenu.column.archive')}">🗄️</button>
-                <button class="btn btn-sm edit" data-id="${board.id}">✏️</button>
-                <button class="btn btn-sm danger" data-id="${board.id}">🗑️</button>
+                <button class="btn btn-sm alternative1" data-action="archive-board" data-id="${board.id}" title="${t('kanban.contextMenu.column.archive')}">🗄️</button>
+                <button class="btn btn-sm edit" data-action="edit-board" data-id="${board.id}" title="${t('kanban.contextMenu.board.edit')}">✏️</button>
+                <button class="btn btn-sm danger" data-action="delete-board" data-id="${board.id}" title="${t('kanban.contextMenu.board.delete')}">🗑️</button>
             </div>
         `;
-
-        itemEl.querySelector('.archive-board-btn').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editBoards')) {
-                await handleArchiveBoard(board.id, true); // Passa true para fechar o manager-dialog no sucesso
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-        itemEl.querySelector('.btn.edit').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editBoards')) {
-                await showBoardDialog(board.id);
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-
-        itemEl.querySelector('.btn.danger').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editBoards')) {
-                await handleDeleteBoard(board.id, true); // Passa true para fechar o manager-dialog no sucesso
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
         return itemEl;
     };
 
-    // 4. Renderiza as seções
     if (personalBoards.length > 0) {
         const heading = document.createElement('h5');
         heading.className = 'manager-list-heading';
@@ -1675,47 +1751,24 @@ function populateManagerColumns() {
  */
 function renderManagerColumnList(board, listContainer) {
     listContainer.innerHTML = '';
+    listContainer.dataset.boardId = board.id; // Adiciona o ID do quadro para o event handler
 
     if (!board.columns || board.columns.length === 0) {
-        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noColumnForCard')}</div>`;
+        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noColumnsInBoard')}</div>`;
         return;
     }
-
+    
     board.columns.forEach(column => {
         const itemEl = document.createElement('div');
         itemEl.className = 'manager-item';
         itemEl.innerHTML = `
             <span>${column.title}</span>
             <div class="manager-item-actions">
-                <button class="btn btn-sm alternative1 archive-column-btn" data-id="${column.id}" title="${t('kanban.contextMenu.column.archive')}">🗄️</button>
-                <button class="btn btn-sm edit" data-id="${column.id}">✏️</button>
-                <button class="btn btn-sm danger" data-id="${column.id}">🗑️</button>
+                <button class="btn btn-sm alternative1" data-action="archive-column" data-id="${column.id}" title="${t('kanban.contextMenu.column.archive')}">🗄️</button>
+                <button class="btn btn-sm edit" data-action="edit-column" data-id="${column.id}" title="${t('kanban.contextMenu.column.edit')}">✏️</button>
+                <button class="btn btn-sm danger" data-action="delete-column" data-id="${column.id}" title="${t('kanban.contextMenu.column.delete')}">🗑️</button>
             </div>
         `;
-
-        itemEl.querySelector('.btn.edit').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                showColumnDialog(column.id);
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-
-        itemEl.querySelector('.btn.danger').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                await handleDeleteColumn(column.id, true); // Passa true para fechar o manager-dialog no sucesso
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
-
-        itemEl.querySelector('.archive-column-btn').onclick = async () => {
-            if (await hasPermission(currentUser, board, 'editColumns')) {
-                await handleArchiveColumn(column.id, true); // Passa true para fechar o manager-dialog no sucesso
-            } else {
-                showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-            }
-        };
         listContainer.appendChild(itemEl);
     });
 }
@@ -1726,7 +1779,7 @@ function renderManagerColumnList(board, listContainer) {
 function populateManagerCards() {
     const boardSelectContainer = document.getElementById('manager-card-board-select-container');
     const columnSelectContainer = document.getElementById('manager-card-column-select-container');
-    const listContainer = document.getElementById('manager-cards-list');
+    const listContainer = document.getElementById('manager-cards-list'); // Corrigido para 'manager-cards-list'
 
     // 1. Cria e popula o seletor de quadros
     const boardSelect = document.createElement('select');
@@ -1758,7 +1811,7 @@ function populateManagerCards() {
 
     // 2. Cria o seletor de colunas (inicialmente vazio)
     const columnSelect = document.createElement('select');
-    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumn')}</option>`;
+    columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`; // Placeholder corrigido
     columnSelectContainer.innerHTML = '';
     columnSelectContainer.appendChild(columnSelect);
 
@@ -1767,10 +1820,11 @@ function populateManagerCards() {
     // 3. Adiciona listeners
     boardSelect.onchange = () => {
         const boardId = boardSelect.value;
-        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`;
+        columnSelect.innerHTML = `<option value="">${t('kanban.dialog.edit.selectColumnPlaceholder')}</option>`; // Placeholder corrigido
         listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.dialog.edit.selectColumn')}</div>`;
         if (boardId) {
             const board = boards.find(b => b.id === boardId);
+            listContainer.dataset.boardId = board.id; // Adiciona o ID do quadro para o event handler
             (board?.columns || []).forEach(col => {
                 columnSelect.innerHTML += `<option value="${col.id}">${col.title}</option>`;
             });
@@ -1797,8 +1851,11 @@ function populateManagerCards() {
 
 function renderManagerCardList(board, column, listContainer) {
     listContainer.innerHTML = '';
+    listContainer.dataset.boardId = board.id; // Adiciona o ID do quadro para o event handler
+    listContainer.dataset.columnId = column.id; // Adiciona o ID da coluna
+
     if (!column.cards || column.cards.length === 0) {
-        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noColumnForCard')}</div>`;
+        listContainer.innerHTML = `<div class="manager-list-placeholder">${t('kanban.feedback.noCardsInColumn')}</div>`;
         return;
     }
 
@@ -1808,35 +1865,11 @@ function renderManagerCardList(board, column, listContainer) {
         itemEl.innerHTML = `
             <span>${card.title}</span>
             <div class="manager-item-actions">
-                <button class="btn btn-sm alternative1 archive-card-btn" data-id="${card.id}" title="${t('kanban.contextMenu.card.archive')}">🗄️</button>
-                <button class="btn btn-sm edit" data-id="${card.id}">✏️</button>
-                <button class="btn btn-sm danger" data-id="${card.id}">🗑️</button>
+                <button class="btn btn-sm alternative1" data-action="archive-card" data-id="${card.id}" title="${t('kanban.contextMenu.card.archive')}">🗄️</button>
+                <button class="btn btn-sm edit" data-action="edit-card" data-id="${card.id}" title="${t('kanban.contextMenu.card.edit')}">✏️</button>
+                <button class="btn btn-sm danger" data-action="delete-card" data-id="${card.id}" title="${t('kanban.contextMenu.card.delete')}">🗑️</button>
             </div>
         `;
-        itemEl.querySelector('.btn.edit').onclick = () => {
-            // CORREÇÃO: Não fecha o manager-dialog. O diálogo de edição abrirá sobre ele.
-            // Se o usuário salvar, a função showSuccessAndRefresh fechará ambos.
-            // Se cancelar, ele volta para o manager.
-            if (hasPermission(currentUser, board, 'editColumns')) {
-                showCardDialog(card.id);
-            }
-        };
-        itemEl.querySelector('.btn.danger').onclick = async () => {
-    if (await hasPermission(currentUser, board, 'editColumns')) {
-        await handleDeleteCard(card.id, true);
-    } else {
-        showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-    }
-};
-
-// Botão Arquivar  
-itemEl.querySelector('.archive-card-btn').onclick = async () => {
-    if (await hasPermission(currentUser, board, 'editColumns')) {
-        await handleArchiveCard(card.id, true);
-    } else {
-        showDialogMessage(document.getElementById('manager-dialog'), t('kanban.feedback.noPermission'), 'error');
-    }
-};
         listContainer.appendChild(itemEl);
     });
 }
@@ -1847,10 +1880,10 @@ async function showBoardDialog(boardId = null) {
     const dialog = document.getElementById('board-dialog');
 
     const board = boardId ? boards.find(b => b.id === boardId) : null;
-    
+
     dialog.dataset.editingId = boardId;
 
-    // A linha que causava o erro agora vai funcionar:
+    // A linha que causava o erro agora vai funcionar: (Comentário antigo, mas ainda relevante para o contexto)
     document.getElementById('board-dialog-title').textContent = board ? t('kanban.dialog.board.editTitle') : t('kanban.dialog.board.createTitle');
     
     const visibilitySelect = document.getElementById('board-visibility');
@@ -1860,14 +1893,14 @@ async function showBoardDialog(boardId = null) {
     const saveBtn = dialog.querySelector('#board-save-btn');
 
     // --- NOVA LÓGICA DE VALIDAÇÃO DE GRUPO ---
-    const allGroups = await getAllGroups() || [];
-    const groupPermissions = await Promise.all((allGroups || []).map(async (g) => {
+    const allGroupsData = await getAllGroups() || [];
+    // Filtra apenas os grupos dos quais o usuário é membro e tem permissão para criar quadros
+    const creatableInGroups = allGroupsData.filter(g => {
         const isAdmin = g.adminId === currentUser.id;
-        const canCreate = g.permissions?.createBoards && g.memberIds.includes(currentUser.id);
+        // Verifica se o usuário é membro e tem permissão padrão ou individual para criar quadros
+        const canCreate = g.memberIds?.includes(currentUser.id) && (g.memberPermissions?.[currentUser.id]?.createBoards ?? g.defaultPermissions?.createBoards);
         return isAdmin || canCreate;
-    }));
-
-    const creatableInGroups = allGroups.filter((_g, index) => groupPermissions[index]);
+    });
 
     // Lógica do Ícone e campos de texto
     const iconInput = document.getElementById('board-icon-input');
@@ -1919,7 +1952,7 @@ async function showBoardDialog(boardId = null) {
             groupContainer.style.display = 'block';
             
             // Popula o seletor de grupos
-            if (creatableInGroups.length === 0) {
+            if (creatableInGroups.length === 0 && !board) { // Se estiver criando e não houver grupos elegíveis
                 groupSelect.innerHTML = `<option value="">${t('groups.reports.noEligibleGroups')}</option>`;
                 groupSelect.disabled = true;
                 dialog.dataset.groupCreationAllowed = "false"; // Flag para validação
@@ -2211,48 +2244,47 @@ async function handleSaveColumn() {
     );
 }
 
-/**
- * Mostra uma mensagem de sucesso, espera, fecha o diálogo e atualiza a UI.
- * É a função padrão para finalizar operações de salvamento bem-sucedidas.
- * @param {HTMLElement|null} dialog O diálogo a ser manipulado. Pode ser nulo se a ação não vier de um diálogo.
- * @param {string} boardToFocusId O ID do quadro que deve estar em foco após a atualização.
- */
 async function showSuccessAndRefresh(dialog, boardToFocusId) {
-  const delay = dialog ? 1500 : 100;
-  if (dialog) {
-    dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
-  }
+    const delay = dialog ? 1500 : 100;
 
-  setTimeout(async () => {
-    // --- LÓGICA DE ATUALIZAÇÃO SEGURA (CORRIGIDA) ---
-    // Recarrega a lista de quadros (pessoais e de grupo) para garantir que temos os dados mais recentes.
-    const userProfile = await getUserProfile(currentUser.id);
-    const personalBoards = await Promise.all((userProfile?.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
-    const allGroups = await getAllGroups();
-    const memberGroups = (allGroups || []).filter(g => g && g.memberIds && g.memberIds.includes(currentUser.id));
-    const groupBoards = await Promise.all(memberGroups.flatMap(g => g.boardIds || []).map(id => getFullBoardData(id))).then(b => b.filter(Boolean));
-    const allBoardMap = new Map();
-    personalBoards.forEach(b => allBoardMap.set(b.id, b));
-    groupBoards.forEach(b => allBoardMap.set(b.id, b));
-    boards = Array.from(allBoardMap.values());
-
-    // Define o quadro atual como o que foi salvo/editado
-    currentBoard = boards.find(b => b.id === boardToFocusId) || boards[0];
-    if (currentBoard) {
-      localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard.id);
-    }
-
-    // Renderiza a tela com os dados frescos
-    renderBoardSelector(); // This one doesn't need await as it's synchronous now
-    initCustomSelects(); // ATUALIZAÇÃO: Garante que o select customizado seja reconstruído.
-    renderCurrentBoard(); // This one doesn't need await as it's synchronous now
-
-    // Fecha o diálogo e reabilita os botões, se houver um diálogo
     if (dialog) {
-      dialog.close();
-      dialog.querySelectorAll('button').forEach(btn => btn.disabled = false);
+        dialog.querySelectorAll('button').forEach(btn => btn.disabled = true);
     }
-  }, delay);
+
+    setTimeout(async () => {
+        // 1. Força a recarga completa de todos os dados para garantir a consistência.
+        await loadData();
+
+        // 2. Filtra os quadros visíveis com base no filtro atual da UI.
+        const visibleBoards = boards.filter(board => {
+            if (currentBoardFilter === 'personal') return !board.groupId;
+            if (currentBoardFilter === 'group') return !!board.groupId;
+            return true;
+        });
+
+        // 3. Tenta encontrar o quadro que deveria estar em foco.
+        let boardToSelect = visibleBoards.find(b => b.id === boardToFocusId);
+
+        // Se o quadro focado não foi encontrado (ex: foi excluído/arquivado) ou não há mais quadros,
+        // seleciona o primeiro quadro da lista visível.
+        if (!boardToSelect) {
+            boardToSelect = visibleBoards[0] || null;
+        }
+
+        currentBoard = boardToSelect;
+        localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+
+        // 4. Renderiza a UI com os dados 100% atualizados.
+        renderBoardSelector();
+        renderCurrentBoard();
+        initCustomSelects(); // Garante que o select de quadros seja re-estilizado.
+
+        // 5. Fecha o diálogo, se houver.
+        if (dialog) {
+            dialog.close();
+            // Não precisa reabilitar os botões, pois o diálogo será fechado.
+        }
+    }, delay);
 }
 
 async function showCardDialog(cardId = null, columnId) {
@@ -2947,10 +2979,10 @@ async function createColumnContextMenu(event, columnEl) {
         { 
             label: t('kanban.contextMenu.column.archive'), // Adicionar esta chave no pt-BR.json
             icon: '🗄️', 
-            action: () => handleArchiveColumn(columnId), // CORRETO
+            action: () => handleArchiveColumn(columnId),
         },
         { isSeparator: true },
-        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumn(columnId), isDestructive: true } // CORRETO
+        { label: t('kanban.contextMenu.column.delete'), icon: '🗑️', action: () => handleDeleteColumn(columnId), isDestructive: true }
     ];
 
     showContextMenu(event, menuItems);
@@ -3174,7 +3206,7 @@ function renderColumnActivityLog(column, container) {
         };
         
         const message = t(`activityLog.action.column.${entry.action}`, replacements)
-                        .replace(/\*\*(\.*?)\*\*/g, '<strong>$1</strong>');
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
         logHtml += `<li class="activity-log-item"><div class="log-message">${message}</div><div class="log-date">${date}</div></li>`;
     });
@@ -3198,10 +3230,10 @@ async function handleArchiveBoard(boardId, closeManagerDialog = false) {
     showConfirmationDialog(
         t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
         async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
             if (await archiveBoard(boardId)) {
                 showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
+                await showSuccessAndRefresh(dialog, currentBoard?.id);
+                if (closeManagerDialog) populateManagerBoards(); // Atualiza a lista no gerenciador
                 return true;
             }
             return false;
@@ -3221,10 +3253,10 @@ async function handleDeleteBoard(boardId, closeManagerDialog = false) {
     showConfirmationDialog(
         t('kanban.confirm.deleteBoard', { boardTitle: boardToDelete.title }),
         async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
             if (await deleteBoard(boardId)) {
                 showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
+                await showSuccessAndRefresh(dialog, currentBoard?.id);
+                if (closeManagerDialog) populateManagerBoards(); // Atualiza a lista no gerenciador
                 return true;
             }
             return false;
@@ -3247,24 +3279,18 @@ function switchBoard(e) {
  * @param {string} columnId O ID da coluna.
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
-async function handleArchiveColumn(columnId, closeManagerDialog = false) {
-    const column = findColumn(columnId);
+async function handleArchiveColumn(columnId, boardContext = null, fromManager = false) {
+    const board = boardContext || currentBoard;
+    const column = findColumn(columnId, board);
     if (!column) return;
 
     showConfirmationDialog(
         t('archive.confirm.archiveColumn', { columnTitle: column.title }),
         async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-            
-            // Chama a função de arquivamento
-            if (await archiveColumn(columnId)) {
-                // Remove do quadro atual
-                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
-                await saveBoard(currentBoard);
-                
+            if (await archiveColumn(columnId, boardForContext)) {
                 showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard.id);
+                if (fromManager) populateManagerColumns();
+                await showSuccessAndRefresh(dialog, board.id);
                 return true;
             }
             return false;
@@ -3277,24 +3303,18 @@ async function handleArchiveColumn(columnId, closeManagerDialog = false) {
  * @param {string} columnId O ID da coluna.
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
-async function handleDeleteColumn(columnId, closeManagerDialog = false) {
-    const column = findColumn(columnId);
+async function handleDeleteColumn(columnId, boardContext = null, fromManager = false) { // fromManager é o closeManagerDialog
+    const board = boardContext || currentBoard;
+    const column = findColumn(columnId, board);
     if (!column) return;
 
     showConfirmationDialog(
         t('kanban.confirm.deleteColumn'),
         async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-            
-            // Chama a função de exclusão
-            if (await deleteColumn(columnId)) {
-                // Remove do quadro atual
-                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
-                await saveBoard(currentBoard);
-                
+            if (await deleteColumn(columnId, board)) {
                 showDialogMessage(dialog, t('kanban.feedback.columnMovedToTrash'), 'success');
                 await showSuccessAndRefresh(dialog, currentBoard.id);
+                if (fromManager) populateManagerColumns();
                 return true;
             }
             return false;
@@ -3679,16 +3699,24 @@ function getTagColor(tagName) {
     return tagColorMap.get(tagName) || '#6c757d'; // Retorna a cor encontrada ou um cinza padrão
 }
 
-function findCardAndColumn(cardId) {
-    for (const column of currentBoard.columns) {
-        const card = column.cards.find(c => c.id === cardId);
-        if (card) return { card, column };
+function findCardAndColumn(cardId, boardContext) {
+    // Se o boardContext não for fornecido, busca em todos os quadros carregados.
+    const boardsToSearch = boardContext ? [boardContext] : boards;
+    for (const board of boardsToSearch) {
+        if (board && board.columns) {
+            for (const column of board.columns) {
+                const card = column.cards.find(c => c.id === cardId);
+                if (card) return { card, column, board }; // Retorna o contexto completo
+            }
+        }
     }
     return null;
 }
 
-function findColumn(columnId) {
-    return currentBoard.columns.find(c => c.id === columnId);
+function findColumn(columnId, boardContext) {
+    const board = boardContext || currentBoard;
+    if (!board || !board.columns) return null;
+    return board.columns.find(c => c.id === columnId);
 }
 
 /**
