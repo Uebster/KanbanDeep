@@ -1,5 +1,11 @@
 /* static/kanban.css (Com o novo estilo inspirado na imagem) */
 
+/* 🔥 CORREÇÃO DO CURSOR: Força o cursor 'grabbing' quando a classe 'is-dragging' está no body.
+   O seletor `*` garante que ele se aplique a qualquer elemento sob o cursor durante o arraste. */
+body.is-dragging * {
+    cursor: grabbing !important;
+}
+
 /* ===== ESTILOS GLOBAIS E VARIÁVEIS ===== */
 /* ===== RESET E TEMA CLARO ===== */
 body {
@@ -108,6 +114,13 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
+/* 🔥 NOVO: Efeito de hover na coluna inteira ao passar o mouse sobre o cabeçalho. */
+.column:has(.column-header:hover) {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.7), 0 0 25px rgba(var(--primary-rgb), 0.5);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
 .column-header {
     padding: 12px 15px;
     cursor: grab;
@@ -214,9 +227,9 @@ body {
     /* A sombra épica que você queria: uma sombra escura suave + um brilho da cor primária */
     box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
     margin: 0;
-    /* A rotação foi removida para um visual mais limpo */
-    transform: translate(-50%, -50%); /* Centraliza o fantasma no cursor */
-    border: 2px solid var(--primary) !important;
+    /* CORREÇÃO: Isola o fantasma de outras transformações (como scale no hover) e transições */
+    transform: none !important;
+    transition: none !important;
 }
 
 /* NOVO: Estilo para o "fantasma" customizado que segue o mouse. Este é o elemento que o usuário vê em movimento. */
@@ -229,9 +242,31 @@ body {
     box-shadow: 0 0 15px rgba(var(--primary-rgb)), 0 0 25px rgba(var(--primary-rgb));
     margin: 0;
     max-height: 100vh; /* Impede que a coluna se achate ou fique gigante */
-    transform: translate(-50%,-3%); /* Centraliza o fantasma no cursor */
-    border: 2px solid var(--primary) !important;
+    /* CORREÇÃO: Isola o fantasma de outras transformações e transições */
+    transform: none !important;
+    transition: none !important;
     overflow: hidden; /* Garante que o conteúdo não vaze do max-height */
+}
+
+/* 🔥 CORREÇÃO DEFINITIVA: Impede que os cartões DENTRO da coluna fantasma mudem de tamanho.
+   Anula qualquer efeito de :hover ou outra transformação nos cartões filhos. */
+.column-drag-ghost .card {
+    transform: none !important;
+}
+
+/* 🔥 CORREÇÃO: Força a exibição dos detalhes do cartão DENTRO do fantasma da COLUNA. */
+.column-drag-ghost .card-hover-info {
+    display: block !important;
+    opacity: 1 !important;
+    position: relative; /* Garante que ocupe espaço no fluxo normal do cartão */
+    height: auto;
+}
+
+/* 🔥 CORREÇÃO: Força a exibição dos detalhes do cartão DENTRO do fantasma,
+   garantindo que a altura seja calculada corretamente e o conteúdo expansível apareça. */
+.card-drag-ghost .card-hover-info {
+    display: block !important;
+    opacity: 1 !important;
 }
 
 /* Garante que o header e o footer do fantasma tenham um fundo sólido antes da opacidade ser aplicada */
@@ -245,12 +280,12 @@ body {
 /* Estilo para o placeholder que fica no lugar original do cartão (o que você gostou). */
 .card.dragging {
     /* Deixa o original semitransparente com borda tracejada */
-    opacity: 0.4;
+    opacity: 0.4 !important;
     border: 2px solid var(--primary) !important;
 }
 
 .column.dragging {
-    opacity: 0.4;
+    opacity: 0.4 !important;
     border: 2px solid var(--primary) !important;
 }
 

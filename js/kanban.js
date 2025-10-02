@@ -2628,7 +2628,7 @@ function handlePrintBoard() {
 // ===== LÓGICA DE DRAG-AND-DROP =====
 
 async function handleDragStart(e) {
-    hideTooltip(); // Esconde qualquer tooltip ao começar a arrastar
+    hideTooltip();
     isDragging = true;
 
     // ETAPA 3: VERIFICAÇÃO DE PERMISSÃO PARA ARRASTAR
@@ -2636,20 +2636,19 @@ async function handleDragStart(e) {
     const isColumnDrag = e.target.closest('.column-header');
     let requiredPermission = null;
 
-    if (isCardDrag) requiredPermission = 'createCards'; // Mover um cartão é como criar/recriar
+    if (isCardDrag) requiredPermission = 'createCards';
     if (isColumnDrag) requiredPermission = 'editColumns';
 
     if (requiredPermission && !await hasPermission(currentUser, currentBoard, requiredPermission)) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
         e.preventDefault(); // Impede o início do arrasto
-        isDragging = false; // Reseta o estado
+        isDragging = false;
         return;
     }
 
     const targetCard = e.target.closest('.card');
     const targetColumnHeader = e.target.closest('.column-header');
 
-    // --- LÓGICA UNIFICADA DO FANTASMA (CORRIGIDA) ---
     if (targetCard) {
         draggedElement = targetCard;
     } else if (targetColumnHeader) {
@@ -2661,54 +2660,131 @@ async function handleDragStart(e) {
     e.dataTransfer.setData('text/plain', draggedElement.dataset.cardId || draggedElement.dataset.columnId);
     e.dataTransfer.effectAllowed = 'move';
 
-    // 1. Cria o clone para ser o fantasma
+    // 🔥 CORREÇÃO CRÍTICA: IMPEDIR O DRAG GHOST NATIVO
+    // Cria um elemento invisível MUITO pequeno para substituir completamente o ghost nativo
+    const dragImage = document.createElement('div');
+    dragImage.style.width = '1px';
+    dragImage.style.height = '1px';
+    dragImage.style.position = 'absolute';
+    dragImage.style.left = '-1000px'; // Coloca MUITO fora da tela
+    dragImage.style.top = '-1000px';
+    dragImage.style.opacity = '0.01'; // Quase invisível
+    dragImage.style.pointerEvents = 'none';
+    dragImage.style.zIndex = '-1000';
+    document.body.appendChild(dragImage);
+
+    // 🔥 CORREÇÃO DO CURSOR: Aplica o cursor 'grabbing' diretamente na imagem de arrasto.
+    dragImage.style.cursor = 'grabbing';
+
+    // 🔥 SOLUÇÃO DEFINITIVA: Usar o elemento invisível como ghost
+    e.dataTransfer.setDragImage(dragImage, 0, 0);
+    
+    // Remove o elemento invisível imediatamente após ser usado pelo browser
+    setTimeout(() => {
+        if (dragImage.parentNode) {
+            dragImage.parentNode.removeChild(dragImage);
+        }
+    }, 0);
+
+    // 🔥 MELHORIA: Criar o ghost customizado APÓS lidar com o ghost nativo
+    // 🔥 CORREÇÃO DEFINITIVA: Remove temporariamente o transform do elemento original
+    // ANTES de medir seu tamanho, para evitar que o fantasma seja criado maior.
+    const originalTransform = draggedElement.style.transform;
+    draggedElement.style.transform = 'none';
+
     const ghost = draggedElement.cloneNode(true);
     const rect = draggedElement.getBoundingClientRect();
+
+    // Restaura o transform do elemento original imediatamente após a medição.
+    draggedElement.style.transform = originalTransform;
+
     ghost.style.width = `${rect.width}px`;
+    ghost.style.position = 'fixed';
+    ghost.style.zIndex = '10000';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.margin = '0';
+    
+    // Remove qualquer conteúdo desnecessário do clone
+    ghost.querySelectorAll('.paste-card-btn').forEach(el => el.remove());
 
     if (draggedElement.classList.contains('column')) {
         ghost.classList.add('column-drag-ghost');
-        ghost.style.height = `${rect.height}px`; // Garante que o fantasma não se achate
+        ghost.style.height = `${rect.height}px`;
+
+        // 🔥 CORREÇÃO: Itera sobre os cartões DENTRO do fantasma da coluna
+        // e neutraliza qualquer transformação para evitar que mudem de tamanho.
+        ghost.querySelectorAll('.card').forEach(cardInGhost => {
+            cardInGhost.style.transform = 'none';
+            // Garante que a altura do cartão dentro do fantasma seja automática para acomodar o conteúdo.
+            cardInGhost.style.height = 'auto';
+        });
     } else {
         ghost.classList.add('card-drag-ghost');
     }
+
     document.body.appendChild(ghost);
 
-    // 2. Esconde o fantasma padrão do navegador
-    e.dataTransfer.setDragImage(new Image(), 0, 0);
+    // 🔥 CORREÇÃO DEFINITIVA: Posicionamento preciso e centralizado do fantasma.
+    // Armazena o deslocamento inicial do mouse em relação ao canto superior esquerdo do elemento.
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
 
-    // 3. Adiciona um listener para mover nosso fantasma customizado
     const moveGhost = (event) => {
-        ghost.style.left = `${event.clientX}px`;
-        ghost.style.top = `${event.clientY}px`;
+        if (!event.clientX || !event.clientY) return;
+
+        // Posiciona o fantasma subtraindo o deslocamento inicial,
+        // fazendo com que o cursor mantenha sua posição relativa ao elemento arrastado.
+        ghost.style.left = `${event.clientX - offsetX}px`;
+        ghost.style.top = `${event.clientY - offsetY}px`;
     };
+
     document.addEventListener('dragover', moveGhost);
 
-    // 4. Limpa tudo no final do arrasto
-    draggedElement.addEventListener('dragend', () => {
+    // 🔥 CORREÇÃO: Limpeza mais robusta no final do arrasto
+    const cleanup = () => {
         document.removeEventListener('dragover', moveGhost);
-        if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
-    }, { once: true });
+        if (ghost.parentNode) {
+            ghost.parentNode.removeChild(ghost);
+        }
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+        }
+        // 🔥 CORREÇÃO DO CURSOR: Remove a classe do body na limpeza final.
+        document.body.classList.remove('is-dragging');
+    };
+    draggedElement.addEventListener('dragend', cleanup, { once: true });
 
-    // 5. Aplica o estilo ao placeholder (o elemento original)
     setTimeout(() => {
         draggedElement.classList.add('dragging');
+        document.body.classList.add('is-dragging'); // Adiciona a classe aqui
     }, 0);
 }
 
 function handleDragEnd(e) {
     isDragging = false;
+    
+    // Garante que a classe seja removida, mesmo que o cleanup falhe
+    document.body.classList.remove('is-dragging');
+
+    // 🔥 CORREÇÃO: Limpeza adicional para garantir que tudo seja resetado
     if (draggedElement) {
         draggedElement.classList.remove('dragging');
-        draggedElement = null;
+        draggedElement.style.opacity = ''; // Remove qualquer opacidade residual
     }
-    // Remove o realce de todas as colunas
-    document.querySelectorAll('.column.drag-over').forEach(col => col.classList.remove('drag-over'));
+    
+    document.querySelectorAll('.column.drag-over, .column.drop-shadow').forEach(col => {
+        col.classList.remove('drag-over', 'drop-shadow');
+    });
+    
+    // 🔥 CORREÇÃO: Esconder qualquer tooltip que possa ter aparecido
+    hideTooltip();
 }
 
+function handleDragEnter(e) {}
 function handleDragOver(e) {
     e.preventDefault();
     const targetColumn = e.target.closest('.column');
+    if (!draggedElement) return;
 
     // Limpa os highlights anteriores para evitar múltiplos indicadores
     document.querySelectorAll('.column.drag-over, .column.drop-shadow').forEach(col => {
