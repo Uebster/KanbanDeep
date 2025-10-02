@@ -1510,33 +1510,6 @@ export async function deleteBoard(boardId) {
 }
 
 /**
- * Exclui uma coluna, movendo-a e seus cartões para a lixeira.
- * @param {string} columnId - O ID da coluna a ser excluída.
- * @returns {Promise<void>}
- */
-async function deleteColumn(columnId, boardContext) {
-    const board = boardContext || currentBoard;
-    if (!columnId || !board) return false;
-    const success = await trashColumnInStorage(columnId, currentUser.id, { boardId: board.id, boardTitle: board.title });
-    if (success && currentBoard && currentBoard.id === board.id) {
-        currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
-        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-    }
-    return success;
-}
-
-async function archiveColumn(columnId, boardContext) {
-    const board = boardContext || currentBoard;
-    if (!columnId || !board) return false;
-    const success = await archiveColumnInStorage(columnId, currentUser.id, { boardId: board.id, boardTitle: board.title });
-    if (success && currentBoard && currentBoard.id === board.id) {
-        currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
-        currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-    }
-    return success;
-}
-
-/**
  * Arquiva um cartão, movendo-o para a seção de arquivados.
  * @param {string} cardId - O ID do cartão a ser arquivado.
  * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
@@ -3230,12 +3203,28 @@ async function handleArchiveBoard(boardId, closeManagerDialog = false) {
     showConfirmationDialog(
         t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
         async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-            if (await archiveBoard(boardId)) {
-                showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
-                return true;
+            // ✅ CORREÇÃO: ATUALIZA ESTADO PRIMEIRO
+            const boardIndex = boards.findIndex(b => b.id === boardId);
+            if (boardIndex > -1) {
+                boards.splice(boardIndex, 1);
+                // ✅ ATUALIZA UI IMEDIATAMENTE
+                renderBoardSelector();
+                if (currentBoard && currentBoard.id === boardId) {
+                    currentBoard = boards.length > 0 ? boards[0] : null;
+                    localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+                    renderCurrentBoard();
+                }
+                initCustomSelects();
             }
+
+            // ✅ AGORA opera no storage
+            if (await archiveBoardInStorage(boardId, currentUser.id)) {
+                showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
+                if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+                return true; // Fecha o diálogo de confirmação
+            }
+            // ✅ FALLBACK: Se storage falhar, recarrega tudo
+            await showSuccessAndRefresh(dialog, currentBoard?.id);
             return false;
         }
     );
@@ -3253,14 +3242,31 @@ async function handleDeleteBoard(boardId, closeManagerDialog = false) {
     showConfirmationDialog(
         t('kanban.confirm.deleteBoard', { boardTitle: boardToDelete.title }),
         async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-            if (await deleteBoard(boardId)) {
-                showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard?.id); // CORREÇÃO: Garante a atualização da UI
-                return true;
+            // ✅ CORREÇÃO: ATUALIZA ESTADO PRIMEIRO
+            const boardIndex = boards.findIndex(b => b.id === boardId);
+            if (boardIndex > -1) {
+                boards.splice(boardIndex, 1);
+                // ✅ ATUALIZA UI IMEDIATAMENTE
+                renderBoardSelector();
+                if (currentBoard && currentBoard.id === boardId) {
+                    currentBoard = boards.length > 0 ? boards[0] : null;
+                    localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+                    renderCurrentBoard();
+                }
+                initCustomSelects();
             }
+
+            // ✅ AGORA opera no storage
+            if (await trashBoardInStorage(boardId, currentUser.id)) {
+                showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
+                if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+                return true; // Fecha o diálogo de confirmação
+            }
+            // ✅ FALLBACK: Se storage falhar, recarrega tudo
+            await showSuccessAndRefresh(dialog, currentBoard?.id);
             return false;
-        }, null, t('ui.yesDelete'), t('ui.no'));
+        }, null, t('ui.yesDelete'), t('ui.no')
+    );
 }
 
 function switchBoard(e) {
@@ -3287,12 +3293,25 @@ async function handleArchiveColumn(columnId, boardContext = null, fromManager = 
     showConfirmationDialog(
         t('archive.confirm.archiveColumn', { columnTitle: column.title }),
         async (dialog) => {
-            if (await archiveColumn(columnId, boardForContext)) { // CORREÇÃO: Passa a variável correta
+            // ✅ CORREÇÃO: ATUALIZA ESTADO PRIMEIRO
+            if (currentBoard && currentBoard.id === boardForContext.id) {
+                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+                // ✅ CORREÇÃO: SALVA O QUADRO PAI ATUALIZADO
+                await saveBoard(currentBoard);
+                // ✅ CORREÇÃO: ATUALIZA UI IMEDIATAMENTE
+                renderCurrentBoard();
+            }
+
+            // ✅ AGORA opera no storage
+            const success = await archiveColumnInStorage(columnId, currentUser.id, { boardId: boardForContext.id, boardTitle: boardForContext.title });
+            if (success) {
                 showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard.id);
                 if (fromManager) document.getElementById('manager-dialog')?.close();
                 return true;
-            }
+            } 
+            // ✅ FALLBACK: Se storage falhar, recarrega do storage
+            await showSuccessAndRefresh(dialog, currentBoard.id);
             return false;
         }
     );
@@ -3311,12 +3330,25 @@ async function handleDeleteColumn(columnId, boardContext = null, fromManager = f
     showConfirmationDialog(
         t('kanban.confirm.deleteColumn'),
         async (dialog) => {
-            if (await deleteColumn(columnId, boardForContext)) { // CORREÇÃO: Passa a variável correta
+            // ✅ CORREÇÃO: ATUALIZA ESTADO PRIMEIRO
+            if (currentBoard && currentBoard.id === boardForContext.id) {
+                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+                // ✅ CORREÇÃO: SALVA O QUADRO PAI ATUALIZADO
+                await saveBoard(currentBoard);
+                // ✅ CORREÇÃO: ATUALIZA UI IMEDIATAMENTE
+                renderCurrentBoard();
+            }
+
+            // ✅ AGORA opera no storage
+            const success = await trashColumnInStorage(columnId, currentUser.id, { boardId: boardForContext.id, boardTitle: boardForContext.title });
+            if (success) {
                 showDialogMessage(dialog, t('kanban.feedback.columnMovedToTrash'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard.id);
                 if (fromManager) document.getElementById('manager-dialog')?.close();
                 return true;
-            }
+            } 
+            // ✅ FALLBACK: Se storage falhar, recarrega do storage
+            await showSuccessAndRefresh(dialog, currentBoard.id);
             return false;
         },
         null,

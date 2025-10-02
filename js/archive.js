@@ -458,20 +458,19 @@ async function handleMoveToTrash(itemId, type) {
 
     // Reutiliza a lógica existente em kanban.js para consistência
     if (type === 'board') {
-        // A função deleteBoardFromKanban já move para a lixeira e atualiza a UI.
-        await trashBoard(itemId, currentUser.id); // Chama a função de storage diretamente
+        await trashBoard(itemId, currentUser.id);
     } else {
         let item;
         if (type === 'card') item = await getCard(itemId);
         else if (type === 'column') item = await getColumn(itemId);
-
+        
         if (!item) return;
-
+        
         item.archiveReason = 'deleted';
         if (type === 'card') await saveCard(item);
         if (type === 'column') await saveColumn(item);
     }
-
+    
     // Atualiza a UI da página de arquivos
     showFloatingMessage(t('archive.feedback.movedToTrash'), 'success');
     setTimeout(async () => {
@@ -507,8 +506,8 @@ async function handleDeleteColumn(columnId) {
 
     showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // CORREÇÃO: Usa deleteColumn para apagar apenas a coluna, não seus filhos.
-        // hardDeleteColumn é reservado para a função "Esvaziar Lixeira".
-        if (await deleteColumn(columnId)) {
+        // A função deleteItem remove apenas o arquivo da coluna, que é o comportamento esperado aqui.
+        if (await deleteItem(columnId, 'column')) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             await loadAllArchivedItems();
             renderAllLists();
@@ -527,8 +526,7 @@ async function handleDeleteBoard(boardId) {
 
     showConfirmationDialog(t('archive.confirm.delete'), async (dialog) => {
         // CORREÇÃO: Usa deleteBoard para apagar apenas o quadro, não seus filhos.
-        // hardDeleteBoard é reservado para a função "Esvaziar Lixeira".
-        if (await deleteItem(boardId, 'board')) { // Exclui permanentemente o item do storage
+        if (await deleteItem(boardId, 'board')) {
             showDialogMessage(dialog, t('archive.feedback.deleted'), 'success');
             await loadAllArchivedItems();
             renderAllLists();
