@@ -277,39 +277,44 @@ async function confirmRestorationPlan(plan, onConfirm) {
  * @returns {Promise<boolean>} True se todas as permissões forem concedidas.
  */
 async function validateRestorationPlan(plan) {
-    for (const step of plan.steps) {
-        let requiredPermission = null;
-        let boardForCheck = null;
+  for (const step of plan.steps) {
+    let requiredPermission = null;
+    let boardForCheck = null;
 
-        switch (step.action) {
-            case 'CREATE_BOARD':
-                // Se o quadro a ser criado pertencer a um grupo, verifica a permissão de criar quadros.
-                if (step.context?.groupId) {
-                    const tempBoardForCheck = { groupId: step.context.groupId };
-                    if (!await hasPermission(currentUser, tempBoardForCheck, 'createBoards')) return false;
-                }
-                break;
-            case 'CREATE_COLUMN':
-                requiredPermission = 'createColumns';
-                boardForCheck = await getBoard(step.context?.boardId);
-                break;
-            case 'RESTORE':
-                if (step.type === 'card') requiredPermission = 'createCards';
-                if (step.type === 'column') requiredPermission = 'createColumns';
-                // CORREÇÃO: A permissão para restaurar um quadro de grupo é 'createBoards',
-                // pois efetivamente recria o quadro no contexto do grupo.
-                if (step.type === 'board' && step.item.groupId) {
-                    requiredPermission = 'createBoards';
-                }
-                boardForCheck = step.item; // O próprio item (quadro) ou o quadro pai do item.
-                break;
+    switch (step.action) {
+      case 'CREATE_BOARD':
+        // A criação de um quadro pessoal é sempre permitida.
+        // Se for para um grupo, verifica a permissão 'createBoards'.
+        if (step.context?.groupId) {
+          // Criamos um objeto temporário para a verificação, pois o quadro ainda não existe.
+          const tempBoardContext = { groupId: step.context.groupId };
+          if (!(await hasPermission(currentUser, tempBoardContext, 'createBoards'))) return false;
         }
-
-        if (requiredPermission && boardForCheck && !(await hasPermission(currentUser, boardForCheck, requiredPermission))) {
-            return false;
+        break;
+      case 'CREATE_COLUMN':
+        requiredPermission = 'createColumns';
+        boardForCheck = await getBoard(step.context?.boardId);
+        break;
+      case 'RESTORE':
+        if (step.type === 'card') {
+          requiredPermission = 'createCards';
+          boardForCheck = await getBoard(step.item.boardId);
+        } else if (step.type === 'column') {
+          requiredPermission = 'createColumns';
+          boardForCheck = await getBoard(step.item.boardId);
+        } else if (step.type === 'board' && step.item.groupId) {
+          requiredPermission = 'createBoards';
+          boardForCheck = step.item; // O próprio quadro é o contexto.
         }
+        break;
     }
-    return true;
+
+    // Se uma permissão é necessária, verifica-a.
+    if (requiredPermission && boardForCheck && !(await hasPermission(currentUser, boardForCheck, requiredPermission))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

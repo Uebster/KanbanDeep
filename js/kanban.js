@@ -1434,7 +1434,7 @@ async function handleManagerActions(e) {
         'edit-column': await hasPermission(currentUser, board, 'editColumns'),
         'archive-column': await hasPermission(currentUser, board, 'editColumns'),
         'delete-column': await hasPermission(currentUser, board, 'editColumns'),
-        'edit-card': await hasPermission(currentUser, board, 'editColumns'), // Editar cartão requer permissão de editar coluna
+        'edit-card': await hasPermission(currentUser, board, 'editCards'), // Editar cartão requer permissão de editar cartão
         'archive-card': await hasPermission(currentUser, board, 'editColumns'),
         'delete-card': await hasPermission(currentUser, board, 'editColumns'),
     }[action];
@@ -2279,6 +2279,27 @@ async function showCardDialog(cardId = null, columnId) {
     const result = cardId ? findCardAndColumn(cardId) : null;
     const card = result ? result.card : null;
         // Se estamos editando, o columnId vem do resultado da busca.
+
+    // ETAPA 8: VERIFICAÇÃO DE PERMISSÃO PARA EDIÇÃO
+    const canEdit = await hasPermission(currentUser, currentBoard, 'editCards');
+
+    // Habilita/desabilita todos os campos de uma vez
+    const fields = [
+        'card-title-input', 'card-description', 'card-due-date', 'card-due-time',
+        'card-column-select', 'card-tags', 'card-assigned-to'
+    ];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !canEdit;
+    });
+
+    // Lida com os botões de cor e o botão de salvar
+    dialog.querySelector('#card-bg-color-trigger').style.pointerEvents = canEdit ? 'auto' : 'none';
+    dialog.querySelector('#card-text-color-trigger').style.pointerEvents = canEdit ? 'auto' : 'none';
+    dialog.querySelector('#reset-card-colors-btn').style.display = canEdit ? 'inline-block' : 'none';
+    dialog.querySelector('#card-save-btn').style.display = canEdit ? 'inline-block' : 'none';
+
+
     // Se estamos criando, ele vem do parâmetro da função.
     const targetColumnId = result ? result.column.id : columnId;
 
@@ -3003,13 +3024,19 @@ async function handleContextMenu(e) {
  * Cria e exibe o menu de contexto para um cartão.
  */
 async function createCardContextMenu(event, cardEl) {
+    // A verificação de permissão foi movida para as funções de manipulação (handle*)
+    // para uma segurança mais robusta. O menu agora é sempre construído da mesma forma.
     const cardId = cardEl.dataset.cardId;
     const { card } = findCardAndColumn(cardId);
     
     const menuItems = [
         { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => handleEditCardFromMenu(cardId) },
         { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
-        { label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), icon: card.isComplete ? '⚪' : '✅', action: () => toggleCardComplete(cardId) },
+        {
+            label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), 
+            icon: card.isComplete ? '⚪' : '✅', 
+            action: () => toggleCardComplete(cardId) 
+        },
         { isSeparator: true },
         { label: t('kanban.contextMenu.card.copy'), icon: '📋', action: () => handleCopyCard(cardId) }, // Copiar é sempre permitido
         { label: t('kanban.contextMenu.card.cut'), icon: '✂️', action: () => handleCutCard(cardId) },
@@ -3025,11 +3052,9 @@ async function createCardContextMenu(event, cardEl) {
  * Cria e exibe o menu de contexto para uma coluna.
  */
 async function createColumnContextMenu(event, columnEl) {
+    // A verificação de permissão foi movida para as funções de manipulação (handle*)
+    // para uma segurança mais robusta.
     const columnId = columnEl.dataset.columnId;
-    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
-        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        return;
-    }
 
     const menuItems = [
         { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => handleEditColumnFromMenu(columnId) },
@@ -3057,37 +3082,45 @@ async function createColumnContextMenu(event, columnEl) {
     showContextMenu(event, menuItems);
 }
 
-function handleCopyColumn(columnId) {
+async function handleCopyColumn(columnId) {
+    // ETAPA 9: VERIFICAÇÃO DE PERMISSÃO
+    // Copiar uma coluna é essencialmente criar uma nova, então a permissão 'createColumns' é necessária.
+    if (!await hasPermission(currentUser, currentBoard, 'createColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const columnToCopy = findColumn(columnId);
     if (columnToCopy) {
         // Deep copy dos cartões é necessário para criar novas instâncias.
         const cardsToCopy = columnToCopy.cards.map(card => ({
             ...card,
             id: null, // Reseta o ID para criar um novo
-            creatorId: currentUser.id,
-            createdAt: new Date().toISOString() // REMOVIDO: Não copia o log de atividades antigo.
+            creatorId: currentUser.id, // O copiador se torna o criador
+            createdAt: new Date().toISOString(),
+            activityLog: [] // Log de atividades começa do zero
         }));
 
         clipboard = {
             type: 'column',
             mode: 'copy',
             data: {
-                ...columnToCopy,
-                id: null, // Reseta o ID da coluna
-                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`, // Adiciona o sufixo ao título da coluna
-                cards: cardsToCopy // Armazena os dados completos dos cartões a serem criados
+                ...columnToCopy, // Copia propriedades como cor, descrição
+                id: null,
+                title: `${columnToCopy.title} ${t('kanban.board.copySuffix')}`,
+                cards: cardsToCopy
             }
         };
         showFloatingMessage(t('kanban.feedback.columnCopied'), 'info');
     }
 }
 
-/**
- * Recorta uma coluna, marcando-a para ser movida.
- * @param {string} columnId O ID da coluna a ser recortada.
- */
-function handleCutColumn(columnId) {
-    // A permissão já foi verificada na função que chama esta (createColumnContextMenu)
+async function handleCutColumn(columnId) {
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const columnToCut = findColumn(columnId);
     if (columnToCut) {
         clipboard = {
@@ -3101,12 +3134,10 @@ function handleCutColumn(columnId) {
     }
 }
 
-// --- LÓGICA DO DIÁLOGO DE DETALHES ---
-
 /**
  * Mostra o diálogo de detalhes para um cartão ou coluna.
  */
-async function showDetailsDialog(cardId = null, columnId = null) {
+async function showDetailsDialog(cardId = null, columnId = null) { // --- LÓGICA DO DIÁLOGO DE DETALHES ---
     const dialog = document.getElementById('details-dialog');
     const titleEl = document.getElementById('details-title');
     const contentContainer = document.getElementById('details-content');
@@ -3296,6 +3327,41 @@ async function handleArchiveBoard(boardId, closeManagerDialog = false) {
     const board = boards.find(b => b.id === boardId);
     if (!board) return;
 
+    // ETAPA 2: Verifica se o quadro tem cartões
+    const hasCards = board.columns.some(col => col.cardIds && col.cardIds.length > 0);
+
+    if (!hasCards) {
+        // Se não tiver cartões, mostra um diálogo de confirmação simples.
+        showConfirmationDialog(
+            t('archive.confirm.archiveBoard', { boardName: board.title }),
+            async (dialog) => {
+                // ✅ CORREÇÃO: Aplica a mesma lógica de atualização da UI em memória.
+                const boardIndex = boards.findIndex(b => b.id === boardId);
+                if (boardIndex > -1) {
+                    boards.splice(boardIndex, 1);
+                    if (currentBoard && currentBoard.id === boardId) {
+                        currentBoard = boards.find(b => !b.isArchived) || null;
+                        localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
+                    }
+                }
+                renderBoardSelector();
+                renderCurrentBoard();
+                initCustomSelects();
+
+                // ✅ AGORA, opera no storage em segundo plano.
+                if (await archiveBoardInStorage(boardId, currentUser.id, false)) { // false para markAsCompleted
+                    showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
+                    if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+                    return true; // Fecha o diálogo de confirmação.
+                } else {
+                    showDialogMessage(dialog, t('archive.feedback.archiveFailed'), 'error');
+                    await showSuccessAndRefresh(dialog, null); // Fallback em caso de erro.
+                    return false;
+                }
+            }
+        );
+        return; // Encerra a função aqui para não mostrar o outro diálogo.
+    }
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
     dialog.innerHTML = `
@@ -3404,9 +3470,47 @@ function switchBoard(e) {
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
 async function handleArchiveColumn(columnId, boardContext = null, fromManager = false) {
+    // ETAPA 5: VERIFICAÇÃO DE PERMISSÃO
+    // Garante que o usuário não possa arquivar se não tiver permissão para editar colunas.
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const boardForContext = boardContext || currentBoard;
     const column = findColumn(columnId, boardForContext);
     if (!column) return;
+
+    // ETAPA 2: Verifica se a coluna tem cartões
+    const hasCards = column.cardIds && column.cardIds.length > 0;
+
+    if (!hasCards) {
+        // Se não tiver cartões, mostra um diálogo de confirmação simples.
+        showConfirmationDialog(
+            t('archive.confirm.archiveColumn', { columnTitle: column.title }),
+            async (dialog) => {
+                // ✅ CORREÇÃO: Aplica a mesma lógica de atualização da UI em memória.
+                if (currentBoard && currentBoard.id === boardForContext.id) {
+                    currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+                    currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+                    renderCurrentBoard();
+                }
+
+                // ✅ AGORA, opera no storage em segundo plano.
+                const context = { boardId: boardForContext.id, boardTitle: boardForContext.title };
+                if (await archiveColumnInStorage(columnId, currentUser.id, context, false)) { // false para markAsCompleted
+                    showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
+                    if (fromManager) document.getElementById('manager-dialog')?.close();
+                    return true; // Fecha o diálogo de confirmação.
+                } else {
+                    showDialogMessage(dialog, t('archive.feedback.archiveFailed'), 'error');
+                    await showSuccessAndRefresh(dialog, currentBoard.id); // Fallback em caso de erro.
+                    return false;
+                }
+            }
+        );
+        return; // Encerra a função aqui.
+    }
 
     const dialog = document.createElement('dialog');
     dialog.className = 'draggable';
@@ -3460,6 +3564,13 @@ async function handleArchiveColumn(columnId, boardContext = null, fromManager = 
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
 async function handleDeleteColumn(columnId, boardContext = null, fromManager = false) {
+    // ETAPA 7: VERIFICAÇÃO DE PERMISSÃO
+    // Garante que o usuário não possa excluir uma coluna se não tiver permissão para editá-las.
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const boardForContext = boardContext || currentBoard;
     const column = findColumn(columnId, boardForContext);
     if (!column) return;
@@ -3569,6 +3680,13 @@ async function trashEntireBoard(boardId) {
 }
 
 async function handleDeleteCard(cardId, closeManagerDialog = false) {
+    // ETAPA 6: VERIFICAÇÃO DE PERMISSÃO
+    // Garante que o usuário não possa excluir um cartão se não tiver permissão para editar colunas.
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const result = findCardAndColumn(cardId);
     if (!result) return false;
     const { card, column } = result;
@@ -3608,6 +3726,13 @@ async function handleDeleteCard(cardId, closeManagerDialog = false) {
 }
 
 async function handleArchiveCard(cardId, closeManagerDialog = false) {
+    // ETAPA 5: VERIFICAÇÃO DE PERMISSÃO
+    // Garante que o usuário não possa arquivar um cartão se não tiver permissão para editar colunas.
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const result = findCardAndColumn(cardId);
     if (!result) return false;
     const { card, column } = result;
@@ -3745,7 +3870,11 @@ function handleKeyDown(e) {
  * Copia um cartão para a área de transferência interna.
  * @param {string} cardId - O ID do cartão a ser copiado.
  */
-function handleCopyCard(cardId) {
+async function handleCopyCard(cardId) {
+    if (!await hasPermission(currentUser, currentBoard, 'createCards')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
     const { card, column } = findCardAndColumn(cardId);
     if (card) {
         clipboard = {
@@ -3770,7 +3899,12 @@ function handleCopyCard(cardId) {
  * Recorta um cartão para a área de transferência, marcando-o para ser movido.
  * @param {string} cardId - O ID do cartão a ser recortado.
  */
-function handleCutCard(cardId) {
+async function handleCutCard(cardId) {
+    if (!await hasPermission(currentUser, currentBoard, 'editColumns')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
+
     const { card, column } = findCardAndColumn(cardId);
     if (card) {
         clipboard = {
@@ -3778,6 +3912,7 @@ function handleCutCard(cardId) {
             mode: 'cut',
             sourceCardId: cardId,
             sourceColumnId: column.id,
+            sourceBoardId: currentBoard.id, // Adiciona o board de origem
             data: card
         };
         showFloatingMessage(t('kanban.feedback.cardCut'), 'info');
@@ -3789,20 +3924,13 @@ function handleCutCard(cardId) {
  * Cola um cartão da área de transferência em uma nova coluna.
  * @param {string} targetColumnId - O ID da coluna de destino.
  */
-async function handlePasteCard(targetColumnId) {
-    if (!clipboard || clipboard.type !== 'card') {
-        // Se não houver nada no clipboard, não faz nada.
-        showFloatingMessage(t('kanban.feedback.noCardToPaste'), 'warning');
-        return;
-    }
-
+async function handlePasteCard(targetColumnId, boardContext = null) {
     const targetColumn = findColumn(targetColumnId);
     if (!targetColumn) return;
 
-    // ETAPA 4: VERIFICAÇÃO DE PERMISSÃO AO COLAR
-    if (clipboard.mode === 'copy' && !await hasPermission(currentBoard, 'createCards')) {
+    // A verificação de permissão para colar (criar) é feita aqui
+    if (!await hasPermission(currentUser, currentBoard, 'createCards')) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        clipboard = null; // Limpa o clipboard para evitar tentativas repetidas
         return;
     }
 
@@ -3871,7 +3999,7 @@ async function handlePasteCard(targetColumnId) {
 
     await saveState(); // Salva o estado apenas uma vez
     clipboard = null;
-    showFloatingMessage(t('kanban.feedback.cardPasted'), 'success');
+    showFloatingMessage(t('kanban.feedback.cardPasted'), 'success'); // Esta mensagem já existe
     await showSuccessAndRefresh(null, currentBoard.id);
 }
 /**
@@ -3928,9 +4056,11 @@ async function handlePaste() {
     }
 }
 
-function handleEditCardFromMenu(cardId) {
-    // A edição de cartão é sempre permitida para membros, então não precisa de verificação aqui,
-    // mas a função existe para manter a consistência do fluxo.
+async function handleEditCardFromMenu(cardId) {
+    if (!await hasPermission(currentUser, currentBoard, 'editCards')) {
+        showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
+        return;
+    }
     showCardDialog(cardId);
 }
 

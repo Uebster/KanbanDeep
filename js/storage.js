@@ -254,8 +254,7 @@ export async function trashColumn(columnId, userId, context = {}) {
     column.activityLog.push({
         action: logAction,
         userId: userId,
-        timestamp: new Date().toISOString(),
-        details: markCardsAsCompleted ? 'completed' : 'open' // NOVO: Adiciona detalhe para o log
+        timestamp: new Date().toISOString()
     });
 
     column.isArchived = true;
@@ -382,7 +381,7 @@ export async function trashBoard(boardId, userId) {
     if (!board) return null;
 
     for (const column of board.columns) {
-        await trashColumn(column.id, userId, { boardId: board.id, boardTitle: board.title }, false); // Passa false para markAsCompleted
+        await trashColumn(column.id, userId, { boardId: board.id, boardTitle: board.title });
     }
 
     board.isArchived = true;

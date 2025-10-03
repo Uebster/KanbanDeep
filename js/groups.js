@@ -348,7 +348,8 @@ async function handleSaveGroup() {
         editBoards: document.getElementById('perm-edit-boards').checked,
         createColumns: document.getElementById('perm-create-columns').checked,
         editColumns: document.getElementById('perm-edit-columns').checked,
-        createCards: document.getElementById('perm-create-cards').checked
+        createCards: document.getElementById('perm-create-cards').checked,
+        editCards: document.getElementById('perm-edit-cards').checked
     };
 
     if (!name) {
@@ -1342,6 +1343,7 @@ async function editGroup(group) {
     document.getElementById('edit-perm-create-columns').checked = permissions.createColumns || false;
     document.getElementById('edit-perm-edit-columns').checked = permissions.editColumns || false;
     document.getElementById('edit-perm-create-cards').checked = permissions.createCards || false;
+    document.getElementById('edit-perm-edit-cards').checked = permissions.editCards || false;
 
 
     initCustomSelects();
@@ -1480,7 +1482,8 @@ async function saveGroupChanges() {
                 editBoards: document.getElementById('edit-perm-edit-boards').checked,
                 createColumns: document.getElementById('edit-perm-create-columns').checked,
                 editColumns: document.getElementById('edit-perm-edit-columns').checked,
-                createCards: document.getElementById('edit-perm-create-cards').checked
+                createCards: document.getElementById('edit-perm-create-cards').checked,
+                editCards: document.getElementById('edit-perm-edit-cards').checked
             };
 
             currentGroup.defaultTagTemplateId = document.getElementById('edit-group-tag-template').value;
@@ -2859,6 +2862,7 @@ async function showMemberPermissionsDialog(group, memberId) {
     dialog.querySelector('#member-perm-create-columns').checked = permsToDisplay.createColumns || false;
     dialog.querySelector('#member-perm-edit-columns').checked = permsToDisplay.editColumns || false;
     dialog.querySelector('#member-perm-create-cards').checked = permsToDisplay.createCards || false;
+    dialog.querySelector('#member-perm-edit-cards').checked = permsToDisplay.editCards || false;
 
     // Lógica para habilitar/desabilitar as permissões individuais
     useDefaultCheckbox.onchange = () => {
@@ -2893,6 +2897,7 @@ async function showMemberPermissionsDialog(group, memberId) {
                 createColumns: dialog.querySelector('#member-perm-create-columns').checked,
                 editColumns: dialog.querySelector('#member-perm-edit-columns').checked,
                 createCards: dialog.querySelector('#member-perm-create-cards').checked,
+                editCards: dialog.querySelector('#member-perm-edit-cards').checked
             };
             // PASSO 2: Adiciona log de alteração de permissão individual
             addLogToGroup(currentGroup, {
