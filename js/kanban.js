@@ -242,8 +242,10 @@ function setupEventListeners() {
     // --- Diálogos (Modais) ---
     document.getElementById('board-save-btn')?.addEventListener('click', async () => await handleSaveBoard());
     document.getElementById('column-save-btn')?.addEventListener('click', async () => await handleSaveColumn());
-    document.getElementById('column-delete-btn')?.addEventListener('click', async () => await handleDeleteColumn(document.getElementById('column-dialog').dataset.editingId));
-    document.getElementById('card-save-btn')?.addEventListener('click', async () => await handleSaveCard());
+    document.getElementById('column-delete-btn')?.addEventListener('click', async () => await handleDeleteColumn(document.getElementById('column-dialog').dataset.editingId));    // CORREÇÃO: O listener do botão de salvar cartão é configurado uma única vez aqui.
+    // A função handleSaveCard agora não precisa mais ser aninhada dentro de showCardDialog.
+    document.getElementById('card-save-btn')?.addEventListener('click', handleSaveCard);
+
     document.querySelectorAll('dialog .btn.cancel').forEach(btn => {
         // Adiciona um listener genérico para fechar diálogos com o botão "Cancelar", mas ignora o de preferências,
         // que tem sua própria lógica customizada.
@@ -2140,7 +2142,6 @@ async function showColumnDialog(columnId = null) {
     dialog.showModal();
 }
 
-// Em kanban.js
 async function handleSaveColumn() {
     const dialog = document.getElementById('column-dialog');
     const title = document.getElementById('column-title-input').value.trim();
@@ -2148,73 +2149,67 @@ async function handleSaveColumn() {
         showDialogMessage(dialog, t('kanban.dialog.titleRequired'), 'error');
         return;
     }
+    
+    // Desabilita os botões para evitar cliques múltiplos
+    const saveBtn = dialog.querySelector('#column-save-btn');
+    const cancelBtn = dialog.querySelector('.btn.cancel');
+    if (saveBtn) saveBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
 
-    showConfirmationDialog(
-        t('kanban.confirm.saveColumn'),
-        async (confirmationDialog) => {
-            await saveState(); // Salva o estado para o Desfazer
-            const columnId = dialog.dataset.editingId;
+    try {
+        await saveState(); // Salva o estado para o Desfazer
+        const columnId = dialog.dataset.editingId;
 
-            const bgColor = document.getElementById('column-color-trigger').dataset.color;
-            const textColor = document.getElementById('column-text-color-trigger').dataset.color;
+        const bgColor = document.getElementById('column-color-trigger').dataset.color;
+        const textColor = document.getElementById('column-text-color-trigger').dataset.color;
 
-            const columnData = { 
-                title, 
-                description: document.getElementById('column-description').value, 
-                // Se a cor for uma variável CSS (padrão), salva null para que a coluna herde o tema.
-                // Caso contrário, salva a cor customizada.
-                color: bgColor.startsWith('var(') ? null : bgColor, // eslint-disable-line
-                textColor: textColor.startsWith('var(') ? null : textColor
-            };
+        const columnData = { 
+            title, 
+            description: document.getElementById('column-description').value, 
+            color: bgColor.startsWith('var(') ? null : bgColor,
+            textColor: textColor.startsWith('var(') ? null : textColor
+        };
 
-            if (columnId && columnId !== 'null') {
-                const existingColumn = await getColumn(columnId);
-                if (existingColumn) {
-                    // Adiciona um log de edição se algo mudou
-                    const hasChanged = existingColumn.title !== columnData.title ||
-                                     (existingColumn.description || '') !== (columnData.description || '') ||
-                                     (existingColumn.color || null) !== columnData.color ||
-                                     (existingColumn.textColor || null) !== columnData.textColor;
+        if (columnId && columnId !== 'null') {
+            const existingColumn = await getColumn(columnId);
+            if (existingColumn) {
+                const hasChanged = existingColumn.title !== columnData.title ||
+                                 (existingColumn.description || '') !== (columnData.description || '') ||
+                                 (existingColumn.color || null) !== columnData.color ||
+                                 (existingColumn.textColor || null) !== columnData.textColor;
 
-                    if (hasChanged) {
-                        const logEntry = {
-                            action: 'edited',
-                            userId: currentUser.id,
-                            timestamp: new Date().toISOString()
-                        };
-                        if (!existingColumn.activityLog) existingColumn.activityLog = [];
-                        existingColumn.activityLog.push(logEntry);
-                    }
-                    Object.assign(existingColumn, columnData);
-                    await saveColumn(existingColumn);
+                if (hasChanged) {
+                    const logEntry = { action: 'edited', userId: currentUser.id, timestamp: new Date().toISOString() };
+                    if (!existingColumn.activityLog) existingColumn.activityLog = [];
+                    existingColumn.activityLog.push(logEntry);
                 }
-            } else { // Criando uma nova coluna
-                let newColumn = await saveColumn({ ...columnData, cardIds: [] });
-                // Busca o quadro do storage para garantir que estamos atualizando a versão mais recente
-                // Adiciona o log de criação
-                newColumn.activityLog = [{
-                    action: 'created',
-                    userId: currentUser.id,
-                    timestamp: new Date().toISOString()
-                }];
-                newColumn = await saveColumn(newColumn); // Salva novamente com o log
-                const boardData = await getBoard(currentBoard.id);
-                if (boardData) {
-                    if (!boardData.columnIds) boardData.columnIds = []; // Garante que o array exista
-                    boardData.columnIds.push(newColumn.id);
-                    await saveBoard(boardData);
-                    // --- CORREÇÃO: Adiciona a nova coluna ao currentBoard em memória ---
-                    // Isso garante que a coluna possa ser encontrada imediatamente por outras funções.
-                    if (!currentBoard.columns) currentBoard.columns = [];
-                    if (!currentBoard.columnIds) currentBoard.columnIds = [];
-                    currentBoard.columns.push(newColumn);
-                }
+                Object.assign(existingColumn, columnData);
+                await saveColumn(existingColumn);
             }
-            showDialogMessage(confirmationDialog, t('kanban.feedback.columnSaved'), 'success');
-            await showSuccessAndRefresh(dialog, currentBoard.id);
-            return true;
+        } else { // Criando uma nova coluna
+            let newColumn = await saveColumn({ ...columnData, cardIds: [] });
+            newColumn.activityLog = [{ action: 'created', userId: currentUser.id, timestamp: new Date().toISOString() }];
+            newColumn = await saveColumn(newColumn);
+            const boardData = await getBoard(currentBoard.id);
+            if (boardData) {
+                if (!boardData.columnIds) boardData.columnIds = [];
+                boardData.columnIds.push(newColumn.id);
+                await saveBoard(boardData);
+                if (!currentBoard.columns) currentBoard.columns = [];
+                if (!currentBoard.columnIds) currentBoard.columnIds = [];
+                currentBoard.columns.push(newColumn);
+            }
         }
-    );
+        showDialogMessage(dialog, t('kanban.feedback.columnSaved'), 'success');
+        await showSuccessAndRefresh(dialog, currentBoard.id);
+    } catch (error) {
+        console.error("Error saving column:", error);
+        showDialogMessage(dialog, t('ui.error'), 'error');
+    } finally {
+        // Reabilita os botões após a operação
+        if (saveBtn) saveBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+    }
 }
 
 async function showSuccessAndRefresh(dialog, boardToFocusId) {
@@ -2434,101 +2429,103 @@ async function showCardDialog(cardId = null, columnId) {
     dialog.showModal();
 }
 
+/**
+ * Manipula o salvamento de um cartão (novo ou existente).
+ * Esta função agora é chamada diretamente pelo listener de evento configurado em setupEventListeners.
+ */
 async function handleSaveCard() {
     const title = document.getElementById('card-title-input').value.trim();
     const dialog = document.getElementById('card-dialog');
     if (!title) { showDialogMessage(dialog, t('kanban.dialog.titleRequired'), 'error'); return; }
 
-    showConfirmationDialog(
-        t('kanban.confirm.saveCard'),
-        async (confirmationDialog) => {
-            const cardId = dialog.dataset.editingId;
-            const newColumnId = document.getElementById('card-column-select').value;
-            const dateValue = document.getElementById('card-due-date').value;
-            const timeValue = document.getElementById('card-due-time').value;
-            let combinedDateTime = dateValue ? (timeValue ? `${dateValue}T${timeValue}:00` : `${dateValue}T00:00:00`) : null;
+    // Desabilita os botões para evitar cliques múltiplos
+    const saveBtn = dialog.querySelector('#card-save-btn');
+    const cancelBtn = dialog.querySelector('.btn.cancel');
+    if (saveBtn) saveBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    try {
+        const cardId = dialog.dataset.editingId;
+        const newColumnId = document.getElementById('card-column-select').value;
+        const dateValue = document.getElementById('card-due-date').value;
+        const timeValue = document.getElementById('card-due-time').value;
+        let combinedDateTime = dateValue ? (timeValue ? `${dateValue}T${timeValue}:00` : `${dateValue}T00:00:00`) : null;
+        
+        const bgColor = document.getElementById('card-bg-color-trigger').dataset.color;
+        const textColor = document.getElementById('card-text-color-trigger').dataset.color;
+
+        const cardData = {
+            title, 
+            description: document.getElementById('card-description').value.trim(), 
+            dueDate: combinedDateTime, 
+            tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), 
+            assignedTo: document.getElementById('card-assigned-to').value,
+            backgroundColor: bgColor.startsWith('var(') ? null : bgColor,
+            textColor: textColor.startsWith('var(') ? null : textColor
+        };
+
+        const previousAssignee = (await getCard(cardId))?.assignedTo;
+        if (cardId && cardId !== 'null') {
+            const originalCard = await getCard(cardId);
+            if (!originalCard) return;
+            const sourceColumn = currentBoard.columns.find(c => c.cardIds.includes(cardId));
             
-            const bgColor = document.getElementById('card-bg-color-trigger').dataset.color;
-            const textColor = document.getElementById('card-text-color-trigger').dataset.color;
+            Object.assign(originalCard, cardData);
+            await saveCard(originalCard);
 
-            const cardData = {
-                title, 
-                description: document.getElementById('card-description').value.trim(), 
-                dueDate: combinedDateTime, 
-                tags: Array.from(document.getElementById('card-tags').selectedOptions).map(opt => opt.value), 
-                assignedTo: document.getElementById('card-assigned-to').value,
-                // Se a cor for uma variável CSS (padrão), salva null para que o cartão herde o tema.
-                // Caso contrário, salva a cor customizada.
-                backgroundColor: bgColor.startsWith('var(') ? null : bgColor,
-                textColor: textColor.startsWith('var(') ? null : textColor
-            };
-
-            const previousAssignee = (await getCard(cardId))?.assignedTo;
-            if (cardId && cardId !== 'null') {
-                const originalCard = await getCard(cardId);
-                if (!originalCard) return false;
-                const sourceColumn = currentBoard.columns.find(c => c.cardIds.includes(cardId));
-                
-                Object.assign(originalCard, cardData);
-                await saveCard(originalCard);
-
-                if (sourceColumn && sourceColumn.id !== newColumnId) {
-                    sourceColumn.cardIds = sourceColumn.cardIds.filter(id => id !== cardId);
-                    saveColumn(sourceColumn);
-                    const targetColumn = currentBoard.columns.find(c => c.id === newColumnId);
-                    if (targetColumn) {
-                        targetColumn.cardIds.push(cardId);
-                        await saveColumn(targetColumn);
-                    }
-                }
-            } else { // Criando um novo cartão
-                cardData.creatorId = currentUser.id;
-                cardData.isComplete = false;
-                const newCard = await saveCard(cardData);
-
-                // Adiciona o primeiro registro no log de atividades
-                newCard.activityLog = [{
-                    action: 'created',
-                    userId: currentUser.id,
-                    timestamp: new Date().toISOString()
-                }];
-                await saveCard(newCard); // Salva novamente com o log
-
+            if (sourceColumn && sourceColumn.id !== newColumnId) {
+                sourceColumn.cardIds = sourceColumn.cardIds.filter(id => id !== cardId);
+                await saveColumn(sourceColumn);
                 const targetColumn = currentBoard.columns.find(c => c.id === newColumnId);
                 if (targetColumn) {
-                    targetColumn.cardIds.push(newCard.id);
+                    targetColumn.cardIds.push(cardId);
                     await saveColumn(targetColumn);
                 }
+            }
+        } else { // Criando um novo cartão
+            cardData.creatorId = currentUser.id;
+            cardData.isComplete = false;
+            const newCard = await saveCard(cardData);
 
-                // FASE 2: Atualiza contador de tarefas do grupo
-                if (currentBoard.groupId) {
-                    const group = await getGroup(currentBoard.groupId);
-                    if (group) {
-                        group.taskCount = (group.taskCount || 0) + 1;
-                        await saveGroup(group);
-                    }
+            newCard.activityLog = [{ action: 'created', userId: currentUser.id, timestamp: new Date().toISOString() }];
+            await saveCard(newCard);
+
+            const targetColumn = currentBoard.columns.find(c => c.id === newColumnId);
+            if (targetColumn) {
+                targetColumn.cardIds.push(newCard.id);
+                await saveColumn(targetColumn);
+            }
+
+            if (currentBoard.groupId) {
+                const group = await getGroup(currentBoard.groupId);
+                if (group) {
+                    group.taskCount = (group.taskCount || 0) + 1;
+                    await saveGroup(group);
                 }
             }
-
-            // Enviar notificação se a atribuição mudou para um novo usuário
-            const newAssigneeId = cardData.assignedTo;
-            if (newAssigneeId && newAssigneeId !== previousAssignee) {
-                // Importe a função addCardAssignmentNotification se ainda não o fez
-                // import { addCardAssignmentNotification } from './notifications.js';
-                addCardAssignmentNotification(
-                    currentUser.name, // Nome de quem atribuiu
-                    newAssigneeId,    // ID de quem recebeu a tarefa
-                    cardData.title,   // Título do cartão
-                    currentBoard.title // Nome do quadro
-                );
-            }
-
-            await saveState(); // Salva o estado APÓS as modificações
-            showDialogMessage(confirmationDialog, t('kanban.feedback.cardSaved'), 'success');
-            await showSuccessAndRefresh(dialog, currentBoard.id);
-            return true;
         }
-    );
+
+        const newAssigneeId = cardData.assignedTo;
+        if (newAssigneeId && newAssigneeId !== previousAssignee) {
+            addCardAssignmentNotification(
+                currentUser.name,
+                newAssigneeId,
+                cardData.title,
+                currentBoard.title
+            );
+        }
+
+        await saveState();
+        showDialogMessage(dialog, t('kanban.feedback.cardSaved'), 'success');
+        await showSuccessAndRefresh(dialog, currentBoard.id);
+    } catch (error) {
+        console.error("Error saving card:", error);
+        showDialogMessage(dialog, t('ui.error'), 'error');
+    } finally {
+        // Reabilita os botões após a operação
+        if (saveBtn) saveBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+    }
 }
 
 // ===== LÓGICA DE EXPORTAÇÃO E IMPRESSÃO =====
@@ -2724,20 +2721,19 @@ async function handleDragStart(e) {
 
     document.body.appendChild(ghost);
 
-    // 🔥 CORREÇÃO DEFINITIVA: Posicionamento preciso e centralizado do fantasma.
-    // Armazena o deslocamento inicial do mouse em relação ao canto superior esquerdo do elemento.
+    // 🔥 CORREÇÃO DO CURSOR: Posicionamento preciso do fantasma.
+    // Armazena o deslocamento (offset) inicial do mouse em relação ao canto superior esquerdo do elemento que está sendo arrastado.
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
     const moveGhost = (event) => {
         if (!event.clientX || !event.clientY) return;
 
-        // Posiciona o fantasma subtraindo o deslocamento inicial,
+        // Posiciona o fantasma na posição do mouse, subtraindo o deslocamento inicial,
         // fazendo com que o cursor mantenha sua posição relativa ao elemento arrastado.
         ghost.style.left = `${event.clientX - offsetX}px`;
         ghost.style.top = `${event.clientY - offsetY}px`;
     };
-
     document.addEventListener('dragover', moveGhost);
 
     // 🔥 CORREÇÃO: Limpeza mais robusta no final do arrasto
