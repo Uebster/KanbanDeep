@@ -430,6 +430,8 @@
     "kanban.dialog.board.visibilityGroup": "Gruppo (i membri del gruppo possono vedere)",
     "kanban.dialog.board.visibilityPrivate": "Privato (solo tu puoi vedere)",
     "kanban.dialog.board.visibilityPublic": "Pubblico (tutti possono vedere)",
+    "kanban.dialog.card.addChecklistItem": "+ Aggiungi Elemento",
+    "kanban.dialog.card.checklistTitle": "Checklist",
     "kanban.dialog.card.backgroundColor": "Colore di sfondo:",
     "kanban.dialog.card.columnLabel": "Colonna:",
     "kanban.dialog.card.noAssignee": "Nessuno",

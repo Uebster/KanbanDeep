@@ -1304,11 +1304,59 @@ function createCardElement(card) {
             <p class="card-title">${card.title}</p>
             ${tagLineHtml}
         </div>
+        <div class="card-footer-left">
+            <!-- O sumário do checklist e outros ícones de rodapé esquerdo vão aqui -->
+        </div>
         <div class="card-footer-details">
             ${userPrefs.showAssignment !== false ? assignedToHtml : ''}
         </div>
         ${userPrefs.showCardDetails !== false ? hoverInfoHtml : ''}
     `;
+    
+    // ✅ PASSO 4 (REFEITO): Renderiza o checklist diretamente no cartão
+    if (card.checklist && card.checklist.length > 0) {
+        const completedCount = card.checklist.filter(item => item.completed).length;
+        const totalCount = card.checklist.length;
+
+        // 1. Cria o container para o checklist
+        const checklistContainer = document.createElement('div');
+        checklistContainer.className = 'card-checklist-container';
+        card.checklist.forEach((item, index) => {
+            const itemEl = document.createElement('label');
+            itemEl.className = 'checkbox-container card-checklist-item';
+            itemEl.innerHTML = `
+                ${item.text}
+                <input type="checkbox" data-index="${index}" ${item.completed ? 'checked' : ''}>
+                <span class="checkmark"></span>
+            `;
+            checklistContainer.appendChild(itemEl);
+        });
+
+        // 2. Insere o checklist no corpo do cartão, após o conteúdo principal
+        cardEl.querySelector('.card-content').appendChild(checklistContainer);
+
+        // 3. Adiciona o sumário no rodapé
+        const summaryIcon = (completedCount === totalCount && totalCount > 0) ? '✅' : '☑️';
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'card-checklist-summary';
+        summaryEl.innerHTML = `<span>${summaryIcon} ${completedCount}/${totalCount}</span>`;
+        cardEl.querySelector('.card-footer-left').appendChild(summaryEl);
+
+        // ✅ CORREÇÃO: Adiciona listeners para os checkboxes renderizados no cartão
+        checklistContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', async (e) => {
+                const itemIndex = parseInt(e.target.dataset.index, 10);
+                // Pega a versão mais recente do cartão para evitar race conditions
+                const cardToUpdate = await getCard(card.id); 
+                if (cardToUpdate && cardToUpdate.checklist[itemIndex]) {
+                    cardToUpdate.checklist[itemIndex].completed = e.target.checked;
+                    await saveCard(cardToUpdate);
+                    // Re-renderiza o quadro para atualizar o sumário e o estado visual
+                    renderCurrentBoard();
+                }
+            });
+        });
+    }
     
     return cardEl;
 }
@@ -2463,10 +2511,81 @@ async function showCardDialog(cardId = null, columnId) {
         }
     });
 
+        // ✅ PASSO 2: Adiciona a lógica para o editor de checklist
+    setupChecklistEditor(card);
+
     // Inicializa os selects customizados APÓS popular os dados
     initCustomSelects();
 
     dialog.showModal();
+}
+
+function setupChecklistEditor(card) {
+    const checklistTitle = document.getElementById('checklist-title');
+    const editorContainer = document.getElementById('checklist-editor');
+    const addButton = document.getElementById('add-checklist-item-btn');
+    const limit = 8;
+
+    // Limpa o container antes de popular
+    editorContainer.innerHTML = '';
+
+    const toggleEditorVisibility = () => {
+        const hasItems = editorContainer.children.length > 0;
+        // Adiciona ou remove a classe 'hidden' para controlar a visibilidade
+        editorContainer.classList.toggle('hidden', !hasItems);
+    };
+
+    const updateCounter = () => {
+        const count = editorContainer.children.length;
+        checklistTitle.textContent = `${t('kanban.dialog.card.checklistTitle')} (${count}/${limit})`;
+        addButton.disabled = count >= limit;
+        addButton.title = count >= limit ? t('templateEditor.limitReached') : '';
+    };
+
+    const createChecklistItemElement = (item = { id: '', text: '', completed: false }) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'checklist-item editor-item';
+        itemEl.dataset.id = item.id || '';
+
+        itemEl.innerHTML = `
+            <input type="checkbox" class="checklist-item-checkbox" ${item.completed ? 'checked' : ''}>
+            <input type="text" class="checklist-item-text" value="${item.text}" placeholder="${t('templateEditor.itemNamePlaceholder')}">
+            <button type="button" class="remove-btn" title="${t('templateEditor.removeItemTitle')}">&times;</button>
+        `;
+
+        const checkbox = itemEl.querySelector('.checklist-item-checkbox');
+        const textInput = itemEl.querySelector('.checklist-item-text');
+
+        const applyStyle = () => {
+            textInput.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
+            textInput.style.opacity = checkbox.checked ? '0.6' : '1';
+        };
+
+        checkbox.addEventListener('change', applyStyle);
+        itemEl.querySelector('.remove-btn').addEventListener('click', () => {
+            itemEl.remove();
+            updateCounter();
+            toggleEditorVisibility(); // Esconde o container se for o último item
+        });
+
+        applyStyle(); // Aplica o estilo inicial
+        return itemEl;
+    };
+
+    // Popula com itens existentes do cartão
+    (card?.checklist || []).forEach(item => editorContainer.appendChild(createChecklistItemElement(item)));
+
+    // Ação do botão de adicionar
+    addButton.onclick = () => {
+        if (editorContainer.children.length < limit) {
+            editorContainer.appendChild(createChecklistItemElement());
+            updateCounter();
+            toggleEditorVisibility(); // Garante que o editor apareça
+        }
+    };
+
+    updateCounter(); // Atualiza o contador inicial
+    toggleEditorVisibility(); // Define a visibilidade inicial
 }
 
 /**
@@ -2503,6 +2622,21 @@ async function handleSaveCard() {
             backgroundColor: bgColor.startsWith('var(') ? null : bgColor,
             textColor: textColor.startsWith('var(') ? null : textColor
         };
+
+    // ✅ PASSO 3: Coleta os dados do checklist
+    const checklistItems = [];
+    document.querySelectorAll('#checklist-editor .editor-item').forEach(itemEl => {
+        const input = itemEl.querySelector('input[type="text"]');
+        const checkbox = itemEl.querySelector('input[type="checkbox"]');
+        if (input.value) {
+            checklistItems.push({
+                id: itemEl.dataset.id || `chk-${Date.now()}-${Math.random()}`,
+                text: input.value,
+                completed: checkbox.checked
+            });
+        }
+    });
+    cardData.checklist = checklistItems;
 
         const previousAssignee = (await getCard(cardId))?.assignedTo;
         if (cardId && cardId !== 'null') {

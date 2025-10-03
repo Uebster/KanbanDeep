@@ -351,11 +351,51 @@ body {
     opacity: 1; /* Faz o label (ex: "Criador:") ter um pouco mais de destaque */
 }
 
+/* NOVO: Container para itens no rodapé esquerdo do cartão */
+.card-footer-left {
+    position: absolute;
+    bottom: 8px;
+    left: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .card-footer-details {
     position: absolute;
     bottom: 8px;
     right: 10px;
 }
+
+.card-checklist-summary {
+    font-size: 0.8rem;
+    color: inherit; /* Herda a cor do texto do cartão */
+    opacity: 0.9;
+}
+
+/* ===== NOVO: ESTILOS PARA O CHECKLIST DENTRO DO CARTÃO ===== */
+.card-checklist-container {
+    margin-top: 6px;
+    flex-direction: column;
+    gap: 2px; /* Espaçamento mínimo entre os itens */
+}
+
+.card-checklist-item {
+    /* Reutiliza o estilo do checkbox-container, mas com ajustes */
+    font-size: 0.9rem;
+    color: inherit; /* Herda a cor do texto do cartão */
+    opacity: 0.85;
+    padding-left: 30px; /* Ajusta o espaçamento para o checkbox menor */
+    display: flex; /* Essencial para o alinhamento vertical */
+    align-items: center; /* Alinha o texto verticalmente com o checkbox */
+}
+
+/* Ajusta o tamanho do checkmark para caber melhor no cartão */
+.card-checklist-item .checkmark {
+    width: 18px;
+    height: 18px;
+}
+.card-checklist-item .checkmark:after { left: 6px; top: 2px; width: 4px; height: 8px; }
 
 .card-due-date-display {
     font-size: 0.8rem;
@@ -762,4 +802,33 @@ fieldset.form-group label {
     height: 100%;
     color: var(--text-muted);
     font-style: italic;
+}
+
+/* Esconde o editor de checklist por padrão */
+.editor-container.hidden {
+    display: none;
+}
+
+/* ===== NOVO: ESTILOS PARA O CHECKLIST EDITOR ===== */
+.checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checklist-item-checkbox {
+    /* Usa um checkbox maior e mais fácil de clicar */
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    accent-color: var(--primary); /* Estiliza a cor do check com a cor primária */
+}
+
+.checklist-item-text {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.95rem;
+    padding: 4px 0;
 }
