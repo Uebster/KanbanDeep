@@ -2931,6 +2931,7 @@ async function handleDrop(e) {
 
         // Adiciona o log de movimentação na própria coluna
         const movedColumn = findColumn(movedColumnId);
+        // ETAPA 10: Adiciona log de reordenação de coluna
         if (movedColumn) {
             const logEntry = {
                 action: 'moved',
