@@ -1337,23 +1337,44 @@ function createCardElement(card) {
         // 2. Insere o checklist no corpo do cartão, após o conteúdo principal
         cardEl.querySelector('.card-content').appendChild(checklistContainer);
 
-        // ✅ CORREÇÃO: Adiciona listeners para os checkboxes renderizados no cartão
+        // ✅ CORREÇÃO DEFINITIVA: Event listener simplificado e mais robusto
         checklistContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', async (e) => {
+                e.stopPropagation(); // Impede a propagação para evitar conflitos
+                
                 const itemIndex = parseInt(e.target.dataset.index, 10);
+                
+                // Busca o cartão ATUALIZADO do storage
                 const cardToUpdate = await getCard(card.id);
-                if (cardToUpdate && cardToUpdate.checklist[itemIndex]) {
-                    cardToUpdate.checklist[itemIndex].completed = e.target.checked;
-                    await saveCard(cardToUpdate);
-                    // ✅ CORREÇÃO: Atualiza o estado em memória antes de re-renderizar.
-                    const { column } = findCardAndColumn(card.id);
-                    if (column) {
-                        const cardInMemory = column.cards.find(c => c.id === card.id);
-                        if (cardInMemory) cardInMemory.checklist[itemIndex].completed = e.target.checked;
-                    }
-                    // Re-renderiza o quadro para atualizar o sumário e o estado visual
-                    renderCurrentBoard();
+                if (!cardToUpdate || !cardToUpdate.checklist[itemIndex]) {
+                    console.error('Cartão ou item do checklist não encontrado');
+                    return;
                 }
+
+                // Atualiza o estado do item
+                cardToUpdate.checklist[itemIndex].completed = e.target.checked;
+                
+                // Salva IMEDIATAMENTE no storage
+                await saveCard(cardToUpdate);
+                
+                // ✅ ATUALIZAÇÃO SÍNCRONA: Atualiza o estado em memória
+                const result = findCardAndColumn(card.id);
+                if (result && result.card) {
+                    // Garante que o checklist em memória seja idêntico ao que foi salvo,
+                    // evitando inconsistências ao mover cartões ou re-renderizar.
+                    result.card.checklist = cardToUpdate.checklist;
+                }
+                
+                // Atualiza apenas o cartão atual sem re-renderizar o quadro inteiro
+                updateCardChecklistUI(cardEl, cardToUpdate.checklist);
+                
+                // Mostra feedback visual
+                showFloatingMessage(
+                    e.target.checked 
+                        ? t('kanban.feedback.checklistItemCompleted') 
+                        : t('kanban.feedback.checklistItemPending'), 
+                    'success'
+                );
             });
         });
     }
@@ -2585,15 +2606,16 @@ function setupChecklistEditor(card) {
 
     const toggleEditorVisibility = () => {
         const hasItems = editorContainer.children.length > 0;
-        // Adiciona ou remove a classe 'hidden' para controlar a visibilidade
         editorContainer.classList.toggle('hidden', !hasItems);
     };
 
     const updateCounter = () => {
-        const count = editorContainer.children.length;
-        checklistTitle.textContent = `${t('kanban.dialog.card.checklistTitle')} (${count}/${limit})`;
-        addButton.disabled = count >= limit;
-        addButton.title = count >= limit ? t('templateEditor.limitReached') : '';
+        const totalCount = editorContainer.children.length;
+        const completedCount = editorContainer.querySelectorAll('.checklist-item-checkbox:checked').length;
+        // Exibe o contador de concluídos/total, sem o limite.
+        checklistTitle.textContent = `${t('kanban.dialog.card.checklistTitle')} (${completedCount}/${totalCount})`;
+        addButton.disabled = totalCount >= limit;
+        addButton.title = totalCount >= limit ? t('templateEditor.limitReached') : '';
     };
 
     const createChecklistItemElement = (item = { id: '', text: '', completed: false }) => {
@@ -2615,14 +2637,19 @@ function setupChecklistEditor(card) {
             textInput.style.opacity = checkbox.checked ? '0.6' : '1';
         };
 
-        checkbox.addEventListener('change', applyStyle);
+        // Adiciona listener para atualizar o contador e o estilo ao clicar no checkbox
+        checkbox.addEventListener('change', () => {
+            applyStyle();
+            updateCounter();
+        });
+
         itemEl.querySelector('.remove-btn').addEventListener('click', () => {
             itemEl.remove();
             updateCounter();
-            toggleEditorVisibility(); // Esconde o container se for o último item
+            toggleEditorVisibility();
         });
 
-        applyStyle(); // Aplica o estilo inicial
+        applyStyle();
         return itemEl;
     };
 
@@ -2634,12 +2661,12 @@ function setupChecklistEditor(card) {
         if (editorContainer.children.length < limit) {
             editorContainer.appendChild(createChecklistItemElement());
             updateCounter();
-            toggleEditorVisibility(); // Garante que o editor apareça
+            toggleEditorVisibility();
         }
     };
 
-    updateCounter(); // Atualiza o contador inicial
-    toggleEditorVisibility(); // Define a visibilidade inicial
+    updateCounter();
+    toggleEditorVisibility();
 }
 
 /**
@@ -2677,18 +2704,29 @@ async function handleSaveCard() {
             textColor: textColor.startsWith('var(') ? null : textColor
         };
 
-    // ✅ PASSO 3: Coleta os dados do checklist
+    // ✅ PASSO 3: Valida e coleta os dados do checklist
+    const checklistEditorItems = document.querySelectorAll('#checklist-editor .editor-item');
+    
+    // Verifica se algum item do checklist tem o nome vazio.
+    const hasEmptyItem = Array.from(checklistEditorItems).some(itemEl => itemEl.querySelector('input[type="text"]').value.trim() === '');
+    if (hasEmptyItem) {
+        showDialogMessage(dialog, t('templateEditor.itemNameRequired'), 'error');
+        if (saveBtn) saveBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        return; // Impede o salvamento
+    }
+
     const checklistItems = [];
-    document.querySelectorAll('#checklist-editor .editor-item').forEach(itemEl => {
+    checklistEditorItems.forEach(itemEl => {
         const input = itemEl.querySelector('input[type="text"]');
         const checkbox = itemEl.querySelector('input[type="checkbox"]');
-        if (input.value) {
-            checklistItems.push({
-                id: itemEl.dataset.id || `chk-${Date.now()}-${Math.random()}`,
-                text: input.value,
-                completed: checkbox.checked
-            });
-        }
+        
+        // A validação acima já garante que o input não é vazio, mas mantemos o trim para limpar espaços.
+        checklistItems.push({
+            id: itemEl.dataset.id || `chk-${Date.now()}-${Math.random()}`,
+            text: input.value.trim(),
+            completed: checkbox.checked
+        });
     });
     cardData.checklist = checklistItems;
 
@@ -3226,7 +3264,7 @@ async function createCardContextMenu(event, cardEl) {
             action: () => showChecklistDialog(cardId) 
         },
         { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => handleEditCardFromMenu(cardId) },
-        { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
+        { label: t('kanban.contextMenu.card.details'), icon: '👁️', action: () => showDetailsDialog(cardId) },
         {
             label: card.isComplete ? t('kanban.contextMenu.card.markPending') : t('kanban.contextMenu.card.markComplete'), 
             icon: card.isComplete ? '⚪' : '✅', 
@@ -3253,7 +3291,7 @@ async function createColumnContextMenu(event, columnEl) {
 
     const menuItems = [
         { label: t('kanban.contextMenu.column.edit'), icon: '✏️', action: () => handleEditColumnFromMenu(columnId) },
-        { label: t('kanban.contextMenu.column.details'), icon: 'ℹ️', action: () => showDetailsDialog(null, columnId) },
+        { label: t('kanban.contextMenu.column.details'), icon: '👁️', action: () => showDetailsDialog(null, columnId) },
         { isSeparator: true },
         { label: t('kanban.contextMenu.column.copy'), icon: '📋', action: () => handleCopyColumn(columnId) },
         { label: t('kanban.contextMenu.column.cut'), icon: '✂️', action: () => handleCutColumn(columnId) },
@@ -3302,10 +3340,11 @@ async function showChecklistDialog(cardId) {
     };
 
     const updateCounter = () => {
-        const count = editorContainer.children.length;
-        dialogTitle.textContent = `${t('kanban.dialog.card.checklistTitle')} (${count}/${limit})`;
-        addButton.disabled = count >= limit;
-        addButton.title = count >= limit ? t('templateEditor.limitReached') : '';
+        const totalCount = editorContainer.children.length;
+        const completedCount = editorContainer.querySelectorAll('.checklist-item-checkbox:checked').length;
+        dialogTitle.textContent = `${t('kanban.dialog.card.checklistTitle')} (${completedCount}/${totalCount})`;
+        addButton.disabled = totalCount >= limit;
+        addButton.title = totalCount >= limit ? t('templateEditor.limitReached') : '';
     };
 
     const createItemElement = (item = { id: '', text: '', completed: false }) => {
@@ -3321,16 +3360,23 @@ async function showChecklistDialog(cardId) {
 
         const checkbox = itemEl.querySelector('.checklist-item-checkbox');
         const textInput = itemEl.querySelector('.checklist-item-text');
+        
         const applyStyle = () => {
             textInput.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
             textInput.style.opacity = checkbox.checked ? '0.6' : '1';
         };
-        checkbox.addEventListener('change', applyStyle);
+
+        checkbox.addEventListener('change', () => {
+            applyStyle();
+            updateCounter();
+        });
+
         itemEl.querySelector('.remove-btn').addEventListener('click', () => {
             itemEl.remove();
             updateCounter();
             toggleEditorVisibility();
         });
+
         applyStyle();
         return itemEl;
     };
@@ -3346,20 +3392,28 @@ async function showChecklistDialog(cardId) {
     };
 
     saveButton.onclick = async () => {
-        const newChecklist = Array.from(editorContainer.querySelectorAll('.editor-item')).map(itemEl => ({
+        const itemElements = editorContainer.querySelectorAll('.editor-item');
+        const hasEmptyItem = Array.from(itemElements).some(itemEl => itemEl.querySelector('.checklist-item-text').value.trim() === '');
+
+        if (hasEmptyItem) {
+            showDialogMessage(dialog, t('templateEditor.itemNameRequired'), 'error');
+            return;
+        }
+
+        const newChecklist = Array.from(itemElements).map(itemEl => ({
             id: itemEl.dataset.id || `chk-${Date.now()}-${Math.random()}`,
-            text: itemEl.querySelector('.checklist-item-text').value,
+            text: itemEl.querySelector('.checklist-item-text').value.trim(),
             completed: itemEl.querySelector('.checklist-item-checkbox').checked
-        })).filter(item => item.text.trim() !== '');
+        }));
 
         card.checklist = newChecklist;
         await saveCard(card);
-        // ✅ CORREÇÃO: Atualiza o estado em memória para refletir a mudança imediatamente.
-        const { column } = findCardAndColumn(cardId);
-        if (column) {
-            const cardInMemory = column.cards.find(c => c.id === cardId);
-            if (cardInMemory) cardInMemory.checklist = newChecklist;
+        
+        const result = findCardAndColumn(cardId);
+        if (result && result.card) {
+            result.card.checklist = newChecklist;
         }
+
         showDialogMessage(dialog, t('kanban.feedback.cardSaved'), 'success');
         setTimeout(() => {
             dialog.close();
@@ -3550,51 +3604,6 @@ function renderChecklistInDialog(card, container) {
 
     // ✅ CORREÇÃO: REMOVIDO event listener duplicado - já é tratado no cartão principal
     // O evento no diálogo de detalhes não deve modificar o estado, apenas exibir
-}
-
-/**
- * Renderiza a aba de log de atividades de um cartão.
- * @param {object} card - O objeto do cartão.
- * @param {string} itemType - O tipo de item ('card', 'column', 'board').
- * @param {HTMLElement} container - O elemento onde o log será renderizado.
- */
-function renderActivityLog(item, container, itemType = 'card') {
-    const log = item.activityLog || [];
-    if (log.length === 0) {
-        container.innerHTML = `<p class="activity-log-empty">${t('activityLog.empty')}</p>`;
-        return;
-    }
-
-    // Ordena do mais recente para o mais antigo
-    const sortedLog = log.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    let logHtml = '<ul class="activity-log-list">';
-    sortedLog.forEach(entry => {
-        const user = allUsers.find(u => u.id === entry.userId)?.name || 'Sistema';
-        const date = new Date(entry.timestamp).toLocaleString();
-        const fromLocation = entry.from === 'trash' ? t('archive.tabs.trash') : t('archive.tabs.archived');
-        
-        // CORREÇÃO: Adiciona todos os placeholders possíveis para a tradução.
-        const replacements = {
-            user: `<strong>${user}</strong>`,
-            from: entry.fromColumn || fromLocation,
-            to: entry.toColumn,
-            fromBoard: entry.fromBoard,
-            toBoard: entry.toBoard
-        };
-        
-        const message = t(`activityLog.action.${itemType}.${entry.action}`, replacements)
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Converte markdown **bold** para <strong>
-
-        logHtml += `
-            <li class="activity-log-item">
-                <div class="log-message">${message}</div>
-                <div class="log-date">${date}</div>
-            </li>
-        `;
-    });
-    logHtml += '</ul>';
-    container.innerHTML = logHtml;
 }
 
 /**

@@ -396,7 +396,7 @@
     "kanban.card.hover.noDescription": "Nessuna",
     "kanban.card.statusActive": "Attivo",
     "kanban.card.statusCompleted": "Completato",
-    "kanban.confirm.archiveColumn": "Sei sicuro di voler archiviare la colonna \"{columnTitle}\" e tutte le sue schede?",
+    "kanban.confirm.archiveEmptyColumn": "Sei sicuro di voler archiviare la colonna \"{columnTitle}\"?",
     "kanban.confirm.deleteBoard": "Sei sicuro di voler eliminare la bacheca \"{boardTitle}\"?",
     "kanban.confirm.deleteCard": "Sei sicuro di voler eliminare questa scheda?",
     "kanban.confirm.deleteColumn": "Sei sicuro di voler eliminare questa colonna e tutte le sue schede?",

@@ -396,7 +396,7 @@
     "kanban.card.hover.noDescription": "None",
     "kanban.card.statusActive": "Active",
     "kanban.card.statusCompleted": "Completed",
-    "kanban.confirm.archiveColumn": "Are you sure you want to archive the column \"{columnTitle}\" and all its cards?",
+    "kanban.confirm.archiveEmptyColumn": "Are you sure you want to archive the column \"{columnTitle}\"?",
     "kanban.confirm.deleteBoard": "Are you sure you want to delete the board \"{boardTitle}\"?",
     "kanban.confirm.deleteCard": "Are you sure you want to move this card to the trash?",
     "kanban.confirm.deleteColumn": "Are you sure you want to delete this column and all its cards?",

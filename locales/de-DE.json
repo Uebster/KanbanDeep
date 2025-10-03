@@ -396,7 +396,7 @@
     "kanban.card.hover.noDescription": "Keine",
     "kanban.card.statusActive": "Aktiv",
     "kanban.card.statusCompleted": "Abgeschlossen",
-    "kanban.confirm.archiveColumn": "Möchten Sie die Spalte \"{columnTitle}\" und alle ihre Karten wirklich archivieren?",
+    "kanban.confirm.archiveEmptyColumn": "Möchten Sie die Spalte \"{columnTitle}\" wirklich archivieren?",
     "kanban.confirm.deleteBoard": "Möchten Sie das Board \"{boardTitle}\" wirklich löschen?",
     "kanban.confirm.deleteCard": "Möchten Sie diese Karte wirklich löschen?",
     "kanban.confirm.deleteColumn": "Möchten Sie diese Spalte und alle ihre Karten wirklich löschen?",
