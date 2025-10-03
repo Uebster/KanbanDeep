@@ -651,6 +651,32 @@ fieldset.form-group label {
     margin-top: 8px;
 }
 
+/* ===== NOVO: ESTILOS PARA O DIÁLOGO DE CARTÃO (2 COLUNAS) ===== */
+#card-dialog {
+    max-width: 800px; /* Aumenta a largura máxima do diálogo */
+}
+
+.form-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Cria duas colunas de largura igual */
+    gap: 25px; /* Espaçamento entre as colunas */
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* NOVO: Faz o espaçador crescer para empurrar os botões para baixo */
+.form-spacer { flex-grow: 1; }
+
+/* CORREÇÃO: Remove a barra de rolagem do select de etiquetas e adiciona espaçamento interno.
+   Aplica padding nas opções em vez do select para evitar o scrollbar indesejado. */
+#card-dialog select[multiple] option {
+    padding: 2px 8px; /* Adiciona um leve padding vertical e um bom padding horizontal */
+}
+
 /* ===== NOVO: ESTILOS PARA O DIÁLOGO GERENCIADOR ===== */
 #manager-dialog {
     max-width: 800px; /* Aumentado para dar mais espaço */

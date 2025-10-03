@@ -198,73 +198,70 @@
 
     <dialog id="card-dialog" class="draggable">
     <h3 class="drag-handle" data-i18n="kanban.dialog.card.title"></h3>
-        <div class="form-group" id="card-column-select-group">
-            <label for="card-column-select" data-i18n="kanban.dialog.card.columnLabel"></label>
-            <div class="custom-select">
-                <select id="card-column-select"></select>
+    <div class="form-layout">
+        <!-- Coluna Esquerda -->
+        <div class="form-column">
+            <div class="form-group">
+                <label for="card-title-input" data-i18n="kanban.dialog.card.titleLabel"></label>
+                <input type="text" id="card-title-input">
             </div>
-    </div>
-    <div class="form-group">
-        <label for="card-title-input" data-i18n="kanban.dialog.card.titleLabel"></label>
-        <input type="text" id="card-title-input">
-    </div>
-    <div class="form-group">
-        <label for="card-description" data-i18n="templateEditor.descriptionLabel"></label>
-        <textarea id="card-description" rows="3"></textarea>
-    </div>
-    
-    <!-- NOVOS CAMPOS DE COR PARA O CARTÃO -->
-    <div class="form-row">
-        <div class="form-group">
-            <label data-i18n="kanban.dialog.card.backgroundColor"></label>
-            <div id="card-bg-color-trigger" class="color-picker-trigger"></div>
+            <div class="form-group">
+                <label for="card-description" data-i18n="templateEditor.descriptionLabel"></label>
+                <textarea id="card-description" rows="4"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="kanban.dialog.card.backgroundColor"></label>
+                    <div id="card-bg-color-trigger" class="color-picker-trigger"></div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="kanban.dialog.card.textColor"></label>
+                    <div id="card-text-color-trigger" class="color-picker-trigger"></div>
+                </div>
+                <div class="form-group" style="flex-grow: 1; text-align: right; align-self: flex-end;">
+                    <button type="button" id="reset-card-colors-btn" class="btn alternative1" data-i18n="kanban.dialog.card.resetColors"></button>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="card-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
+                    <input type="date" id="card-due-date">
+                </div>
+                <div class="form-group">
+                    <label for="card-due-time" data-i18n="groups.meetings.timeLabel"></label>
+                    <input type="time" id="card-due-time">
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label data-i18n="kanban.dialog.card.textColor"></label>
-            <div id="card-text-color-trigger" class="color-picker-trigger"></div>
-        </div>
-    </div>
-
-    <!-- BOTÃO DE RESETAR CORES -->
-    <div class="form-group" style="text-align: right; margin-top: -10px;">
-        <button type="button" id="reset-card-colors-btn" class="btn alternative1" data-i18n="kanban.dialog.card.resetColors"></button>
-    </div>
-
-    <!-- CAMPO DE DATA E HORA SEPARADOS -->
-    <div class="form-row">
-        <div class="form-group">
-            <label for="card-due-date" data-i18n="kanban.dialog.search.dueDateLabel"></label>
-            <input type="date" id="card-due-date">
-        </div>
-        <div class="form-group">
-            <label for="card-due-time" data-i18n="groups.meetings.timeLabel"></label>
-            <input type="time" id="card-due-time">
-        </div>
-    </div>
-    
-    <!-- CAMPO DE ETIQUETAS AGORA É UM SELECT MÚLTIPLO -->
-    <div class="form-group">
-        <label for="card-tags" data-i18n="kanban.dialog.card.tagsLabel"></label>
-        <select id="card-tags" multiple size="5">
-            <!-- Opções preenchidas pelo JS -->
-        </select>
-    </div>
-    
-    <!-- O resto do formulário continua igual -->
-    <div class="form-group">
+        <!-- Coluna Direita -->
+        <div class="form-column">
+            <div class="form-group" id="card-column-select-group">
+                <label for="card-column-select" data-i18n="kanban.dialog.card.columnLabel"></label>
+                <div class="custom-select">
+                    <select id="card-column-select"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card-tags" data-i18n="kanban.dialog.card.tagsLabel"></label>
+                <select id="card-tags" multiple size="8"></select>
+            </div>
+            <div class="form-group">
             <label for="card-assigned-to" data-i18n="kanban.dialog.search.assigneeLabel"></label>
             <div class="custom-select">
                 <select id="card-assigned-to"></select>
             </div>
+            </div>
+            <!-- NOVO: Espaçador para empurrar os botões para baixo -->
+            <div class="form-spacer"></div>
+            <!-- ELEMENTO DE FEEDBACK ADICIONADO -->
+            <div class="feedback"></div>
+            <div class="modal-actions">
+                <button class="btn cancel" data-i18n="ui.cancel" onclick="this.closest('dialog').close()"></button>
+                <button id="card-save-btn" class="btn confirm" data-i18n="ui.save"></button>
+            </div>
+        </div>
     </div>
     
-    <!-- ELEMENTO DE FEEDBACK ADICIONADO -->
-    <div class="feedback"></div>
-
-    <div class="modal-actions">
-        <button class="btn cancel" data-i18n="ui.cancel" onclick="this.closest('dialog').close()"></button>
-        <button id="card-save-btn" class="btn confirm" data-i18n="ui.save"></button>
-    </div>
 </dialog>
 
     <dialog id="confirm-dialog">

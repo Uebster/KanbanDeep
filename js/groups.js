@@ -1861,13 +1861,16 @@ async function loadAndRenderStatistics(groupId) {
         )
     );
 
+    // CORREÇÃO: A lógica para determinar cartões ativos foi completamente reescrita para maior precisão.
+    // Um cartão é considerado "ativo" se foi criado no período E seu estado atual não é 'concluído' nem 'arquivado/excluído'.
+    const activeCardsList = cardsCreatedInPeriod.filter(card => 
+        !card.isComplete && !card.isArchived
+    );
+
     const totalCreated = cardsCreatedInPeriod.length;
-    const totalCompleted = cardsCompletedOrArchivedInPeriod.length;
-    const activeCardsList = cardsCreatedInPeriod.filter(c => !cardsBurnedInPeriod.some(burnedCard => burnedCard.id === c.id));
-    
-    // CORREÇÃO: Separa os cartões ativos em "no prazo" e "atrasados".
-    const overdueCards = activeCardsList.filter(c => c.dueDate && new Date(c.dueDate) < now).length;
-    const onTimeCards = activeCardsList.length - overdueCards;
+    const totalCompleted = cardsCompletedInPeriodLog.length; // Esta métrica permanece a mesma (quantos foram concluídos no período).
+    const overdueCards = activeCardsList.filter(c => c.dueDate && new Date(c.dueDate) < now).length; // Atrasados são um subconjunto dos ativos.
+    const onTimeCards = activeCardsList.length - overdueCards; // No prazo são os ativos que não estão atrasados.
 
     // O total de "ativos" para o resumo continua o mesmo.
     const totalActive = activeCardsList.length;
