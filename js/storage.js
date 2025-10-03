@@ -118,17 +118,28 @@ export async function deleteCard(cardId) { return await deleteItem(cardId, 'card
  * @param {string} cardId - O ID do cartão a ser arquivado.
  * @param {string} userId - O ID do usuário que está arquivando.
  * @param {object} context - Contexto original do cartão.
+ * @param {boolean} markAsCompleted - Se verdadeiro, marca o cartão como concluído antes de arquivar.
  */
-export async function archiveCard(cardId, userId, context = {}) {
+export async function archiveCard(cardId, userId, context = {}, markAsCompleted = false) {
     const card = await getCard(cardId);
     if (!card) return null;
 
     const logAction = 'archived';
+
+    // Se for para marcar como concluído e o cartão ainda não estiver, faz a alteração.
+    if (markAsCompleted && !card.isComplete) {
+        card.isComplete = true;
+        card.completedAt = new Date().toISOString();
+        if (!card.activityLog) card.activityLog = [];
+        card.activityLog.push({ action: 'completed', userId: userId, timestamp: new Date().toISOString() });
+    }
+
     if (!card.activityLog) card.activityLog = [];
     card.activityLog.push({
         action: logAction,
         userId: userId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        details: markAsCompleted ? 'completed' : 'open' // NOVO: Adiciona detalhe para o log
     });
 
     card.isArchived = true;
@@ -189,14 +200,15 @@ export async function deleteColumn(columnId) {
  * @param {string} columnId - O ID da coluna a ser arquivada.
  * @param {string} userId - O ID do usuário que está arquivando.
  * @param {object} context - Contexto adicional como boardId e boardTitle.
+ * @param {boolean} markCardsAsCompleted - Se verdadeiro, marca todos os cartões como concluídos.
  */
-export async function archiveColumn(columnId, userId, context = {}) {
+export async function archiveColumn(columnId, userId, context = {}, markCardsAsCompleted = false) {
     const column = await getColumn(columnId);
     if (!column) return null;
 
     if (column.cardIds && column.cardIds.length > 0) {
         const cardContext = { ...context, columnId: column.id, columnTitle: column.title };
-        await Promise.all(column.cardIds.map(cardId => archiveCard(cardId, userId, cardContext)));
+        await Promise.all(column.cardIds.map(cardId => archiveCard(cardId, userId, cardContext, markCardsAsCompleted)));
     }
 
     const logAction = 'archived';
@@ -236,7 +248,8 @@ export async function trashColumn(columnId, userId, context = {}) {
     column.activityLog.push({
         action: logAction,
         userId: userId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        details: markCardsAsCompleted ? 'completed' : 'open' // NOVO: Adiciona detalhe para o log
     });
 
     column.isArchived = true;
@@ -324,13 +337,17 @@ export async function hardDeleteBoard(boardId) {
     return await deleteItem(boardId, 'board');
 }
 
-export async function archiveBoard(boardId, userId) {
+/**
+ * Arquiva um quadro e todo o seu conteúdo.
+ * @param {string} boardId - O ID do quadro a ser arquivado.
+ * @param {string} userId - O ID do usuário que está arquivando.
+ * @param {boolean} markCardsAsCompleted - Se verdadeiro, marca todos os cartões como concluídos.
+ */
+export async function archiveBoard(boardId, userId, markCardsAsCompleted = false) {
     const board = await getFullBoardData(boardId, true); // true para incluir itens já arquivados
     if (!board) return null;
 
-    for (const column of board.columns) {
-        await archiveColumn(column.id, userId, { boardId: board.id, boardTitle: board.title });
-    }
+    await Promise.all(board.columns.map(column => archiveColumn(column.id, userId, { boardId: board.id, boardTitle: board.title }, markCardsAsCompleted)));
 
     board.isArchived = true;
     board.archiveReason = 'archived';
@@ -342,7 +359,8 @@ export async function archiveBoard(boardId, userId) {
     board.activityLog.push({
         action: logAction,
         userId: userId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        details: markCardsAsCompleted ? 'completed' : 'open' // NOVO: Adiciona detalhe para o log
     });
     
     return await saveBoard(board);
@@ -358,7 +376,7 @@ export async function trashBoard(boardId, userId) {
     if (!board) return null;
 
     for (const column of board.columns) {
-        await trashColumn(column.id, userId, { boardId: board.id, boardTitle: board.title });
+        await trashColumn(column.id, userId, { boardId: board.id, boardTitle: board.title }, false); // Passa false para markAsCompleted
     }
 
     board.isArchived = true;

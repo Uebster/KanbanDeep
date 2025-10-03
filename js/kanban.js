@@ -1565,8 +1565,8 @@ async function archiveCard(cardId, boardContext) {
  * @param {string} cardId - O ID do cartão a ser excluído.
  * @returns {Promise<boolean>} - True se a operação foi bem-sucedida.
  */
-async function deleteCard(cardId, boardContext) {
-    const result = findCardAndColumn(cardId, boardContext);
+async function deleteCard(cardId) {
+    const result = findCardAndColumn(cardId);
     if (!result) return false;
     const { card, column, board } = result; // board is now returned from findCardAndColumn
 
@@ -3293,37 +3293,59 @@ function renderColumnActivityLog(column, container) {
  * @param {boolean} [closeManagerDialog=false] Se true, fecha o manager-dialog no sucesso.
  */
 async function handleArchiveBoard(boardId, closeManagerDialog = false) {
-    const boardToArchive = boards.find(b => b.id === boardId);
-    if (!boardToArchive) return;
+    const board = boards.find(b => b.id === boardId);
+    if (!board) return;
 
-    showConfirmationDialog(
-        t('archive.confirm.archiveBoard', { boardName: boardToArchive.title }),
-        async (dialog) => {
-            // ✅ CORREÇÃO: ATUALIZA ESTADO PRIMEIRO
-            const boardIndex = boards.findIndex(b => b.id === boardId);
-            if (boardIndex > -1) {
-                boards.splice(boardIndex, 1);
-                // ✅ ATUALIZA UI IMEDIATAMENTE
-                renderBoardSelector();
-                if (currentBoard && currentBoard.id === boardId) {
-                    currentBoard = boards.length > 0 ? boards[0] : null;
-                    localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
-                    renderCurrentBoard();
-                }
-                initCustomSelects();
-            }
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">${t('archive.confirm.archiveBoardTitle')}</h3>
+        <p>${t('archive.confirm.archiveBoardMessage', { boardName: board.title })}</p>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel">${t('ui.cancel')}</button>
+            <button class="btn alternative1" data-archive-as="open">${t('archive.buttons.archiveOpen')}</button>
+            <button class="btn confirm" data-archive-as="completed">${t('archive.buttons.archiveCompleted')}</button>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    makeDraggable(dialog);
+    dialog.showModal();
 
-            // ✅ AGORA opera no storage
-            if (await archiveBoardInStorage(boardId, currentUser.id)) {
-                showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
-                if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-                return true; // Fecha o diálogo de confirmação
+    const handleArchive = async (archiveAs) => {
+        dialog.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        // ✅ CORREÇÃO: ATUALIZA O ESTADO DA UI EM MEMÓRIA PRIMEIRO
+        const boardIndex = boards.findIndex(b => b.id === boardId);
+        if (boardIndex > -1) {
+            boards.splice(boardIndex, 1); // Remove o quadro da lista principal
+            // Se o quadro arquivado era o atual, define o próximo quadro visível como o novo atual
+            if (currentBoard && currentBoard.id === boardId) {
+                currentBoard = boards.find(b => !b.isArchived) || null;
+                localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
             }
-            // ✅ FALLBACK: Se storage falhar, recarrega tudo
-            await showSuccessAndRefresh(dialog, currentBoard?.id);
-            return false;
         }
-    );
+        // Renderiza a UI imediatamente com o estado atualizado
+        renderBoardSelector();
+        renderCurrentBoard();
+        initCustomSelects();
+
+        // ✅ AGORA, opera no storage em segundo plano
+        if (await archiveBoardInStorage(boardId, currentUser.id, archiveAs === 'completed')) {
+            showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            setTimeout(() => dialog.close(), 1500);
+        } else {
+            // Se a operação de storage falhar, recarrega tudo como um fallback de segurança
+            showDialogMessage(dialog, t('archive.feedback.archiveFailed'), 'error');
+            await showSuccessAndRefresh(dialog, null);
+        }
+    };
+
+    dialog.querySelector('.btn.cancel').onclick = () => dialog.close();
+    dialog.querySelector('[data-archive-as="open"]').onclick = () => handleArchive('open');
+    dialog.querySelector('[data-archive-as="completed"]').onclick = () => handleArchive('completed');
+    dialog.addEventListener('close', () => dialog.remove());
 }
 
 /**
@@ -3386,31 +3408,50 @@ async function handleArchiveColumn(columnId, boardContext = null, fromManager = 
     const column = findColumn(columnId, boardForContext);
     if (!column) return;
 
-    showConfirmationDialog(
-        t('archive.confirm.archiveColumn', { columnTitle: column.title }),
-        async (dialog) => {
-            // ✅ CORREÇÃO: ATUALIZA ESTADO PRIMEIRO
-            if (currentBoard && currentBoard.id === boardForContext.id) {
-                currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
-                currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
-                // ✅ CORREÇÃO: SALVA O QUADRO PAI ATUALIZADO
-                await saveBoard(currentBoard);
-                // ✅ CORREÇÃO: ATUALIZA UI IMEDIATAMENTE
-                renderCurrentBoard();
-            }
+    const dialog = document.createElement('dialog');
+    dialog.className = 'draggable';
+    dialog.innerHTML = `
+        <h3 class="drag-handle">${t('archive.confirm.archiveColumnTitle')}</h3>
+        <p>${t('archive.confirm.archiveColumnMessage', { columnTitle: column.title })}</p>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel">${t('ui.cancel')}</button>
+            <button class="btn alternative1" data-archive-as="open">${t('archive.buttons.archiveOpen')}</button>
+            <button class="btn confirm" data-archive-as="completed">${t('archive.buttons.archiveCompleted')}</button>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    makeDraggable(dialog);
+    dialog.showModal();
 
-            // ✅ AGORA opera no storage
-            const success = await archiveColumnInStorage(columnId, currentUser.id, { boardId: boardForContext.id, boardTitle: boardForContext.title });
-            if (success) {
-                showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
-                if (fromManager) document.getElementById('manager-dialog')?.close();
-                return true;
-            } 
-            // ✅ FALLBACK: Se storage falhar, recarrega do storage
-            await showSuccessAndRefresh(dialog, currentBoard.id);
-            return false;
+    const handleArchive = async (archiveAs) => {
+        dialog.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        // ✅ CORREÇÃO: ATUALIZA O ESTADO DA UI EM MEMÓRIA PRIMEIRO
+        if (currentBoard && currentBoard.id === boardForContext.id) {
+            currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
+            currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+            // Renderiza o quadro imediatamente com a coluna removida
+            renderCurrentBoard();
         }
-    );
+
+        // ✅ AGORA, opera no storage em segundo plano
+        const context = { boardId: boardForContext.id, boardTitle: boardForContext.title };
+        if (await archiveColumnInStorage(columnId, currentUser.id, context, archiveAs === 'completed')) {
+            showDialogMessage(dialog, t('archive.feedback.columnArchived'), 'success');
+            if (fromManager) document.getElementById('manager-dialog')?.close();
+            setTimeout(() => dialog.close(), 1500);
+        } else {
+            // Se a operação de storage falhar, recarrega tudo como um fallback de segurança
+            showDialogMessage(dialog, t('archive.feedback.archiveFailed'), 'error');
+            await showSuccessAndRefresh(dialog, currentBoard.id);
+        }
+    };
+
+    dialog.querySelector('.btn.cancel').onclick = () => dialog.close();
+    dialog.querySelector('[data-archive-as="open"]').onclick = () => handleArchive('open');
+    dialog.querySelector('[data-archive-as="completed"]').onclick = () => handleArchive('completed');
+    dialog.addEventListener('close', () => dialog.remove());
 }
 
 /**
@@ -3571,35 +3612,50 @@ async function handleArchiveCard(cardId, closeManagerDialog = false) {
     if (!result) return false;
     const { card, column } = result;
 
-    showConfirmationDialog(
-        t('archive.confirm.archiveCard', { cardTitle: card.title }),
-        async (dialog) => {
-            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
-            
-            // Adiciona log antes de arquivar
-            const logEntry = {
-                action: 'archived',
-                userId: currentUser.id,
-                timestamp: new Date().toISOString()
-            };
-            if (!card.activityLog) card.activityLog = [];
-            card.activityLog.push(logEntry);
-            await saveCard(card);
+    // NOVO: Diálogo de confirmação com opções
+    const confirmationDialog = document.createElement('dialog');
+    confirmationDialog.className = 'draggable';
+    confirmationDialog.innerHTML = `
+        <h3 class="drag-handle">${t('archive.confirm.archiveCardTitle')}</h3>
+        <p>${t('archive.confirm.archiveCardMessage', { cardTitle: card.title })}</p>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel">${t('ui.cancel')}</button>
+            <button class="btn alternative1" data-archive-as="open">${t('archive.buttons.archiveOpen')}</button>
+            <button class="btn confirm" data-archive-as="completed">${t('archive.buttons.archiveCompleted')}</button>
+        </div>
+    `;
+    document.body.appendChild(confirmationDialog);
+    makeDraggable(confirmationDialog);
+    confirmationDialog.showModal();
 
-            // Chama a função CORRETA de arquivamento
-            if (await archiveCard(cardId)) {
-                // Remove da coluna atual
-                column.cardIds = column.cardIds.filter(id => id !== cardId);
-                column.cards = column.cards.filter(c => c.id !== cardId);
-                await saveColumn(column);
-                
-                showDialogMessage(dialog, t('archive.feedback.cardArchived'), 'success');
-                await showSuccessAndRefresh(dialog, currentBoard.id);
-                return true;
-            }
-            return false;
+    const handleArchive = async (archiveAs) => {
+        confirmationDialog.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        if (archiveAs === 'completed' && !card.isComplete) {
+            card.isComplete = true;
+            card.completedAt = new Date().toISOString();
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push({ action: 'completed', userId: currentUser.id, timestamp: new Date().toISOString() });
         }
-    );
+
+        if (await archiveCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title }, archiveAs === 'completed')) {
+            column.cardIds = column.cardIds.filter(id => id !== cardId);
+            column.cards = column.cards.filter(c => c.id !== cardId);
+            await saveColumn(column);
+            showDialogMessage(confirmationDialog, t('archive.feedback.cardArchived'), 'success');
+            if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
+            await showSuccessAndRefresh(confirmationDialog, currentBoard.id);
+        } else {
+            showDialogMessage(confirmationDialog, t('archive.feedback.archiveFailed'), 'error');
+            confirmationDialog.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+    };
+
+    confirmationDialog.querySelector('.btn.cancel').onclick = () => confirmationDialog.close();
+    confirmationDialog.querySelector('[data-archive-as="open"]').onclick = () => handleArchive('open');
+    confirmationDialog.querySelector('[data-archive-as="completed"]').onclick = () => handleArchive('completed');
+    confirmationDialog.addEventListener('close', () => confirmationDialog.remove());
 }
 
 async function saveState() {

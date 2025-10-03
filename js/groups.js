@@ -1845,21 +1845,18 @@ async function loadAndRenderStatistics(groupId) {
         (card.activityLog || []).some(log => log.action === 'created' && (timeFilter === 'all' || new Date(log.timestamp) >= startDate))
     );
 
-    // Tarefas "Concluídas" para fins estatísticos incluem as marcadas como 'completed' e as 'archived'.
-    const cardsCompletedOrArchivedInPeriod = allCardsInGroup.filter(card => 
-        (card.activityLog || []).some(log => 
-            (log.action === 'completed' || log.action === 'archived') &&
-            (timeFilter === 'all' || new Date(log.timestamp) >= startDate)
-        )
-    );
+    // MÉTRICA DE CONCLUÍDOS: Apenas cartões com log 'completed' no período.
+    const cardsCompletedInPeriod = allCardsInGroup.filter(card =>
+        (card.activityLog || []).some(log => log.action === 'completed' && (timeFilter === 'all' || new Date(log.timestamp) >= startDate)));
 
-    // Tarefas "Queimadas" (para o burn-down e cálculo de ativas) são as concluídas, arquivadas ou movidas para a lixeira.
-    const cardsBurnedInPeriod = allCardsInGroup.filter(card => 
-        (card.activityLog || []).some(log => 
-            (log.action === 'completed' || log.action === 'archived' || log.action === 'trashed') && 
-            (timeFilter === 'all' || new Date(log.timestamp) >= startDate)
-        )
-    );
+    // MÉTRICA DE ARQUIVADOS: Apenas cartões com log 'archived' e que NÃO foram concluídos.
+    const cardsArchivedAsOpenInPeriod = allCardsInGroup.filter(card => {
+        const archiveLog = (card.activityLog || []).find(log => log.action === 'archived' && (timeFilter === 'all' || new Date(log.timestamp) >= startDate));
+        if (!archiveLog) return false;
+        // Verifica se não há um log 'completed' ANTES do log de arquivamento.
+        const wasCompletedBeforeArchive = (card.activityLog || []).some(log => log.action === 'completed' && new Date(log.timestamp) < new Date(archiveLog.timestamp));
+        return !wasCompletedBeforeArchive;
+    });
 
     // CORREÇÃO: A lógica para determinar cartões ativos foi completamente reescrita para maior precisão.
     // Um cartão é considerado "ativo" se foi criado no período E seu estado atual não é 'concluído' nem 'arquivado/excluído'.
@@ -1868,7 +1865,7 @@ async function loadAndRenderStatistics(groupId) {
     );
 
     const totalCreated = cardsCreatedInPeriod.length;
-    const totalCompleted = cardsCompletedInPeriodLog.length; // Esta métrica permanece a mesma (quantos foram concluídos no período).
+    const totalCompleted = cardsCompletedInPeriod.length;
     const overdueCards = activeCardsList.filter(c => c.dueDate && new Date(c.dueDate) < now).length; // Atrasados são um subconjunto dos ativos.
     const onTimeCards = activeCardsList.length - overdueCards; // No prazo são os ativos que não estão atrasados.
 
@@ -1892,8 +1889,8 @@ async function loadAndRenderStatistics(groupId) {
         if (cardsCreatedInPeriod.some(c => c.id === card.id) && card.assignedTo && tasksByMember[card.assignedTo]) {
             tasksByMember[card.assignedTo].assigned++;
         }
-        if (cardsCompletedOrArchivedInPeriod.some(c => c.id === card.id)) {
-            const logEntry = (card.activityLog || []).find(log => (log.action === 'completed' || log.action === 'archived') && (timeFilter === 'all' || new Date(log.timestamp) >= startDate));
+        if (cardsCompletedInPeriod.some(c => c.id === card.id)) {
+            const logEntry = (card.activityLog || []).find(log => log.action === 'completed' && (timeFilter === 'all' || new Date(log.timestamp) >= startDate));
             if (logEntry && logEntry.userId && tasksByMember[logEntry.userId]) {
                 tasksByMember[logEntry.userId].completed++;
              }
@@ -2342,23 +2339,22 @@ async function generateAndRenderReport() {
         (card.activityLog || []).some(log => ['created', 'created_from_copy', 'created_from_column_copy'].includes(log.action) && 
         (period === 'all' || new Date(log.timestamp) >= startDate))
     );
-    const cardsCompletedInPeriodLog = allCardsInGroup.filter(card => 
-        // CORREÇÃO: Alinha com a lógica dos gráficos, considerando 'completed' e 'archived'.
-        (card.activityLog || []).some(log => 
-            (log.action === 'completed' || log.action === 'archived') && 
-            (period === 'all' || new Date(log.timestamp) >= startDate)
-        )
-    );
+    // MÉTRICA DE CONCLUÍDOS: Apenas cartões com log 'completed' no período.
+    const cardsCompletedInPeriod = allCardsInGroup.filter(card =>
+        (card.activityLog || []).some(log => log.action === 'completed' && (period === 'all' || new Date(log.timestamp) >= startDate)));
     // NOVAS MÉTRICAS
-    const cardsArchivedInPeriod = allCardsInGroup.filter(card => 
-        (card.activityLog || []).some(log => log.action === 'archived' && (period === 'all' || new Date(log.timestamp) >= startDate))
-    );
+    const cardsArchivedAsOpenInPeriod = allCardsInGroup.filter(card => {
+        const archiveLog = (card.activityLog || []).find(log => log.action === 'archived' && (period === 'all' || new Date(log.timestamp) >= startDate));
+        if (!archiveLog) return false;
+        const wasCompletedBeforeArchive = (card.activityLog || []).some(log => log.action === 'completed' && new Date(log.timestamp) < new Date(archiveLog.timestamp));
+        return !wasCompletedBeforeArchive;
+    });
     const cardsTrashedInPeriod = allCardsInGroup.filter(card => 
         (card.activityLog || []).some(log => log.action === 'trashed' && (period === 'all' || new Date(log.timestamp) >= startDate))
     );
 
     const totalCreated = cardsCreatedInPeriod.length;
-    const totalCompleted = cardsCompletedInPeriodLog.length;
+    const totalCompleted = cardsCompletedInPeriod.length;
     const completionRate = totalCreated > 0 ? ((totalCompleted / totalCreated) * 100).toFixed(1) : 0;
 
     const memberPerformance = group.memberIds.map(memberId => {
@@ -2371,8 +2367,8 @@ async function generateAndRenderReport() {
             log.userId === memberId && (period === 'all' || new Date(log.timestamp) >= startDate))).length;
         
         // QUEM COMPLETOU: Conta os logs de conclusão feitos pelo usuário.
-        const completed = allCardsInGroup.filter(c => (c.activityLog || []).some(log => 
-            (log.action === 'completed' || log.action === 'archived') && // CORREÇÃO: Inclui arquivamentos na produtividade.
+        const completed = allCardsInGroup.filter(c => (c.activityLog || []).some(log =>
+            log.action === 'completed' &&
             log.userId === memberId && (period === 'all' || new Date(log.timestamp) >= startDate))).length;
 
         // TAREFAS ATRIBUÍDAS (mantém a lógica original para essa métrica)
@@ -2421,7 +2417,7 @@ async function generateAndRenderReport() {
                     <span class="stat-label">${t('groups.reports.overdueTasks')}</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-number">${cardsArchivedInPeriod.length}</span>
+                    <span class="stat-number">${cardsArchivedAsOpenInPeriod.length}</span>
                     <span class="stat-label">${t('archive.tabs.archived')}</span>
                 </div>
                 <div class="stat-item">
