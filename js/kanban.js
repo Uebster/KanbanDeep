@@ -330,6 +330,7 @@ function setupEventListeners() {
             { id: 'pref-card-show-status', action: applyCardPreview },
             { id: 'pref-card-show-details', action: applyCardPreview },
             { id: 'pref-enable-card-tooltip', action: applyCardPreview },
+            { id: 'pref-card-show-checklist', action: applyCardPreview },
             { id: 'pref-card-show-assignment', action: applyCardPreview },
             { id: 'pref-board-show-title', action: applyTitlePreview }, // Corrigido
             { id: 'pref-board-show-icon', action: applyTitlePreview },
@@ -1314,7 +1315,8 @@ function createCardElement(card) {
     `;
     
     // ✅ PASSO 4 (REFEITO): Renderiza o checklist diretamente no cartão
-    if (card.checklist && card.checklist.length > 0) {
+    const userPrefsForChecklist = currentUser.preferences || {};
+    if (userPrefsForChecklist.showChecklist !== false && card.checklist && card.checklist.length > 0) {
         const completedCount = card.checklist.filter(item => item.completed).length;
         const totalCount = card.checklist.length;
 
@@ -1335,30 +1337,71 @@ function createCardElement(card) {
         // 2. Insere o checklist no corpo do cartão, após o conteúdo principal
         cardEl.querySelector('.card-content').appendChild(checklistContainer);
 
-        // 3. Adiciona o sumário no rodapé
-        const summaryIcon = (completedCount === totalCount && totalCount > 0) ? '✅' : '☑️';
-        const summaryEl = document.createElement('div');
-        summaryEl.className = 'card-checklist-summary';
-        summaryEl.innerHTML = `<span>${summaryIcon} ${completedCount}/${totalCount}</span>`;
-        cardEl.querySelector('.card-footer-left').appendChild(summaryEl);
-
         // ✅ CORREÇÃO: Adiciona listeners para os checkboxes renderizados no cartão
         checklistContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', async (e) => {
                 const itemIndex = parseInt(e.target.dataset.index, 10);
-                // Pega a versão mais recente do cartão para evitar race conditions
-                const cardToUpdate = await getCard(card.id); 
+                const cardToUpdate = await getCard(card.id);
                 if (cardToUpdate && cardToUpdate.checklist[itemIndex]) {
                     cardToUpdate.checklist[itemIndex].completed = e.target.checked;
                     await saveCard(cardToUpdate);
+                    // ✅ CORREÇÃO: Atualiza o estado em memória antes de re-renderizar.
+                    const { column } = findCardAndColumn(card.id);
+                    if (column) {
+                        const cardInMemory = column.cards.find(c => c.id === card.id);
+                        if (cardInMemory) cardInMemory.checklist[itemIndex].completed = e.target.checked;
+                    }
                     // Re-renderiza o quadro para atualizar o sumário e o estado visual
                     renderCurrentBoard();
                 }
             });
         });
     }
+
+    // Adiciona o sumário no rodapé, se houver checklist, independentemente da preferência de exibição
+    if (card.checklist && card.checklist.length > 0) {
+        const completedCount = card.checklist.filter(item => item.completed).length;
+        const totalCount = card.checklist.length;
+        const summaryIcon = (completedCount === totalCount && totalCount > 0) ? '✅' : '☑️';
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'card-checklist-summary';
+        summaryEl.innerHTML = `<span>${summaryIcon} ${completedCount}/${totalCount}</span>`;
+        cardEl.querySelector('.card-footer-left').appendChild(summaryEl);
+    }
     
     return cardEl;
+}
+
+/**
+ * Atualiza a UI do checklist de um cartão sem re-renderizar tudo
+ */
+function updateCardChecklistUI(cardEl, checklist) {
+    if (!cardEl || !checklist) return;
+    
+    // Atualiza o sumário no rodapé
+    const completedCount = checklist.filter(item => item.completed).length;
+    const totalCount = checklist.length;
+    const summaryIcon = (completedCount === totalCount && totalCount > 0) ? '✅' : '☑️';
+    
+    let summaryEl = cardEl.querySelector('.card-checklist-summary');
+    if (!summaryEl && totalCount > 0) { // Cria se não existir e houver itens
+        summaryEl = document.createElement('div');
+        summaryEl.className = 'card-checklist-summary';
+        cardEl.querySelector('.card-footer-left').appendChild(summaryEl);
+    }
+    
+    if (summaryEl) {
+        summaryEl.innerHTML = `<span>${summaryIcon} ${completedCount}/${totalCount}</span>`;
+    }
+    
+    // Atualiza os checkboxes individuais
+    cardEl.querySelectorAll('.card-checklist-item input[type="checkbox"]').forEach((checkbox, index) => {
+        if (index < checklist.length) {
+            checkbox.checked = checklist[index].completed;
+            const label = checkbox.closest('.card-checklist-item');
+            if (label) label.classList.toggle('completed', checkbox.checked);
+        }
+    });
 }
 
 // --- NOVAS FUNÇÕES DE TOOLTIP ---
@@ -1380,17 +1423,28 @@ async function showTooltip(cardId, event) {
     // Formata os dados adicionais para o tooltip
     const statusText = card.isComplete ? t('kanban.dialog.details.statusCompleted') : t('kanban.dialog.details.statusActive');
 
+    // ✅ NOVO: Adiciona o sumário do checklist ao tooltip
+    let checklistSummaryHtml = '';
+    if (card.checklist && card.checklist.length > 0) {
+        const completedCount = card.checklist.filter(item => item.completed).length;
+        const totalCount = card.checklist.length;
+        const icon = (completedCount === totalCount && totalCount > 0) ? '✅' : '☑️';
+        checklistSummaryHtml = `
+            <div class="tooltip-checklist-summary">${icon} ${completedCount}/${totalCount} ${t('kanban.dialog.card.checklistTitle')}</div>
+        `;
+    }
+
     tooltipElement.innerHTML = `
         <div class="tooltip-title">${card.title}</div>
         <div class="tooltip-details">
             ${card.description ? `<p><strong>${t('kanban.dialog.details.description')}</strong> ${card.description.replace(/\n/g, '<br>')}</p>` : ''}
-            <hr style="margin: 8px 0; border-color: var(--border);">
             <p><strong>${t('kanban.dialog.details.status')}</strong> ${statusText}</p>
             ${card.dueDate ? `<p><strong>${t('kanban.dialog.details.dueDate')}</strong> ${new Date(card.dueDate).toLocaleString()}</p>` : ''}
             ${creator ? `<p><strong>${t('kanban.card.hover.creator')}</strong> ${creator.name}</p>` : ''}
             ${assignee ? `<p><strong>${t('kanban.card.hover.assignedTo')}</strong> ${assignee.name}</p>` : ''}
             ${card.tags && card.tags.length > 0 ? `<p><strong>${t('kanban.dialog.details.tags')}</strong> ${card.tags.join(', ')}</p>` : ''}
         </div>
+        ${checklistSummaryHtml}
     `;
 
     tooltipElement.style.left = `${event.clientX + 15}px`;
@@ -3165,6 +3219,12 @@ async function createCardContextMenu(event, cardEl) {
     const { card } = findCardAndColumn(cardId);
     
     const menuItems = [
+        // ✅ FASE 2: Adiciona a opção de Checklist no menu de contexto
+        { 
+            label: t('kanban.dialog.card.checklistTitle'), 
+            icon: '📝', 
+            action: () => showChecklistDialog(cardId) 
+        },
         { label: t('kanban.contextMenu.card.edit'), icon: '✏️', action: () => handleEditCardFromMenu(cardId) },
         { label: t('kanban.contextMenu.card.details'), icon: 'ℹ️', action: () => showDetailsDialog(cardId) },
         {
@@ -3215,6 +3275,101 @@ async function createColumnContextMenu(event, columnEl) {
     ];
 
     showContextMenu(event, menuItems);
+}
+
+/**
+ * ✅ FASE 2: Mostra um diálogo dedicado para gerenciar o checklist de um cartão.
+ * @param {string} cardId - O ID do cartão.
+ */
+async function showChecklistDialog(cardId) {
+    const card = await getCard(cardId);
+    if (!card) return;
+
+    const dialog = document.getElementById('checklist-dialog');
+    dialog.dataset.cardId = cardId;
+
+    const dialogTitle = dialog.querySelector('#checklist-dialog-title');
+    const editorContainer = dialog.querySelector('#checklist-dialog-editor');
+    const addButton = dialog.querySelector('#add-checklist-dialog-item-btn');
+    const saveButton = dialog.querySelector('#checklist-dialog-save-btn');
+    const limit = 8;
+
+    editorContainer.innerHTML = '';
+
+    const toggleEditorVisibility = () => {
+        const hasItems = editorContainer.children.length > 0;
+        editorContainer.classList.toggle('hidden', !hasItems);
+    };
+
+    const updateCounter = () => {
+        const count = editorContainer.children.length;
+        dialogTitle.textContent = `${t('kanban.dialog.card.checklistTitle')} (${count}/${limit})`;
+        addButton.disabled = count >= limit;
+        addButton.title = count >= limit ? t('templateEditor.limitReached') : '';
+    };
+
+    const createItemElement = (item = { id: '', text: '', completed: false }) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'checklist-item editor-item';
+        itemEl.dataset.id = item.id || '';
+
+        itemEl.innerHTML = `
+            <input type="checkbox" class="checklist-item-checkbox" ${item.completed ? 'checked' : ''}>
+            <input type="text" class="checklist-item-text" value="${item.text}" placeholder="${t('templateEditor.itemNamePlaceholder')}">
+            <button type="button" class="remove-btn" title="${t('templateEditor.removeItemTitle')}">&times;</button>
+        `;
+
+        const checkbox = itemEl.querySelector('.checklist-item-checkbox');
+        const textInput = itemEl.querySelector('.checklist-item-text');
+        const applyStyle = () => {
+            textInput.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
+            textInput.style.opacity = checkbox.checked ? '0.6' : '1';
+        };
+        checkbox.addEventListener('change', applyStyle);
+        itemEl.querySelector('.remove-btn').addEventListener('click', () => {
+            itemEl.remove();
+            updateCounter();
+            toggleEditorVisibility();
+        });
+        applyStyle();
+        return itemEl;
+    };
+
+    (card.checklist || []).forEach(item => editorContainer.appendChild(createItemElement(item)));
+
+    addButton.onclick = () => {
+        if (editorContainer.children.length < limit) {
+            editorContainer.appendChild(createItemElement());
+            updateCounter();
+            toggleEditorVisibility();
+        }
+    };
+
+    saveButton.onclick = async () => {
+        const newChecklist = Array.from(editorContainer.querySelectorAll('.editor-item')).map(itemEl => ({
+            id: itemEl.dataset.id || `chk-${Date.now()}-${Math.random()}`,
+            text: itemEl.querySelector('.checklist-item-text').value,
+            completed: itemEl.querySelector('.checklist-item-checkbox').checked
+        })).filter(item => item.text.trim() !== '');
+
+        card.checklist = newChecklist;
+        await saveCard(card);
+        // ✅ CORREÇÃO: Atualiza o estado em memória para refletir a mudança imediatamente.
+        const { column } = findCardAndColumn(cardId);
+        if (column) {
+            const cardInMemory = column.cards.find(c => c.id === cardId);
+            if (cardInMemory) cardInMemory.checklist = newChecklist;
+        }
+        showDialogMessage(dialog, t('kanban.feedback.cardSaved'), 'success');
+        setTimeout(() => {
+            dialog.close();
+            renderCurrentBoard();
+        }, 1500);
+    };
+
+    updateCounter();
+    toggleEditorVisibility();
+    dialog.showModal();
 }
 
 async function handleCopyColumn(columnId) {
@@ -3311,13 +3466,16 @@ async function showDetailsDialog(cardId = null, columnId = null) { // --- LÓGIC
         contentContainer.innerHTML = `
             <div class="details-tabs">
                 <button class="details-tab-btn active" data-tab="details-pane">${t('activityLog.details.tabDetails')}</button>
+                ${card.checklist && card.checklist.length > 0 ? `<button class="details-tab-btn" data-tab="checklist-pane">${t('kanban.dialog.card.checklistTitle')}</button>` : ''}
                 <button class="details-tab-btn" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
             </div>
             <div id="details-pane" class="details-tab-pane active"></div>
+            <div id="checklist-pane" class="details-tab-pane"></div>
             <div id="activity-pane" class="details-tab-pane"></div>
         `;
 
         renderCardDetails(card, contentContainer.querySelector('#details-pane'));
+        renderChecklistInDialog(card, contentContainer.querySelector('#checklist-pane')); // ✅ NOVO
         renderActivityLog(card, contentContainer.querySelector('#activity-pane'));
 
         // Adiciona listeners para as abas
@@ -3364,6 +3522,34 @@ function renderCardDetails(card, container) {
     detailsHtml += '</ul>';
     
     container.innerHTML = detailsHtml;
+}
+
+/**
+ * ✅ NOVO: Renderiza o checklist interativo dentro do diálogo de detalhes.
+ * @param {object} card - O objeto do cartão.
+ * @param {HTMLElement} container - O elemento onde o checklist será renderizado.
+ */
+function renderChecklistInDialog(card, container) {
+    if (!card.checklist || card.checklist.length === 0) {
+        container.innerHTML = ''; // Limpa se não houver checklist
+        return;
+    }
+
+    let checklistHtml = '<div class="dialog-checklist-container">';
+    card.checklist.forEach((item, index) => {
+        checklistHtml += `
+            <label class="checkbox-container dialog-checklist-item ${item.completed ? 'completed' : ''}">
+                ${item.text}
+                <input type="checkbox" data-index="${index}" ${item.completed ? 'checked' : ''}>
+                <span class="checkmark"></span>
+            </label>
+        `;
+    });
+    checklistHtml += '</div>';
+    container.innerHTML = checklistHtml;
+
+    // ✅ CORREÇÃO: REMOVIDO event listener duplicado - já é tratado no cartão principal
+    // O evento no diálogo de detalhes não deve modificar o estado, apenas exibir
 }
 
 /**
@@ -3485,6 +3671,21 @@ async function handleArchiveBoard(boardId, closeManagerDialog = false) {
 
                 // ✅ AGORA, opera no storage em segundo plano.
                 if (await archiveBoardInStorage(boardId, currentUser.id, false)) { // false para markAsCompleted
+                    // ✅ CORREÇÃO: Remove a referência do quadro do seu dono (usuário ou grupo)
+                    if (board.ownerId && !board.groupId) {
+                        const userProfile = await getUserProfile(board.ownerId);
+                        if (userProfile && userProfile.boardIds) {
+                            userProfile.boardIds = userProfile.boardIds.filter(id => id !== boardId);
+                            await saveUserProfile(userProfile);
+                        }
+                    } else if (board.groupId) {
+                        const group = await getGroup(board.groupId);
+                        if (group && group.boardIds) {
+                            group.boardIds = group.boardIds.filter(id => id !== boardId);
+                            await saveGroup(group);
+                        }
+                    }
+
                     showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
                     if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
                     return true; // Fecha o diálogo de confirmação.
@@ -3533,6 +3734,21 @@ async function handleArchiveBoard(boardId, closeManagerDialog = false) {
 
         // ✅ AGORA, opera no storage em segundo plano
         if (await archiveBoardInStorage(boardId, currentUser.id, archiveAs === 'completed')) {
+            // ✅ CORREÇÃO: Remove a referência do quadro do seu dono (usuário ou grupo)
+            if (board.ownerId && !board.groupId) {
+                const userProfile = await getUserProfile(board.ownerId);
+                if (userProfile && userProfile.boardIds) {
+                    userProfile.boardIds = userProfile.boardIds.filter(id => id !== boardId);
+                    await saveUserProfile(userProfile);
+                }
+            } else if (board.groupId) {
+                const group = await getGroup(board.groupId);
+                if (group && group.boardIds) {
+                    group.boardIds = group.boardIds.filter(id => id !== boardId);
+                    await saveGroup(group);
+                }
+            }
+
             showDialogMessage(dialog, t('archive.feedback.boardArchived'), 'success');
             if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
             setTimeout(() => dialog.close(), 1500);
@@ -3577,6 +3793,21 @@ async function handleDeleteBoard(boardId, closeManagerDialog = false) {
 
             // ✅ AGORA opera no storage
             if (await trashBoardInStorage(boardId, currentUser.id)) {
+                // ✅ CORREÇÃO: Remove a referência do quadro do seu dono (usuário ou grupo)
+                if (boardToDelete.ownerId && !boardToDelete.groupId) {
+                    const userProfile = await getUserProfile(boardToDelete.ownerId);
+                    if (userProfile && userProfile.boardIds) {
+                        userProfile.boardIds = userProfile.boardIds.filter(id => id !== boardId);
+                        await saveUserProfile(userProfile);
+                    }
+                } else if (boardToDelete.groupId) {
+                    const group = await getGroup(boardToDelete.groupId);
+                    if (group && group.boardIds) {
+                        group.boardIds = group.boardIds.filter(id => id !== boardId);
+                        await saveGroup(group);
+                    }
+                }
+
                 showDialogMessage(dialog, t('kanban.feedback.boardMovedToTrash'), 'success');
                 if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
                 return true; // Fecha o diálogo de confirmação
@@ -3622,12 +3853,14 @@ async function handleArchiveColumn(columnId, boardContext = null, fromManager = 
     if (!hasCards) {
         // Se não tiver cartões, mostra um diálogo de confirmação simples.
         showConfirmationDialog(
-            t('archive.confirm.archiveColumn', { columnTitle: column.title }),
+            t('kanban.confirm.archiveEmptyColumn', { columnTitle: column.title }),
             async (dialog) => {
                 // ✅ CORREÇÃO: Aplica a mesma lógica de atualização da UI em memória.
                 if (currentBoard && currentBoard.id === boardForContext.id) {
                     currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
                     currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+                    // ✅ CORREÇÃO: Salva o estado do quadro após remover a coluna da memória.
+                    await saveBoard(currentBoard);
                     renderCurrentBoard();
                 }
 
@@ -3670,6 +3903,8 @@ async function handleArchiveColumn(columnId, boardContext = null, fromManager = 
         if (currentBoard && currentBoard.id === boardForContext.id) {
             currentBoard.columns = currentBoard.columns.filter(c => c.id !== columnId);
             currentBoard.columnIds = currentBoard.columnIds.filter(id => id !== columnId);
+            // ✅ CORREÇÃO: Salva o estado do quadro após remover a coluna da memória.
+            await saveBoard(currentBoard);
             // Renderiza o quadro imediatamente com a coluna removida
             renderCurrentBoard();
         }
@@ -3844,8 +4079,9 @@ async function handleDeleteCard(cardId, closeManagerDialog = false) {
             // Chama a função CORRETA de exclusão
             if (await deleteCard(cardId)) {
                 // Remove da coluna atual
+                // ✅ CORREÇÃO: A lógica de remoção da memória já está em deleteCard,
+                // mas salvamos a coluna para garantir a remoção do cardId.
                 column.cardIds = column.cardIds.filter(id => id !== cardId);
-                column.cards = column.cards.filter(c => c.id !== cardId);
                 await saveColumn(column);
                 
                 showDialogMessage(dialog, t('kanban.feedback.cardMovedToTrash'), 'success');
@@ -3901,7 +4137,7 @@ async function handleArchiveCard(cardId, closeManagerDialog = false) {
 
         if (await archiveCardInStorage(cardId, currentUser.id, { columnId: column.id, boardId: currentBoard.id, columnTitle: column.title, boardTitle: currentBoard.title }, archiveAs === 'completed')) {
             column.cardIds = column.cardIds.filter(id => id !== cardId);
-            column.cards = column.cards.filter(c => c.id !== cardId);
+            // ✅ CORREÇÃO: Salva a coluna de origem após remover o cartão arquivado.
             await saveColumn(column);
             showDialogMessage(confirmationDialog, t('archive.feedback.cardArchived'), 'success');
             if (closeManagerDialog) document.getElementById('manager-dialog')?.close();
@@ -4076,6 +4312,7 @@ async function handlePasteCard(targetColumnId, boardContext = null) {
             const cardIndex = sourceColumn.cardIds.indexOf(clipboard.sourceCardId);
             if (cardIndex > -1) {
                 sourceColumn.cardIds.splice(cardIndex, 1);
+                // ✅ CORREÇÃO: Salva a coluna de origem após remover o cartão recortado.
                 await saveColumn(sourceColumn);
             }
         }
@@ -4148,11 +4385,19 @@ function getTagColor(tagName) {
 
 function findCardAndColumn(cardId, boardContext) {
     const board = boardContext || currentBoard;
-    if (!board || !board.columns) return null;
+    if (!board || !board.columns) {
+        console.warn('Board ou colunas não encontrados para card:', cardId);
+        return null;
+    }
+    
     for (const column of board.columns) {
         const card = column.cards.find(c => c.id === cardId);
-        if (card) return { card, column, board }; // also return the board for context
+        if (card) {
+            return { card, column, board };
+        }
     }
+    
+    console.warn('Card não encontrado em nenhuma coluna:', cardId);
     return null;
 }
 
@@ -4416,6 +4661,7 @@ async function showPreferencesDialog(isTour = false) {
         showAssignment: prefs.showAssignment !== false,
         showCardDetails: prefs.showCardDetails !== false,
         enableCardTooltip: prefs.enableCardTooltip === true, // Nova preferência
+        showChecklist: prefs.showChecklist !== false, // ✅ FASE 3
         smartHeader: prefs.smartHeader === true,
         defaultTagTemplateId: prefs.defaultTagTemplateId || 'system-tags-prio'
     };
@@ -4433,6 +4679,7 @@ async function showPreferencesDialog(isTour = false) {
     dialog.querySelector('#pref-card-show-assignment').checked = originalPreferences.showAssignment;
     dialog.querySelector('#pref-card-show-details').checked = originalPreferences.showCardDetails;
     dialog.querySelector('#pref-smart-header').checked = originalPreferences.smartHeader;
+    dialog.querySelector('#pref-card-show-checklist').checked = originalPreferences.showChecklist; // ✅ FASE 3
     dialog.querySelector('#pref-enable-card-tooltip').checked = originalPreferences.enableCardTooltip; // Define o estado do novo checkbox
 
     // Popula e seleciona o template de tags
@@ -4530,6 +4777,7 @@ async function savePreferencesData() {
             showBoardIcon: dialog.querySelector('#pref-board-show-icon').checked,
             showBoardTitle: dialog.querySelector('#pref-board-show-title').checked,
             showCardDetails: dialog.querySelector('#pref-card-show-details').checked,
+            showChecklist: dialog.querySelector('#pref-card-show-checklist').checked, // ✅ FASE 3
             enableCardTooltip: dialog.querySelector('#pref-enable-card-tooltip').checked, // Salva a nova preferência
             smartHeader: dialog.querySelector('#pref-smart-header').checked,
             primaryColor: primaryColor
@@ -4652,6 +4900,7 @@ function applyCardPreview() {
     currentUser.preferences.showStatus = dialog.querySelector('#pref-card-show-status').checked;
     currentUser.preferences.showAssignment = dialog.querySelector('#pref-card-show-assignment').checked;
     currentUser.preferences.showCardDetails = dialog.querySelector('#pref-card-show-details').checked;
+    currentUser.preferences.showChecklist = dialog.querySelector('#pref-card-show-checklist').checked;
 
     // Simplesmente redesenha o quadro. A função createCardElement já
     // contém a lógica para mostrar/esconder os elementos com base nessas preferências.

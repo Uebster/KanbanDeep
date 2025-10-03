@@ -543,6 +543,10 @@
                     <input type="checkbox" id="pref-enable-card-tooltip">
                     <span class="checkmark"></span>
                 </label>
+                <label class="checkbox-container" data-i18n="preferences.showChecklist">
+                    <input type="checkbox" id="pref-card-show-checklist" checked>
+                    <span class="checkmark"></span>
+                </label>
             </fieldset>
             <div class="form-group">
                 <label for="pref-default-tag-template" data-i18n="preferences.defaultTagSet"></label>
@@ -573,6 +577,24 @@
         <button id="close-icon-picker-btn" class="btn cancel" data-i18n="ui.close"></button>
     </div>
 </dialog>
+
+    <!-- ✅ NOVO: Diálogo Dedicado para o Checklist -->
+    <dialog id="checklist-dialog" class="draggable">
+        <h3 id="checklist-dialog-title" class="drag-handle" data-i18n="kanban.dialog.card.checklistTitle"></h3>
+        <div class="form-section" style="border: none; padding: 0;">
+            <div id="checklist-dialog-editor" class="editor-container hidden">
+                <!-- Itens do checklist serão inseridos aqui -->
+            </div>
+            <div class="modal-actions" style="justify-content: center; margin-top: 10px;">
+                 <button type="button" id="add-checklist-dialog-item-btn" class="btn btn-sm" data-i18n="kanban.dialog.card.addChecklistItem"></button>
+            </div>
+        </div>
+        <div class="feedback"></div>
+        <div class="modal-actions">
+            <button class="btn cancel" data-i18n="ui.close"></button>
+            <button id="checklist-dialog-save-btn" class="btn confirm" data-i18n="ui.save"></button>
+        </div>
+    </dialog>
 
 
     <!-- Container para mensagens flutuantes -->

@@ -53,7 +53,9 @@ async function saveItem(itemData, prefix) {
         itemData.id = generateUniqueId(prefix.slice(0, -1));
         // Garante que novos cartões tenham um log de atividades, se ele ainda não existir.
         if (prefix === 'card') {
-            if (!itemData.activityLog) itemData.activityLog = [];
+            if (!itemData.activityLog) {
+                itemData.activityLog = [];
+            }
             if (!itemData.checklist) itemData.checklist = []; // ✅ GARANTE QUE TODO NOVO CARTÃO TENHA UM CHECKLIST
         }
     }

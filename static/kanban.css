@@ -181,7 +181,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    /* A MÁGICA: A cor da coluna é aplicada aqui, na área dos cartões! */
     background-color: var(--column-color);
 }
 
@@ -214,6 +213,7 @@ body {
     box-shadow: 0 3px 6px rgba(0,0,0,0.2); /* Sombra mais pronunciada */
     position: relative; /* Essencial para o posicionamento absoluto dos filhos */
     padding-bottom: 30px; /* Espaço para o avatar no rodapé */
+    max-height: 450px; /* Aumenta a altura máxima do cartão */
 }
 
 /* --- EFEITOS DE ARRASTAR E SOLTAR --- */
@@ -390,6 +390,11 @@ body {
     align-items: center; /* Alinha o texto verticalmente com o checkbox */
 }
 
+.card-checklist-item.completed {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
 /* Ajusta o tamanho do checkmark para caber melhor no cartão */
 .card-checklist-item .checkmark {
     width: 18px;
@@ -483,6 +488,15 @@ body {
 .card-tooltip.visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+.tooltip-checklist-summary {
+    font-weight: 500;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border-light);
+    color: var(--text);
+    font-size: 1rem;
 }
 
 .tooltip-title {
@@ -804,6 +818,12 @@ fieldset.form-group label {
     font-style: italic;
 }
 
+/* ✅ FASE 2: Ajuste no botão de adicionar item do checklist no diálogo principal */
+#card-dialog #add-checklist-item-btn {
+    width: auto; /* Permite que o botão se ajuste ao conteúdo */
+    margin-top: 10px; /* Adiciona o espaçamento solicitado */
+}
+
 /* Esconde o editor de checklist por padrão */
 .editor-container.hidden {
     display: none;
@@ -831,4 +851,23 @@ fieldset.form-group label {
     color: var(--text);
     font-size: 0.95rem;
     padding: 4px 0;
+}
+
+/* ===== NOVO: ESTILOS PARA O CHECKLIST NO DIÁLOGO DE DETALHES ===== */
+.dialog-checklist-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 10px; /* Espaço para a barra de rolagem */
+}
+
+.dialog-checklist-item {
+    font-size: 1rem;
+}
+
+.dialog-checklist-item.completed {
+    text-decoration: line-through;
+    opacity: 0.7;
 }
