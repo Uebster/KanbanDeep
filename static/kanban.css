@@ -310,7 +310,6 @@ body {
 
 .card:hover {
     border-color: var(--primary);
-    transform: scale(1.01);
 }
 
 .card-title {

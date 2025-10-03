@@ -33,7 +33,7 @@ let currentUser = null;
 let allUsers = [];
 let boards = [];
 let allGroups = [];
-let currentBoard = null;
+let currentBoard = null; // O quadro atualmente exibido
 let draggedElement = null;
 let currentBoardFilter = 'personal';
 let undoStack = [];
@@ -101,27 +101,33 @@ export async function initKanbanPage() {
     // 2. Carregamento de Dados
     await loadData(); // <-- AGUARDA o carregamento dos dados
 
-    // --- CORREÇÃO: Lógica para definir o quadro inicial ---
-    // Filtra os quadros com base no filtro ativo ('personal' por padrão).
+    // --- CORREÇÃO DEFINITIVA: Lógica de carregamento do quadro inicial ---
+    // 1. Carrega o último filtro usado pelo usuário. O padrão é 'personal'.
+    currentBoardFilter = localStorage.getItem(`kanbanFilter_${currentUser.id}`) || 'personal';
+    document.querySelectorAll('#board-filter-toggle .filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === currentBoardFilter);
+    });
+
+    // 2. Filtra os quadros visíveis com base no filtro carregado.
     const filteredBoards = boards.filter(board => {
         if (currentBoardFilter === 'personal') return !board.groupId;
         if (currentBoardFilter === 'group') return !!board.groupId;
         return true;
     });
 
+    // 3. Tenta encontrar o último quadro que o usuário estava vendo.
     const lastBoardId = localStorage.getItem(`currentBoardId_${currentUser.id}`);
-    
-    // Tenta encontrar o último quadro visualizado DENTRO da lista filtrada.
     let initialBoard = filteredBoards.find(b => b.id === lastBoardId);
 
-    // Se o último quadro não pertencer a este filtro, pega o primeiro da lista filtrada.
+    // 4. Se o último quadro não existe mais ou não pertence ao filtro atual,
+    //    seleciona o primeiro quadro disponível na lista filtrada.
     if (!initialBoard) {
         initialBoard = filteredBoards[0] || null;
     }
     
     currentBoard = initialBoard;
 
-    // Atualiza o localStorage com um ID de quadro válido para o contexto atual.
+    // 5. Salva o ID do quadro que será efetivamente exibido, garantindo consistência.
     localStorage.setItem(`currentBoardId_${currentUser.id}`, currentBoard ? currentBoard.id : '');
 
     // 3. Configuração da UI e Eventos
@@ -980,6 +986,9 @@ async function resetSearchFilters() {
 
 function handleFilterChange(filterType) {
     if (currentBoardFilter === filterType) return; // Não faz nada se o filtro já está ativo
+
+    // Salva a preferência de filtro do usuário
+    localStorage.setItem(`kanbanFilter_${currentUser.id}`, filterType);
 
     currentBoardFilter = filterType;
 
@@ -2625,6 +2634,9 @@ function handlePrintBoard() {
 // ===== LÓGICA DE DRAG-AND-DROP =====
 
 async function handleDragStart(e) {
+    // 🔥 CORREÇÃO: Fecha qualquer menu dropdown aberto ao iniciar o arraste.
+    closeAllDropdowns();
+
     hideTooltip();
     isDragging = true;
 
@@ -2632,13 +2644,19 @@ async function handleDragStart(e) {
     const isCardDrag = e.target.closest('.card');
     const isColumnDrag = e.target.closest('.column-header');
     let requiredPermission = null;
+    let dragIsAllowed = true; // Assumimos que é permitido por padrão
 
     if (isCardDrag) requiredPermission = 'createCards';
     if (isColumnDrag) requiredPermission = 'editColumns';
 
     if (requiredPermission && !await hasPermission(currentUser, currentBoard, requiredPermission)) {
         showFloatingMessage(t('kanban.feedback.noPermission'), 'error');
-        e.preventDefault(); // Impede o início do arrasto
+        dragIsAllowed = false; // Marca que o arraste não é permitido
+        // 🔥 CORREÇÃO DEFINITIVA: NÃO interrompemos a função com 'return'.
+        // Deixamos o código continuar para que nosso 'ghost' customizado seja criado,
+        // mas no final, não aplicaremos o estilo 'dragging' ao elemento original,
+        // fazendo com que a operação seja visualmente cancelada.
+    } else if (!isCardDrag && !isColumnDrag) {
         isDragging = false;
         return;
     }
@@ -2684,16 +2702,9 @@ async function handleDragStart(e) {
     }, 0);
 
     // 🔥 MELHORIA: Criar o ghost customizado APÓS lidar com o ghost nativo
-    // 🔥 CORREÇÃO DEFINITIVA: Remove temporariamente o transform do elemento original
-    // ANTES de medir seu tamanho, para evitar que o fantasma seja criado maior.
-    const originalTransform = draggedElement.style.transform;
-    draggedElement.style.transform = 'none';
-
     const ghost = draggedElement.cloneNode(true);
     const rect = draggedElement.getBoundingClientRect();
-
-    // Restaura o transform do elemento original imediatamente após a medição.
-    draggedElement.style.transform = originalTransform;
+    ghost.style.transition = 'none'; // Garante que o fantasma não tenha transições
 
     ghost.style.width = `${rect.width}px`;
     ghost.style.position = 'fixed';
@@ -2750,10 +2761,13 @@ async function handleDragStart(e) {
     };
     draggedElement.addEventListener('dragend', cleanup, { once: true });
 
-    setTimeout(() => {
-        draggedElement.classList.add('dragging');
-        document.body.classList.add('is-dragging'); // Adiciona a classe aqui
-    }, 0);
+    // Apenas aplica o estilo de "arrastando" se a permissão foi concedida.
+    if (dragIsAllowed) {
+        setTimeout(() => {
+            draggedElement.classList.add('dragging');
+            document.body.classList.add('is-dragging');
+        }, 0);
+    }
 }
 
 function handleDragEnd(e) {
