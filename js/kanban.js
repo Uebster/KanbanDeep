@@ -1239,9 +1239,19 @@ function createCardElement(card) {
 
     // Constrói a linha da etiqueta (se houver)
     let tagLineHtml = '';
-    if (card.tags && card.tags.length > 0) {
-        const tagColor = getTagColor(card.tags[0]);
-        tagLineHtml = `<div class="card-tag-line" style="background-color: ${tagColor};"></div>`;
+    if (card.tags && card.tags.length > 0 && (currentUser.preferences?.showTags !== false)) { // Verifica se a preferência de mostrar tags está ativa
+        if (card.tags.length === 1) {
+            const tagColor = getTagColor(card.tags[0]);
+            // Uma única etiqueta: ocupa a largura total, como a antiga linha de tag
+            tagLineHtml = `<div class="card-single-tag-line" style="background-color: ${tagColor};" title="${card.tags[0]}"></div>`;
+        } else {
+            // Múltiplas etiquetas: pílulas que dividem o espaço
+            const tagsHtml = card.tags.slice(0, 8).map(tag => {
+                const tagColor = getTagColor(tag);
+                return `<div class="card-tag-pill" style="background-color: ${tagColor};" title="${tag}"></div>`;
+            }).join('');
+            tagLineHtml = `<div class="card-tags-container">${tagsHtml}</div>`;
+        }
     }
 
     // Constrói a data (se houver)
@@ -1292,7 +1302,7 @@ function createCardElement(card) {
                 ${userPrefs.showStatus !== false ? statusBoxHtml : ''}
             </div>
             <p class="card-title">${card.title}</p>
-            ${userPrefs.showTags !== false ? tagLineHtml : ''}
+            ${tagLineHtml}
         </div>
         <div class="card-footer-details">
             ${userPrefs.showAssignment !== false ? assignedToHtml : ''}

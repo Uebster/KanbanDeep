@@ -394,7 +394,33 @@ body {
     flex-shrink: 0; /* Impede que o avatar encolha */
 }
 
-.card-tag-line { height: 9px; border: 2px solid #777; border-radius: 3px; margin-top: 8px; }
+/* NOVO: Estilo para uma única etiqueta no cartão (ocupa todo o espaço) */
+.card-single-tag-line {
+    height: 9px; /* Altura similar à antiga linha de tag */
+    border-radius: 3px;
+    margin-top: 8px;
+    width: 100%; /* Ocupa toda a largura disponível */
+    border: 1px solid var(--border-light); /* Adiciona uma borda sutil */
+}
+
+/* NOVO: Container para as múltiplas etiquetas no cartão */
+.card-tags-container {
+    display: flex;
+    flex-wrap: wrap; /* Permite que as etiquetas quebrem para a próxima linha se não houver espaço */
+    gap: 4px; /* Espaçamento entre as etiquetas */
+    margin-top: 8px; /* Ajustado para ficar mais próximo do título */
+    justify-content: center; /* Centraliza as etiquetas no cartão */
+}
+
+/* NOVO: Estilo para cada "pílula" de etiqueta individual */
+.card-tag-pill {
+    height: 8px;
+    flex-grow: 1; /* Faz com que as pílulas dividam o espaço igualmente */
+    min-width: 10px; /* Garante que não fiquem muito pequenas */
+    max-width: 100%; /* Impede que uma única pílula ocupe todo o espaço se houver poucas */
+    border-radius: 4px;
+    border: 1px solid var(--border-light); /* Adiciona uma borda sutil */
+}
 
 .form-group input[type="color"] { padding: 5px; height: 45px; }
 
