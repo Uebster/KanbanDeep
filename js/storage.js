@@ -126,12 +126,18 @@ export async function archiveCard(cardId, userId, context = {}, markAsCompleted 
 
     const logAction = 'archived';
 
-    // Se for para marcar como concluído e o cartão ainda não estiver, faz a alteração.
-    if (markAsCompleted && !card.isComplete) {
-        card.isComplete = true;
-        card.completedAt = new Date().toISOString();
-        if (!card.activityLog) card.activityLog = [];
-        card.activityLog.push({ action: 'completed', userId: userId, timestamp: new Date().toISOString() });
+    if (markAsCompleted) {
+        // Se for para marcar como concluído e o cartão ainda não estiver, faz a alteração.
+        if (!card.isComplete) {
+            card.isComplete = true;
+            card.completedAt = new Date().toISOString();
+            if (!card.activityLog) card.activityLog = [];
+            card.activityLog.push({ action: 'completed', userId: userId, timestamp: new Date().toISOString() });
+        }
+    } else {
+        // Se for para arquivar como "aberto", garante que o status seja pendente.
+        card.isComplete = false;
+        delete card.completedAt; // Remove a data de conclusão se houver
     }
 
     if (!card.activityLog) card.activityLog = [];

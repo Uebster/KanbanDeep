@@ -1820,7 +1820,7 @@ async function loadAndRenderStatistics(groupId) {
             return board.columns.flatMap(col => col.cards);
         }
         return []; // Não inclui cartões de quadros privados de outros membros.
-    }))).flat();
+    }))).flat().filter(card => card.archiveReason !== 'deleted'); // ETAPA 1: Exclui itens da lixeira
 
     const now = new Date();
     let startDate = new Date(0); // Início da época para 'all'
@@ -2325,7 +2325,7 @@ async function generateAndRenderReport() {
             return board.columns.flatMap(col => col.cards);
         }
         return []; // Não inclui cartões de quadros privados de outros membros.
-    }))).flat();
+    }))).flat().filter(card => card.archiveReason !== 'deleted'); // ETAPA 1: Exclui itens da lixeira
 
     // Se não houver nenhum cartão no grupo, exibe a mensagem e para.
     if (allCardsInGroup.length === 0) {
