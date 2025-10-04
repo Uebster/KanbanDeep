@@ -199,6 +199,50 @@ async function loadData() {
  * Configura todos os event listeners da página.
  */
 function setupEventListeners() {
+    // ✅ SOLUÇÃO DEFINITIVA: DELEGAÇÃO DE EVENTOS
+    // Adiciona um único listener ao container pai que nunca é destruído.
+    // Este listener "observa" cliques em qualquer checkbox de checklist que apareça dentro dele.
+    document.getElementById('columns-container').addEventListener('change', async (e) => {
+        // Verifica se o elemento que disparou o evento é um checkbox de checklist dentro de um cartão
+        if (e.target.matches('.card-checklist-item input[type="checkbox"]')) {
+            e.stopPropagation(); // Impede que o clique se propague para outros elementos (como o card)
+
+            const checkbox = e.target;
+            const cardEl = checkbox.closest('.card');
+            if (!cardEl) return;
+
+            const cardId = cardEl.dataset.cardId;
+            const itemIndex = parseInt(checkbox.dataset.index, 10);
+
+            // 1. Busca o dado mais recente do storage
+            const cardToUpdate = await getCard(cardId);
+            if (!cardToUpdate || !cardToUpdate.checklist || !cardToUpdate.checklist[itemIndex]) {
+                console.error('Delegação: Cartão ou item do checklist não encontrado para atualização.');
+                return;
+            }
+
+            // 2. Atualiza o estado do item
+            cardToUpdate.checklist[itemIndex].completed = checkbox.checked;
+
+            // 3. Salva no storage (a "fonte da verdade")
+            await saveCard(cardToUpdate);
+
+            // 4. Atualiza o estado em memória (currentBoard)
+            const result = findCardAndColumn(cardId);
+            if (result && result.card) {
+                result.card.checklist = cardToUpdate.checklist;
+            }
+
+            // 5. Atualiza a UI do cartão específico (sumário e estilo do item)
+            updateCardChecklistUI(cardEl, cardToUpdate.checklist);
+
+            // 6. Fornece feedback ao usuário
+            showFloatingMessage(
+                checkbox.checked ? t('kanban.feedback.checklistItemCompleted') : t('kanban.feedback.checklistItemPending'),
+                'success'
+            );
+        }
+    });
 
     document.getElementById('add-board-btn')?.addEventListener('click', async () => {
         if (currentBoardFilter === 'group' && !await hasPermission(null, 'createBoards')) {
@@ -1315,14 +1359,20 @@ function createCardElement(card) {
     `;
     
     // ✅ PASSO 4 (REFEITO): Renderiza o checklist diretamente no cartão
-    const userPrefsForChecklist = currentUser.preferences || {};
-    if (userPrefsForChecklist.showChecklist !== false && card.checklist && card.checklist.length > 0) {
+    if (card.checklist && card.checklist.length > 0) {
+        const userPrefs = currentUser.preferences || {};
+        const isChecklistVisible = userPrefs.showChecklist !== false;
+
         const completedCount = card.checklist.filter(item => item.completed).length;
         const totalCount = card.checklist.length;
 
         // 1. Cria o container para o checklist
         const checklistContainer = document.createElement('div');
         checklistContainer.className = 'card-checklist-container';
+        if (!isChecklistVisible) {
+            checklistContainer.classList.add('hidden-by-preference');
+        }
+
         card.checklist.forEach((item, index) => {
             const itemEl = document.createElement('label');
             itemEl.className = 'checkbox-container card-checklist-item';
@@ -1331,52 +1381,15 @@ function createCardElement(card) {
                 <input type="checkbox" data-index="${index}" ${item.completed ? 'checked' : ''}>
                 <span class="checkmark"></span>
             `;
+            if (item.completed) itemEl.classList.add('completed');
             checklistContainer.appendChild(itemEl);
         });
 
         // 2. Insere o checklist no corpo do cartão, após o conteúdo principal
         cardEl.querySelector('.card-content').appendChild(checklistContainer);
 
-        // ✅ CORREÇÃO DEFINITIVA: Event listener simplificado e mais robusto
-        checklistContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', async (e) => {
-                e.stopPropagation(); // Impede a propagação para evitar conflitos
-                
-                const itemIndex = parseInt(e.target.dataset.index, 10);
-                
-                // Busca o cartão ATUALIZADO do storage
-                const cardToUpdate = await getCard(card.id);
-                if (!cardToUpdate || !cardToUpdate.checklist[itemIndex]) {
-                    console.error('Cartão ou item do checklist não encontrado');
-                    return;
-                }
-
-                // Atualiza o estado do item
-                cardToUpdate.checklist[itemIndex].completed = e.target.checked;
-                
-                // Salva IMEDIATAMENTE no storage
-                await saveCard(cardToUpdate);
-                
-                // ✅ ATUALIZAÇÃO SÍNCRONA: Atualiza o estado em memória
-                const result = findCardAndColumn(card.id);
-                if (result && result.card) {
-                    // Garante que o checklist em memória seja idêntico ao que foi salvo,
-                    // evitando inconsistências ao mover cartões ou re-renderizar.
-                    result.card.checklist = cardToUpdate.checklist;
-                }
-                
-                // Atualiza apenas o cartão atual sem re-renderizar o quadro inteiro
-                updateCardChecklistUI(cardEl, cardToUpdate.checklist);
-                
-                // Mostra feedback visual
-                showFloatingMessage(
-                    e.target.checked 
-                        ? t('kanban.feedback.checklistItemCompleted') 
-                        : t('kanban.feedback.checklistItemPending'), 
-                    'success'
-                );
-            });
-        });
+        // O listener de evento individual foi removido daqui.
+        // A lógica agora é centralizada no #columns-container usando delegação de eventos.
     }
 
     // Adiciona o sumário no rodapé, se houver checklist, independentemente da preferência de exibição
@@ -1390,6 +1403,9 @@ function createCardElement(card) {
         cardEl.querySelector('.card-footer-left').appendChild(summaryEl);
     }
     
+    // ✅ CORREÇÃO DEFINITIVA: Garante que a UI do checklist seja atualizada
+    // mesmo que o cartão seja redesenhado por outra função.
+    updateCardChecklistUI(cardEl, card.checklist);
     return cardEl;
 }
 
@@ -3520,16 +3536,13 @@ async function showDetailsDialog(cardId = null, columnId = null) { // --- LÓGIC
         contentContainer.innerHTML = `
             <div class="details-tabs">
                 <button class="details-tab-btn active" data-tab="details-pane">${t('activityLog.details.tabDetails')}</button>
-                ${card.checklist && card.checklist.length > 0 ? `<button class="details-tab-btn" data-tab="checklist-pane">${t('kanban.dialog.card.checklistTitle')}</button>` : ''}
                 <button class="details-tab-btn" data-tab="activity-pane">${t('activityLog.details.tabActivity')}</button>
             </div>
             <div id="details-pane" class="details-tab-pane active"></div>
-            <div id="checklist-pane" class="details-tab-pane"></div>
             <div id="activity-pane" class="details-tab-pane"></div>
         `;
 
         renderCardDetails(card, contentContainer.querySelector('#details-pane'));
-        renderChecklistInDialog(card, contentContainer.querySelector('#checklist-pane')); // ✅ NOVO
         renderActivityLog(card, contentContainer.querySelector('#activity-pane'));
 
         // Adiciona listeners para as abas
@@ -3579,31 +3592,40 @@ function renderCardDetails(card, container) {
 }
 
 /**
- * ✅ NOVO: Renderiza o checklist interativo dentro do diálogo de detalhes.
+ * ✅ NOVO: Renderiza a aba de log de atividades de um cartão.
  * @param {object} card - O objeto do cartão.
- * @param {HTMLElement} container - O elemento onde o checklist será renderizado.
+ * @param {HTMLElement} container - O elemento onde o log será renderizado.
  */
-function renderChecklistInDialog(card, container) {
-    if (!card.checklist || card.checklist.length === 0) {
-        container.innerHTML = ''; // Limpa se não houver checklist
+function renderActivityLog(card, container) {
+    const log = card.activityLog || [];
+    if (log.length === 0) {
+        container.innerHTML = `<p class="activity-log-empty">${t('activityLog.empty')}</p>`;
         return;
     }
 
-    let checklistHtml = '<div class="dialog-checklist-container">';
-    card.checklist.forEach((item, index) => {
-        checklistHtml += `
-            <label class="checkbox-container dialog-checklist-item ${item.completed ? 'completed' : ''}">
-                ${item.text}
-                <input type="checkbox" data-index="${index}" ${item.completed ? 'checked' : ''}>
-                <span class="checkmark"></span>
-            </label>
-        `;
-    });
-    checklistHtml += '</div>';
-    container.innerHTML = checklistHtml;
+    const sortedLog = log.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // ✅ CORREÇÃO: REMOVIDO event listener duplicado - já é tratado no cartão principal
-    // O evento no diálogo de detalhes não deve modificar o estado, apenas exibir
+    let logHtml = '<ul class="activity-log-list">';
+    sortedLog.forEach(entry => {
+        const user = allUsers.find(u => u.id === entry.userId)?.name || 'Sistema';
+        const date = new Date(entry.timestamp).toLocaleString();
+        const fromLocation = entry.from === 'trash' ? t('archive.tabs.trash') : t('archive.tabs.archived');
+
+        // Substituições para as chaves de tradução
+        const replacements = {
+            user: `<strong>${user}</strong>`,
+            from: fromLocation,
+            fromColumn: `<strong>${entry.fromColumn}</strong>`,
+            toColumn: `<strong>${entry.toColumn}</strong>`,
+            fromBoard: `<strong>${entry.fromBoard}</strong>`,
+            toBoard: `<strong>${entry.toBoard}</strong>`
+        };
+
+        const message = t(`activityLog.action.${entry.action}`, replacements);
+        logHtml += `<li class="activity-log-item"><div class="log-message">${message}</div><div class="log-date">${date}</div></li>`;
+    });
+    logHtml += '</ul>';
+    container.innerHTML = logHtml;
 }
 
 /**
